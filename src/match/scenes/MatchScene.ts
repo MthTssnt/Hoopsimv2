@@ -1,13 +1,21 @@
 import Phaser from 'phaser';
-import { createNewGame, gaugeTime, playerName, type Player } from '../../engine';
+import { createNewGame, gaugeTime, playerName, TEAM_SEEDS, type Player } from '../../engine';
 import { randomSeed, Rng } from '../../engine/rng';
-import { PIXELS_PER_METER, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
+import { VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
 import { KeyboardInput, NO_INPUT } from '../input/keyboard';
-import { BALL_RADIUS, makeCourt } from '../physics/court';
+import { BALL_RADIUS, COURT_LENGTH, COURT_WIDTH, makeCourt } from '../physics/court';
 import { CAMERA_TUNING, targetFraming } from '../render/camera';
-import { createBallTextures, createCourtTexture, drawHoop } from '../render/courtArt';
-import { createPlayerShadowTexture, createPlayerTexture, KITS } from '../render/playerArt';
-import { depthOf, project } from '../render/projection';
+import { createBallTextures, createCourtTexture, drawHoop, shade, themeFromTeam, type CourtTheme } from '../render/courtArt';
+import {
+  createControlRingTexture,
+  createNameLabel,
+  createPlayerShadowTexture,
+  createPlayerTextures,
+  labelText,
+  lookFor,
+  type PlayerPose,
+} from '../render/playerArt';
+import { depthOf, project, screenHeight } from '../render/projection';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT } from '../world/MatchWorld';
 import type { HudContent } from './HudScene';
@@ -27,15 +35,22 @@ function smooth(current: number, target: number, rate: number, deltaMs: number):
 
 const SPEED_LABELS = { slow: 'lente', normal: 'normale', fast: 'rapide' } as const;
 
+function teamOf(player: Player) {
+  return TEAM_SEEDS.find((t) => t.id === player.teamId) ?? TEAM_SEEDS[0];
+}
+
 /**
- * Scène du match. Incrément 4 : un joueur contrôlable (déplacement, saut, dribble, ramassage),
- * caméra qui suit le joueur et garde le ballon visible, réglages venus du panneau React.
+ * Scène du match. Un joueur contrôlable (déplacement, saut, dribble, ramassage) dans une vue de
+ * 3/4 ; terrain aux couleurs de son équipe ; caméra qui le suit et garde le ballon visible ;
+ * réglages venus du panneau React.
  */
 export class MatchScene extends Phaser.Scene {
   private settings!: MatchSettings;
   private seed = 0;
   private rng!: Rng;
   private athletes: Player[] = [];
+  private athleteIndex = 0;
+  private theme!: CourtTheme;
   private world!: MatchWorld;
   private controls!: KeyboardInput;
   private blocked = false;
@@ -44,6 +59,9 @@ export class MatchScene extends Phaser.Scene {
   private runClock = 0;
   private cam = { x: 0, y: 0, zoom: 1 };
   private hudKey = '';
+  private hudHidden = false;
+  /** Centre vertical préféré de la caméra : toute la profondeur du terrain visible. */
+  private anchorY = 0;
 
   private courtImage!: Phaser.GameObjects.Image;
   private playerSprite!: Phaser.GameObjects.Image;
@@ -51,6 +69,8 @@ export class MatchScene extends Phaser.Scene {
   private ballImage!: Phaser.GameObjects.Image;
   private ballShadow!: Phaser.GameObjects.Image;
   private marker!: Phaser.GameObjects.Image;
+  private ring!: Phaser.GameObjects.Image;
+  private label!: Phaser.GameObjects.Image;
 
   constructor() {
     super('Match');
@@ -62,29 +82,40 @@ export class MatchScene extends Phaser.Scene {
     this.rng = new Rng(this.seed);
     this.settings = (this.registry.get('settings') as MatchSettings | undefined) ?? loadSettings();
     this.athletes = pickTestAthletes(this.seed);
+    this.athleteIndex = 0;
+    this.theme = themeFromTeam(teamOf(this.athletes[0]));
     this.blocked = false;
     this.pendingJump = false;
     this.accumulator = 0;
     this.runClock = 0;
     this.hudKey = '';
+    this.hudHidden = false;
   }
 
   create() {
-    createCourtTexture(this, 'court-pro', makeCourt('pro'));
-    createCourtTexture(this, 'court-college', makeCourt('college'));
+    createCourtTexture(this, 'court-pro', makeCourt('pro'), this.theme);
+    createCourtTexture(this, 'court-college', makeCourt('college'), this.theme);
     createBallTextures(this);
     createPlayerShadowTexture(this);
-    this.athletes.forEach((a, i) => createPlayerTexture(this, `player-${i}`, a.heightCm, KITS.home));
+    createControlRingTexture(this, 0xffd84a);
+    this.athletes.forEach((a, i) => {
+      const colors = themeFromTeam(teamOf(a));
+      const kit = { jersey: colors.primary, shorts: shade(colors.primary, 0.8), trim: colors.secondary };
+      createPlayerTextures(this, `player-${i}`, lookFor(a, kit));
+      createNameLabel(this, `label-${i}`, labelText(a));
+    });
 
     const court = makeCourt(this.settings.level);
     this.courtImage = this.add.image(0, 0, `court-${this.settings.level}`).setOrigin(0).setDepth(0);
-    drawHoop(this, court.hoops.left);
-    drawHoop(this, court.hoops.right);
+    drawHoop(this, court.hoops.left, this.theme);
+    drawHoop(this, court.hoops.right, this.theme);
     this.marker = this.add.image(0, 0, 'marker').setDepth(1).setVisible(false);
     this.playerShadow = this.add.image(0, 0, 'player-shadow').setDepth(1);
     this.ballShadow = this.add.image(0, 0, 'ball-shadow').setDepth(1);
-    this.playerSprite = this.add.image(0, 0, 'player-0').setOrigin(0.5, 1);
+    this.ring = this.add.image(0, 0, 'control-ring').setDepth(2);
+    this.playerSprite = this.add.image(0, 0, 'player-0-idle').setOrigin(0.5, 1);
     this.ballImage = this.add.image(0, 0, 'ball');
+    this.label = this.add.image(0, 0, 'label-0').setOrigin(0.5, 0).setDepth(900);
 
     const rim = court.hoops.right.rim;
     const start = { x: rim.x - 7, y: rim.y + 1.5, z: 0 };
@@ -97,7 +128,8 @@ export class MatchScene extends Phaser.Scene {
     const camera = this.cameras.main;
     camera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     const feet = project(start.x, start.y);
-    this.cam = { x: feet.x, y: feet.y - 20, zoom: 1 };
+    this.anchorY = project(COURT_LENGTH / 2, COURT_WIDTH / 2).y - 24;
+    this.cam = { x: feet.x, y: this.anchorY, zoom: 1 };
     camera.centerOn(this.cam.x, this.cam.y);
 
     const onSettings = (_parent: unknown, value: MatchSettings) => this.applySettings(value);
@@ -111,6 +143,8 @@ export class MatchScene extends Phaser.Scene {
     });
     if (this.registry.get('inputBlocked')) this.setBlocked(true);
 
+    // La clé doit exister avant le premier changement : Phaser n'émet « changedata » qu'ensuite.
+    this.registry.set('hudHidden', false);
     this.scene.launch('Hud');
     this.renderWorld(0);
   }
@@ -172,6 +206,10 @@ export class MatchScene extends Phaser.Scene {
       case K.THREE:
         this.selectAthlete(event.keyCode - K.ONE);
         break;
+      case K.H:
+        this.hudHidden = !this.hudHidden;
+        this.registry.set('hudHidden', this.hudHidden);
+        break;
     }
   }
 
@@ -179,7 +217,8 @@ export class MatchScene extends Phaser.Scene {
     const athlete = this.athletes[index];
     if (!athlete) return;
     this.world.setAthlete(athlete);
-    this.playerSprite.setTexture(`player-${index}`);
+    this.athleteIndex = index;
+    this.label.setTexture(`label-${index}`);
   }
 
   // --- Affichage ---
@@ -190,13 +229,18 @@ export class MatchScene extends Phaser.Scene {
     const feet = project(pos.x, pos.y, pos.z);
     const moving = !body.airborne && Math.hypot(body.vel.x, body.vel.y) > 0.5;
     this.runClock = moving ? this.runClock + deltaMs : 0;
-    const bob = moving && Math.floor(this.runClock / 140) % 2 === 1 ? 1 : 0;
+    const step = Math.floor(this.runClock / 120) % 2;
+    const pose: PlayerPose = body.airborne ? 'air' : moving ? (step ? 'runB' : 'runA') : 'idle';
+    const key = `player-${this.athleteIndex}-${pose}`;
+    if (this.playerSprite.texture.key !== key) this.playerSprite.setTexture(key);
     this.playerSprite
-      .setPosition(Math.round(feet.x), Math.round(feet.y) - bob)
+      .setPosition(Math.round(feet.x), Math.round(feet.y) - (pose === 'runB' ? 1 : 0))
       .setFlipX(body.facing < 0)
       .setDepth(depthOf(pos.y));
     const ground = project(pos.x, pos.y);
     this.playerShadow.setPosition(Math.round(ground.x), Math.round(ground.y)).setAlpha(Math.max(0.4, 1 - pos.z));
+    this.ring.setPosition(Math.round(ground.x), Math.round(ground.y));
+    this.label.setPosition(Math.round(ground.x), Math.round(ground.y) + 5);
 
     const ball = this.world.ball.pos;
     const b = project(ball.x, ball.y, ball.z);
@@ -212,9 +256,9 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private updateCamera(feet: { x: number; y: number }, ball: { x: number; y: number }, heightCm: number, deltaMs: number) {
-    const head = feet.y - (heightCm / 100) * PIXELS_PER_METER;
-    const playerBox = { left: feet.x - 8, right: feet.x + 8, top: head, bottom: feet.y };
-    const target = targetFraming(playerBox, ball, this.settings.camera, this.cam.zoom, VIEW_WIDTH, VIEW_HEIGHT);
+    const head = feet.y - screenHeight(heightCm / 100);
+    const playerBox = { left: feet.x - 8, right: feet.x + 8, top: head, bottom: feet.y + 16 };
+    const target = targetFraming(playerBox, ball, this.anchorY, this.settings.camera, this.cam.zoom, VIEW_WIDTH, VIEW_HEIGHT);
     this.cam.zoom =
       this.settings.camera === 'steps' ? target.zoom : smooth(this.cam.zoom, target.zoom, CAMERA_TUNING.zoomLerp, deltaMs);
     this.cam.x = smooth(this.cam.x, target.centerX, CAMERA_TUNING.followLerp, deltaMs);
@@ -236,7 +280,7 @@ export class MatchScene extends Phaser.Scene {
         ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
     ];
     const bottom = [
-      `${k.up.label}${k.left.label}${k.down.label}${k.right.label} bouger · ${k.shoot.label} saut · R/M tir · 1-3 joueur · C caméra`,
+      `${k.up.label}${k.left.label}${k.down.label}${k.right.label} bouger · ${k.shoot.label} saut · R/M tir · 1-3 joueur · C caméra · H masquer`,
     ];
     const shot = this.world.lastShot;
     if (shot) {

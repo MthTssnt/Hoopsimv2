@@ -2,13 +2,14 @@ import type { CameraMode } from '../settings';
 
 /** Valeurs provisoires, réglables à l'œil. */
 export const CAMERA_TUNING = {
-  minZoom: 0.5,
+  /** Toute la profondeur tient déjà à l'écran : le dézoom ne sert qu'aux cas extrêmes. */
+  minZoom: 0.75,
   /** Paliers du mode « par paliers », du plus proche au plus large. */
-  steps: [1, 0.75, 0.5],
+  steps: [1, 0.75],
   /** Marge pour quitter un palier vers un zoom plus large : évite les allers-retours. */
   stepHysteresis: 0.06,
   /** Marges autour du joueur et du ballon (px du monde). */
-  margin: { x: 36, top: 22, bottom: 14 },
+  margin: { x: 48, top: 18, bottom: 12 },
   /** Lissage de la position et du zoom continu (fraction par image à 60 i/s). */
   followLerp: 0.12,
   zoomLerp: 0.06,
@@ -43,13 +44,15 @@ export function stepZoom(needed: number, current: number): number {
 }
 
 /**
- * Cadrage visé : centré sur le joueur, puis décalé juste assez pour garder le ballon dans le
- * champ ; dézoom si les deux ne tiennent pas ensemble.
+ * Cadrage visé : horizontalement centré sur le joueur, verticalement calé sur `anchorY`
+ * (le centre du terrain : toute la profondeur reste visible). Puis décalé juste assez pour
+ * garder le joueur et le ballon dans le champ ; dézoom si les deux ne tiennent pas ensemble.
  * `player` est la boîte du joueur (px du monde), `ball` la position du ballon.
  */
 export function targetFraming(
   player: Box,
   ball: { x: number; y: number },
+  anchorY: number,
   mode: CameraMode,
   currentZoom: number,
   viewWidth: number,
@@ -74,7 +77,7 @@ export function targetFraming(
   };
   return {
     centerX: fit((player.left + player.right) / 2, box.left, box.right, halfW),
-    centerY: fit((player.top + player.bottom) / 2, box.top, box.bottom, halfH),
+    centerY: fit(anchorY, box.top, box.bottom, halfH),
     zoom,
   };
 }

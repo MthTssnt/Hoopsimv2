@@ -24,8 +24,16 @@ export class HudScene extends Phaser.Scene {
     this.topText = this.add.text(4, 3, '', TEXT_STYLE);
     this.bottomText = this.add.text(4, VIEW_HEIGHT - 12, '', TEXT_STYLE);
     const onChange = (_parent: unknown, value: HudContent) => this.show(value);
+    const onHidden = (_parent: unknown, hidden: boolean) => {
+      this.topText.setVisible(!hidden);
+      this.bottomText.setVisible(!hidden);
+    };
     this.registry.events.on('changedata-hud', onChange);
-    this.events.once('shutdown', () => this.registry.events.off('changedata-hud', onChange));
+    this.registry.events.on('changedata-hudHidden', onHidden);
+    this.events.once('shutdown', () => {
+      this.registry.events.off('changedata-hud', onChange);
+      this.registry.events.off('changedata-hudHidden', onHidden);
+    });
     const current = this.registry.get('hud') as HudContent | undefined;
     if (current) this.show(current);
   }

@@ -41,7 +41,7 @@ scripts/calibrate.ts vérification des moyennes de la ligue
 À construire :
 ```
 src/match/    rendu + contrôle du match (Phaser)
-  config.ts       résolution interne 320×180
+  config.ts       résolution interne 480×270, projection 3/4
   PhaserGame.tsx  pont React ⇄ Phaser
   scenes/         CourtTestScene (test d'environnement, à remplacer), MatchScene, HUD
   input/          clavier + Gamepad API, mapping configurable
@@ -63,7 +63,10 @@ Test du rendu en local ou sur Vercel : ajouter `?court` à l'URL.
 - Wiki Hoop Land (Fandom) — modes et progression.
 
 ## Direction artistique
-- Pixel-art, résolution interne 320×180, `pixelArt: true`, mise à l'échelle par Phaser.
+- Pixel-art, résolution interne 480×270, `pixelArt: true`, mise à l'échelle par Phaser.
+- Vue plongeante de 3/4 (profondeur et hauteur écrasées ~2/3), toute la profondeur du terrain
+  à l'écran, joueurs à grosse tête : cadrage repris de la capture de référence de Matheo,
+  avec nos propres dessins, couleurs, polices et HUD.
 - En attendant les assets : placeholders générés en code, aux tailles de frames définitives.
 - Tout asset externe : licence notée dans `src/assets/CREDITS.md`.
 
