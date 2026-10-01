@@ -14,8 +14,11 @@ export const PIXELS_PER_METER = 20;
 export const DEPTH_SCALE = 0.35;
 /** Bande de parquet autour des lignes (m). */
 export const WORLD_MARGIN = 2;
-/** Hauteur de ciel au-dessus de la ligne de touche du fond (m) : place pour la cloche des tirs. */
-export const WORLD_SKY = 7;
+/**
+ * Hauteur de ciel au-dessus de la ligne de touche du fond (m) : place pour la cloche des tirs,
+ * et assez pour que le monde reste plus grand que la vue au zoom minimal de la caméra.
+ */
+export const WORLD_SKY = 11.5;
 
 export const WORLD_WIDTH = Math.ceil((COURT_LENGTH + 2 * WORLD_MARGIN) * PIXELS_PER_METER);
 export const WORLD_HEIGHT = Math.ceil((WORLD_SKY + (COURT_WIDTH + 2 * WORLD_MARGIN) * DEPTH_SCALE) * PIXELS_PER_METER);

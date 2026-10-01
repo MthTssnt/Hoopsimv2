@@ -1,46 +1,56 @@
 import Phaser from 'phaser';
+import { createNewGame, gaugeTime, playerName, type Player } from '../../engine';
 import { randomSeed, Rng } from '../../engine/rng';
-import { VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
-import { BALL_PHYSICS, isAtRest, stepBall, type BallState } from '../physics/ball';
-import { BALL_RADIUS, distanceToRim, isThreePoint, makeCourt, type Court, type CourtLevel, type Vec3 } from '../physics/court';
-import { solveShot } from '../physics/shotSolver';
+import { PIXELS_PER_METER, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
+import { KeyboardInput, NO_INPUT } from '../input/keyboard';
+import { BALL_RADIUS, makeCourt } from '../physics/court';
+import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { createBallTextures, createCourtTexture, drawHoop } from '../render/courtArt';
+import { createPlayerShadowTexture, createPlayerTexture, KITS } from '../render/playerArt';
 import { depthOf, project } from '../render/projection';
+import { loadSettings, type MatchSettings } from '../settings';
+import { MatchWorld, WORLD_DT } from '../world/MatchWorld';
+import type { HudContent } from './HudScene';
 
-interface DemoShot {
-  wanted: boolean;
-  distance: number;
-  three: boolean;
-  tries: number;
-  /** Résultat observé en direct : panier avant le premier contact avec le parquet. */
-  live: boolean | null;
-  scored: boolean;
+/** Joueurs de test, tirés d'une ligue générée : meneur, ailier, pivot lourd. */
+function pickTestAthletes(seed: number): Player[] {
+  const players = Object.values(createNewGame('bos', seed).players);
+  const best = (pos: Player['pos']) => players.filter((p) => p.pos === pos).sort((a, b) => b.overall - a.overall)[0];
+  const heaviestCenter = players.filter((p) => p.pos === 'C').sort((a, b) => b.weightKg - a.weightKg)[0];
+  return [best('PG'), best('SF'), heaviestCenter];
 }
 
-const TEXT_STYLE = { fontFamily: 'monospace', fontSize: '8px', color: '#f4efe6' };
+/** Lissage indépendant de la fréquence d'affichage (`rate` donné pour 60 i/s). */
+function smooth(current: number, target: number, rate: number, deltaMs: number): number {
+  return current + (target - current) * (1 - Math.pow(1 - rate, deltaMs / (1000 / 60)));
+}
+
+const SPEED_LABELS = { slow: 'lente', normal: 'normale', fast: 'rapide' } as const;
 
 /**
- * Scène du match. Incrément 3 : terrain à l'échelle et démo de la physique du ballon
- * (tirs aléatoires dont le résultat est tiré d'abord, puis mis en scène par le solveur).
+ * Scène du match. Incrément 4 : un joueur contrôlable (déplacement, saut, dribble, ramassage),
+ * caméra qui suit le joueur et garde le ballon visible, réglages venus du panneau React.
  */
 export class MatchScene extends Phaser.Scene {
-  private courts!: Record<CourtLevel, Court>;
-  private level: CourtLevel = 'pro';
-  private rng!: Rng;
+  private settings!: MatchSettings;
   private seed = 0;
-  private ball!: BallState;
+  private rng!: Rng;
+  private athletes: Player[] = [];
+  private world!: MatchWorld;
+  private controls!: KeyboardInput;
+  private blocked = false;
+  private pendingJump = false;
   private accumulator = 0;
-  private waitTime = 0;
-  private auto = false;
-  private shot: DemoShot | null = null;
-  private stats = { shots: 0, made: 0, mismatches: 0 };
+  private runClock = 0;
+  private cam = { x: 0, y: 0, zoom: 1 };
+  private hudKey = '';
 
   private courtImage!: Phaser.GameObjects.Image;
+  private playerSprite!: Phaser.GameObjects.Image;
+  private playerShadow!: Phaser.GameObjects.Image;
   private ballImage!: Phaser.GameObjects.Image;
-  private shadowImage!: Phaser.GameObjects.Image;
+  private ballShadow!: Phaser.GameObjects.Image;
   private marker!: Phaser.GameObjects.Image;
-  private header!: Phaser.GameObjects.Text;
-  private info!: Phaser.GameObjects.Text;
 
   constructor() {
     super('Match');
@@ -50,153 +60,197 @@ export class MatchScene extends Phaser.Scene {
     const param = new URLSearchParams(window.location.search).get('seed');
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.rng = new Rng(this.seed);
-    this.level = 'pro';
-    this.courts = { pro: makeCourt('pro'), college: makeCourt('college') };
-    const hoop = this.courts.pro.hoops.right;
-    this.ball = { pos: { x: hoop.rim.x - 1.5, y: hoop.rim.y + 1.2, z: BALL_RADIUS }, vel: { x: 0, y: 0, z: 0 } };
+    this.settings = (this.registry.get('settings') as MatchSettings | undefined) ?? loadSettings();
+    this.athletes = pickTestAthletes(this.seed);
+    this.blocked = false;
+    this.pendingJump = false;
     this.accumulator = 0;
-    this.waitTime = 0;
-    this.auto = false;
-    this.shot = null;
-    this.stats = { shots: 0, made: 0, mismatches: 0 };
+    this.runClock = 0;
+    this.hudKey = '';
   }
 
   create() {
-    createCourtTexture(this, 'court-pro', this.courts.pro);
-    createCourtTexture(this, 'court-college', this.courts.college);
+    createCourtTexture(this, 'court-pro', makeCourt('pro'));
+    createCourtTexture(this, 'court-college', makeCourt('college'));
     createBallTextures(this);
-    this.courtImage = this.add.image(0, 0, 'court-pro').setOrigin(0).setDepth(0);
-    drawHoop(this, this.courts.pro.hoops.left);
-    drawHoop(this, this.courts.pro.hoops.right);
+    createPlayerShadowTexture(this);
+    this.athletes.forEach((a, i) => createPlayerTexture(this, `player-${i}`, a.heightCm, KITS.home));
 
+    const court = makeCourt(this.settings.level);
+    this.courtImage = this.add.image(0, 0, `court-${this.settings.level}`).setOrigin(0).setDepth(0);
+    drawHoop(this, court.hoops.left);
+    drawHoop(this, court.hoops.right);
     this.marker = this.add.image(0, 0, 'marker').setDepth(1).setVisible(false);
-    this.shadowImage = this.add.image(0, 0, 'ball-shadow').setDepth(1);
+    this.playerShadow = this.add.image(0, 0, 'player-shadow').setDepth(1);
+    this.ballShadow = this.add.image(0, 0, 'ball-shadow').setDepth(1);
+    this.playerSprite = this.add.image(0, 0, 'player-0').setOrigin(0.5, 1);
     this.ballImage = this.add.image(0, 0, 'ball');
 
-    // Cadrage fixe sur le demi-terrain de droite (la caméra qui suit arrive à l'incrément 4).
-    const cam = this.cameras.main;
-    cam.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    cam.setScroll(WORLD_WIDTH - VIEW_WIDTH, WORLD_HEIGHT - VIEW_HEIGHT);
+    const rim = court.hoops.right.rim;
+    const start = { x: rim.x - 7, y: rim.y + 1.5, z: 0 };
+    this.world = new MatchWorld(court, this.athletes[0], start, gaugeTime(this.settings.shotSpeed), this.rng);
 
-    // Actions ponctuelles de la démo : écoutées par événement, pour ne perdre aucun appui bref.
     const keyboard = this.input.keyboard!;
-    keyboard.addCapture('SPACE');
-    keyboard.on('keydown-SPACE', () => this.fire());
-    keyboard.on('keydown-R', () => this.fire(true));
-    keyboard.on('keydown-M', () => this.fire(false));
-    keyboard.on('keydown-N', () => this.toggleLevel());
-    keyboard.on('keydown-A', () => {
-      this.auto = !this.auto;
-      this.refreshHeader();
-    });
+    this.controls = new KeyboardInput(keyboard, this.settings.bindings);
+    keyboard.on('keydown', (event: KeyboardEvent) => this.onDebugKey(event));
 
-    this.header = this.add.text(4, 3, '', TEXT_STYLE).setScrollFactor(0).setDepth(1000);
-    this.info = this.add.text(4, VIEW_HEIGHT - 21, '', TEXT_STYLE).setScrollFactor(0).setDepth(1000);
-    this.refreshHeader();
-    this.refreshInfo();
-    this.render();
+    const camera = this.cameras.main;
+    camera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    const feet = project(start.x, start.y);
+    this.cam = { x: feet.x, y: feet.y - 20, zoom: 1 };
+    camera.centerOn(this.cam.x, this.cam.y);
+
+    const onSettings = (_parent: unknown, value: MatchSettings) => this.applySettings(value);
+    const onBlocked = (_parent: unknown, value: boolean) => this.setBlocked(value);
+    this.registry.events.on('changedata-settings', onSettings);
+    this.registry.events.on('changedata-inputBlocked', onBlocked);
+    this.events.once('shutdown', () => {
+      this.registry.events.off('changedata-settings', onSettings);
+      this.registry.events.off('changedata-inputBlocked', onBlocked);
+      this.controls.destroy();
+    });
+    if (this.registry.get('inputBlocked')) this.setBlocked(true);
+
+    this.scene.launch('Hud');
+    this.renderWorld(0);
   }
 
   update(_time: number, deltaMs: number) {
-    // Pas fixe : la simulation en direct reproduit exactement celle du solveur.
+    const input = this.blocked ? NO_INPUT : this.controls.read();
+    // Un appui est gardé jusqu'au prochain pas de simulation (aucun appui perdu à haute fréquence).
+    if (input.shootPressed) this.pendingJump = true;
     this.accumulator += Math.min(deltaMs, 100) / 1000;
-    while (this.accumulator >= BALL_PHYSICS.dt) {
-      this.accumulator -= BALL_PHYSICS.dt;
-      this.physicsStep();
+    while (this.accumulator >= WORLD_DT) {
+      this.accumulator -= WORLD_DT;
+      this.world.step(WORLD_DT, { x: input.moveX, y: input.moveY, jump: this.pendingJump });
+      this.pendingJump = false;
     }
+    this.renderWorld(deltaMs);
+  }
 
-    // Mode auto : nouveau tir peu après le premier rebond du précédent.
-    const decided = !this.shot || this.shot.live !== null;
-    if (this.auto && decided) {
-      this.waitTime += deltaMs / 1000;
-      if (this.waitTime > 2.5 || (isAtRest(this.ball) && this.waitTime > 0.6)) this.fire();
-    } else {
-      this.waitTime = 0;
+  // --- Réglages et clavier ---
+
+  private applySettings(next: MatchSettings) {
+    const prev = this.settings;
+    this.settings = next;
+    if (prev.bindings !== next.bindings) this.controls.bind(next.bindings);
+    if (prev.level !== next.level) {
+      this.world.court = makeCourt(next.level);
+      this.courtImage.setTexture(`court-${next.level}`);
     }
-    this.render();
+    if (prev.shotSpeed !== next.shotSpeed) this.world.setJumpTiming(gaugeTime(next.shotSpeed));
   }
 
-  private physicsStep() {
-    for (const event of stepBall(this.ball, this.courts[this.level])) {
-      if (!this.shot || this.shot.live !== null) continue;
-      if (event.type === 'score' && event.hoop === 'right') this.shot.scored = true;
-      if (event.type === 'floor') {
-        this.shot.live = this.shot.scored;
-        this.stats.shots += 1;
-        if (this.shot.live) this.stats.made += 1;
-        if (this.shot.live !== this.shot.wanted) this.stats.mismatches += 1;
-        this.refreshInfo();
-      }
+  private setBlocked(blocked: boolean) {
+    this.blocked = blocked;
+    // Panneau ouvert : Phaser ne lit plus le clavier (ni n'empêche la frappe dans le panneau).
+    this.game.input.keyboard!.enabled = !blocked;
+    if (!blocked) this.controls.reset();
+  }
+
+  /** Touches de test : ignorées si elles servent déjà à une action du joueur. */
+  private onDebugKey(event: KeyboardEvent) {
+    if (Object.values(this.settings.bindings).some((b) => b.code === event.keyCode)) return;
+    const K = Phaser.Input.Keyboard.KeyCodes;
+    switch (event.keyCode) {
+      case K.R:
+      case K.M:
+        if (this.world.demoShot(event.keyCode === K.R)) {
+          const s = this.world.lastShot!.start;
+          const spot = project(s.x, s.y);
+          this.marker.setPosition(Math.round(spot.x), Math.round(spot.y)).setVisible(true);
+        }
+        break;
+      case K.C:
+        this.game.events.emit('request-settings', {
+          ...this.settings,
+          camera: this.settings.camera === 'free' ? 'steps' : 'free',
+        } satisfies MatchSettings);
+        break;
+      case K.ONE:
+      case K.TWO:
+      case K.THREE:
+        this.selectAthlete(event.keyCode - K.ONE);
+        break;
     }
   }
 
-  /** Tir de démo depuis une position aléatoire : le résultat est tiré d'abord, puis mis en scène. */
-  private fire(wanted?: boolean) {
-    const court = this.courts[this.level];
-    const hoop = court.hoops.right;
-    const dist = this.rng.range(1.2, 8.5);
-    const angle = this.rng.range(-1.4, 1.4);
-    const start: Vec3 = {
-      x: hoop.rim.x - Math.cos(angle) * dist,
-      y: Phaser.Math.Clamp(hoop.rim.y + Math.sin(angle) * dist, 0.4, court.width - 0.4),
-      z: this.rng.range(2.2, 2.7),
-    };
-    const made = wanted ?? this.rng.chance(0.5);
-    try {
-      const plan = solveShot(start, made, court, hoop, this.rng);
-      this.ball = { pos: { ...start }, vel: { ...plan.velocity } };
-      this.accumulator = 0;
-      this.shot = {
-        wanted: made,
-        distance: distanceToRim(hoop, start.x, start.y),
-        three: isThreePoint(court, hoop, start.x, start.y),
-        tries: plan.tries,
-        live: null,
-        scored: false,
-      };
-      const spot = project(start.x, start.y);
-      this.marker.setPosition(Math.round(spot.x), Math.round(spot.y)).setVisible(true);
-    } catch (err) {
-      console.warn(err);
-    }
-    this.refreshInfo();
+  private selectAthlete(index: number) {
+    const athlete = this.athletes[index];
+    if (!athlete) return;
+    this.world.setAthlete(athlete);
+    this.playerSprite.setTexture(`player-${index}`);
   }
 
-  private toggleLevel() {
-    this.level = this.level === 'pro' ? 'college' : 'pro';
-    this.courtImage.setTexture(`court-${this.level}`);
-    this.refreshHeader();
+  // --- Affichage ---
+
+  private renderWorld(deltaMs: number) {
+    const body = this.world.player;
+    const { pos } = body;
+    const feet = project(pos.x, pos.y, pos.z);
+    const moving = !body.airborne && Math.hypot(body.vel.x, body.vel.y) > 0.5;
+    this.runClock = moving ? this.runClock + deltaMs : 0;
+    const bob = moving && Math.floor(this.runClock / 140) % 2 === 1 ? 1 : 0;
+    this.playerSprite
+      .setPosition(Math.round(feet.x), Math.round(feet.y) - bob)
+      .setFlipX(body.facing < 0)
+      .setDepth(depthOf(pos.y));
+    const ground = project(pos.x, pos.y);
+    this.playerShadow.setPosition(Math.round(ground.x), Math.round(ground.y)).setAlpha(Math.max(0.4, 1 - pos.z));
+
+    const ball = this.world.ball.pos;
+    const b = project(ball.x, ball.y, ball.z);
+    const held = this.world.holder !== null;
+    this.ballImage.setPosition(Math.round(b.x), Math.round(b.y)).setDepth(held ? depthOf(pos.y) + 0.05 : depthOf(ball.y));
+    const bg = project(ball.x, ball.y);
+    this.ballShadow
+      .setPosition(Math.round(bg.x), Math.round(bg.y) + 1)
+      .setAlpha(Phaser.Math.Clamp(1 - (ball.z - BALL_RADIUS) / 6, 0.35, 1));
+
+    this.updateCamera(feet, b, body.athlete.heightCm, deltaMs);
+    this.updateHud();
   }
 
-  private refreshHeader() {
-    this.header.setText([
-      `DÉMO PHYSIQUE · niveau ${this.level.toUpperCase()} · graine ${this.seed}${this.auto ? ' · AUTO' : ''}`,
-      'ESPACE tir  R réussi  M raté  N niveau  A auto',
-    ]);
+  private updateCamera(feet: { x: number; y: number }, ball: { x: number; y: number }, heightCm: number, deltaMs: number) {
+    const head = feet.y - (heightCm / 100) * PIXELS_PER_METER;
+    const playerBox = { left: feet.x - 8, right: feet.x + 8, top: head, bottom: feet.y };
+    const target = targetFraming(playerBox, ball, this.settings.camera, this.cam.zoom, VIEW_WIDTH, VIEW_HEIGHT);
+    this.cam.zoom =
+      this.settings.camera === 'steps' ? target.zoom : smooth(this.cam.zoom, target.zoom, CAMERA_TUNING.zoomLerp, deltaMs);
+    this.cam.x = smooth(this.cam.x, target.centerX, CAMERA_TUNING.followLerp, deltaMs);
+    this.cam.y = smooth(this.cam.y, target.centerY, CAMERA_TUNING.followLerp, deltaMs);
+    const camera = this.cameras.main;
+    camera.setZoom(this.cam.zoom);
+    camera.centerOn(Math.round(this.cam.x), Math.round(this.cam.y));
   }
 
-  private refreshInfo() {
-    const { shots, made, mismatches } = this.stats;
-    const lines = [`Tirs ${shots}  réussis ${made}  écarts moteur/physique ${mismatches}`];
-    if (this.shot) {
-      const s = this.shot;
+  private updateHud() {
+    const body = this.world.player;
+    const a = body.athlete;
+    const s = this.settings;
+    const k = s.bindings;
+    const top = [
+      `${playerName(a)} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg`,
+      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical}`,
+      `${s.level.toUpperCase()} · tir ${s.shotMode === 'timing' ? 'Timing' : 'Real Player %'} ${SPEED_LABELS[s.shotSpeed]}` +
+        ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
+    ];
+    const bottom = [
+      `${k.up.label}${k.left.label}${k.down.label}${k.right.label} bouger · ${k.shoot.label} saut · R/M tir · 1-3 joueur · C caméra`,
+    ];
+    const shot = this.world.lastShot;
+    if (shot) {
       const result = (v: boolean) => (v ? 'RÉUSSI' : 'RATÉ');
-      lines.unshift(
-        `Tir ${s.distance.toFixed(1)} m (${s.three ? '3 pts' : '2 pts'}) voulu ${result(s.wanted)}` +
-          ` obtenu ${s.live === null ? '...' : result(s.live)} (${s.tries} essai${s.tries > 1 ? 's' : ''})`,
+      bottom.unshift(
+        `Tir démo ${shot.distance.toFixed(1)} m (${shot.three ? '3' : '2'} pts) voulu ${result(shot.wanted)}` +
+          ` obtenu ${shot.live === null ? '…' : result(shot.live)}`,
       );
     }
-    this.info.setText(lines);
-    this.info.setY(VIEW_HEIGHT - 2 - lines.length * 10);
-  }
-
-  private render() {
-    const { pos } = this.ball;
-    const p = project(pos.x, pos.y, pos.z);
-    this.ballImage.setPosition(Math.round(p.x), Math.round(p.y)).setDepth(depthOf(pos.y));
-    const s = project(pos.x, pos.y);
-    this.shadowImage.setPosition(Math.round(s.x), Math.round(s.y) + 1);
-    // L'ombre s'efface un peu quand le ballon monte.
-    this.shadowImage.setAlpha(Phaser.Math.Clamp(1 - (pos.z - BALL_RADIUS) / 6, 0.35, 1));
+    const content: HudContent = { top, bottom };
+    const key = JSON.stringify(content);
+    if (key !== this.hudKey) {
+      this.hudKey = key;
+      this.registry.set('hud', content);
+    }
   }
 }
