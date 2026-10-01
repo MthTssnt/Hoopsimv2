@@ -10,7 +10,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Notes Hoop Land rangées dans GAMEPLAY_SPEC.md (périmètre phase 1, décisions d'architecture, questions ouvertes)
 - ✅ 1. ENGINE_VIEW_CONTRACT.md (version phase 1) + attributs détente, dunk arrêté, dunk en mouvement
 - ✅ 2. Modèle de tir dans `engine/` (timing, contestation, mouvement, dunk, contre, faute)
-- ⬜ 3. Terrain à l'échelle réelle + physique du ballon (cercle, planche, rebond)
+- ✅ 3. Terrain à l'échelle réelle + physique du ballon (cercle, planche, rebond), démo sur `?court`
 - ⬜ 4. Joueur contrôlable, caméra, paramètres (touches, mode et vitesse de tir, niveau)
 - ⬜ 5. Tir avec jauge + layup
 - ⬜ 6. Dunk simple
