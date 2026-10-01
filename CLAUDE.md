@@ -17,7 +17,7 @@ Aujourd'hui le jeu est un GM fonctionnel (voir README.md) ; il manque la partie 
 
 ## Stack & environnement
 - Vite + React 19 + TypeScript, Vitest, oxlint. Déploiement Vercel auto depuis GitHub
-  (MthTssnt/hoopsim). Le code doit builder tel quel (`npm run build`).
+  (MthTssnt/hoopsimv2). Le code doit builder tel quel (`npm run build`).
 - Match jouable : **Phaser 4**, monté dans React via `src/match/PhaserGame.tsx` et chargé
   à la demande (chunk séparé). Menus/gestion : React.
 - **Avant d'écrire du code Phaser, lire le skill correspondant dans
