@@ -70,6 +70,69 @@ const MINI_DIGITS: string[][] = [
   G('### #.# ### ..# ###'),
 ];
 
+/** Petite police 3×5 à chasse variable (M, N, W plus larges) pour les étiquettes sous les joueurs. */
+export const SMALL_H = 5;
+
+const SMALL_GLYPHS: Record<string, string[]> = {
+  A: G('.#. #.# ### #.# #.#'),
+  B: G('##. #.# ##. #.# ##.'),
+  C: G('.## #.. #.. #.. .##'),
+  D: G('##. #.# #.# #.# ##.'),
+  E: G('### #.. ##. #.. ###'),
+  F: G('### #.. ##. #.. #..'),
+  G: G('.## #.. #.# #.# .##'),
+  H: G('#.# #.# ### #.# #.#'),
+  I: G('### .#. .#. .#. ###'),
+  J: G('..# ..# ..# #.# .#.'),
+  K: G('#.# #.# ##. #.# #.#'),
+  L: G('#.. #.. #.. #.. ###'),
+  M: G('#...# ##.## #.#.# #...# #...#'),
+  N: G('#..# ##.# #.## #..# #..#'),
+  O: G('.#. #.# #.# #.# .#.'),
+  P: G('##. #.# ##. #.. #..'),
+  Q: G('.#. #.# #.# ##. .##'),
+  R: G('##. #.# ##. #.# #.#'),
+  S: G('.## #.. .#. ..# ##.'),
+  T: G('### .#. .#. .#. .#.'),
+  U: G('#.# #.# #.# #.# ###'),
+  V: G('#.# #.# #.# #.# .#.'),
+  W: G('#...# #...# #.#.# ##.## #...#'),
+  X: G('#.# #.# .#. #.# #.#'),
+  Y: G('#.# #.# .#. .#. .#.'),
+  Z: G('### ..# .#. #.. ###'),
+  ...Object.fromEntries(MINI_DIGITS.map((glyph, digit) => [String(digit), glyph])),
+  '.': G('. . . . #'),
+  ',': G('. . . # #'),
+  "'": G('# # . . .'),
+  '-': G('.. .. ## .. ..'),
+  '?': G('##. ..# .#. ... .#.'),
+  ' ': G('.. .. .. .. ..'),
+};
+
+const smallGlyph = (char: string): string[] => SMALL_GLYPHS[char] ?? SMALL_GLYPHS['?'];
+
+export function hasSmallGlyph(char: string): boolean {
+  return char in SMALL_GLYPHS;
+}
+
+/** Largeur (px) d'un texte en petite police, un pixel entre les lettres. */
+export function smallTextWidth(text: string): number {
+  const chars = [...normalizeText(text)];
+  return chars.length === 0 ? 0 : chars.reduce((w, char) => w + smallGlyph(char)[0].length + 1, -1);
+}
+
+/** Dessine un texte en petite police 3×5 (caractère inconnu → « ? »). */
+export function drawSmallText(target: PixelTarget, text: string, x: number, y: number): void {
+  let cx = x;
+  for (const char of normalizeText(text)) {
+    const glyph = smallGlyph(char);
+    for (let gy = 0; gy < SMALL_H; gy++) {
+      for (let gx = 0; gx < glyph[gy].length; gx++) if (glyph[gy][gx] === '#') target.fillRect(cx + gx, y + gy, 1, 1);
+    }
+    cx += glyph[0].length + 1;
+  }
+}
+
 /** Toute surface où l'on peut poser des pixels (un Graphics de Phaser, un tampon de test…). */
 export interface PixelTarget {
   fillRect(x: number, y: number, width: number, height: number): unknown;

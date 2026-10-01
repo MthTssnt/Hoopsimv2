@@ -13,6 +13,9 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ 3. Terrain à l'échelle réelle + physique du ballon (cercle, planche, rebond), démo sur `?court`
 - ✅ 4. Joueur contrôlable, caméra, paramètres (touches, mode et vitesse de tir, niveau)
 - ✅ 4b. Vue 3/4 en 480×270, terrain aux couleurs de l'équipe, joueurs à grosse tête (référence de Matheo)
+- ✅ Style S1–S3. ART_DIRECTION.md, palette de 32 couleurs, sprites modulaires (6 gabarits, têtes, coiffures, peaux, animations), panier massif, arène, HUD, scène `?style`
+- 🔄 Validation de `?style` par Matheo : résolution 384×216 à 18 px/m, échelle visuelle (1,1 / 1,25 / 1,4)
+- ⬜ Style S4. Style appliqué au match (avant l'incrément 5)
 - ⬜ 5. Tir avec jauge + layup
 - ⬜ 6. Dunk simple
 - ⬜ 7a. 1 contre 1 : IA attaque/défense + possession
@@ -24,7 +27,8 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ⬜ Box score enregistré comme un match simulé
 
 ## Phase 3 — DA et ressenti ⬜
-- ⬜ Sprites et animations, caméra, HUD, sons
+- 🔄 Direction artistique et sprites de base (chantier style S1–S4, voir phase 1)
+- ⬜ Animations complètes, caméra, HUD final, sons
 
 ## Phase 4 — Gestion étendue ⬜
 - ⬜ Agents libres, trades, college et recrutement

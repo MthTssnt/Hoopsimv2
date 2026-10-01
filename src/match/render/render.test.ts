@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createNewGame, TEAM_SEEDS } from '../../engine';
 import { DEPTH_SCALE, HEIGHT_SCALE, PIXELS_PER_METER } from '../config';
 import { COURT_WIDTH, RIM_HEIGHT } from '../physics/court';
-import { drawText, hasGlyph, normalizeText, textWidth } from './pixelFont';
+import { drawSmallText, drawText, hasGlyph, hasSmallGlyph, normalizeText, smallTextWidth, textWidth } from './pixelFont';
 import { project, screenHeight } from './projection';
 
 describe('projection 3/4', () => {
@@ -29,6 +29,18 @@ describe('police pixel', () => {
     const missing = new Set<string>();
     for (const name of names) for (const char of normalizeText(name)) if (!hasGlyph(char)) missing.add(char);
     expect([...missing]).toEqual([]);
+  });
+
+  it('a un petit glyphe 3×5 pour chaque nom de famille généré, à la largeur annoncée', () => {
+    const names = Object.values(createNewGame('bos', 3).players).map((p) => p.lastName);
+    const missing = new Set<string>();
+    for (const name of names) for (const char of normalizeText(name)) if (!hasSmallGlyph(char)) missing.add(char);
+    expect([...missing]).toEqual([]);
+    expect(smallTextWidth('AB')).toBe(7);
+    expect(smallTextWidth('MW')).toBe(11);
+    let right = 0;
+    drawSmallText({ fillRect: (x) => void (right = Math.max(right, x + 1)) }, 'HAYES', 0, 0);
+    expect(right).toBe(smallTextWidth('HAYES'));
   });
 
   it('ramène les accents à la lettre de base et mesure le texte', () => {
