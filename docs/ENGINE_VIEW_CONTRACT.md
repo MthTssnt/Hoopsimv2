@@ -31,6 +31,29 @@
 | La main du défenseur croise le ballon pendant la montée | défenseur, tireur, qualité du contact (hauteur, timing du saut) | contre réussi ou non |
 | Contact des corps pendant un contre | défenseur, tireur, distance, vitesse d'approche | faute ou non |
 
+### Conventions des mesures envoyées par `match/`
+- **Écart de timing** : lâcher moins instant du sommet du saut, en secondes. Il est négatif si
+  le lâcher est trop tôt. La durée entre l'appui et le sommet vient de `gaugeTime(vitesse)`.
+- **Face au tireur** (`facing`) : cosinus de l'angle entre (tireur → défenseur) et
+  (tireur → cercle), ramené à 0-1. 1 = le défenseur est pile entre le tireur et le cercle ;
+  0 = il est sur le côté ou derrière.
+- **Zone de dunk** (`inDunkZone`) : le joueur est dans la moitié de la raquette côté panier
+  (entre la ligne de fond et le milieu de la raquette).
+- **Qualité du contact** d'un contre : 0 si la main effleure le ballon, 1 si elle le prend en
+  plein.
+- **Contact des corps** : recouvrement en mètres, plus la vitesse du défenseur vers le tireur.
+
+### Fonctions de `engine/`
+| Fichier | Fonctions |
+| --- | --- |
+| `athletics.ts` | `runSpeed`, `jumpHeight`, `reach` |
+| `shot.ts` | `gaugeTime`, `greenWindow`, `timingGrade`, `shotProbability` / `resolveShot` |
+| `shot.ts` | `canDunk`, `dunkProbability` / `resolveDunk` |
+| `shot.ts` | `blockProbability` / `resolveBlock`, `foulProbability` / `foulOnContact` |
+
+Les valeurs réglables sont dans `SHOT_TUNING`, `DUNK_TUNING`, `BLOCK_TUNING`, `FOUL_TUNING` et
+`ATHLETICS_TUNING`. La base par zone (`SHOT_MODEL`) est partagée avec la simulation.
+
 ## Ordre de résolution d'un tir
 Le résultat du tir est tiré **au lâcher**. Pendant le vol, les événements suivants sont
 examinés dans cet ordre :
