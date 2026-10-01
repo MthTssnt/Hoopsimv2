@@ -161,6 +161,8 @@ Pour coder la phase 1 :
   un adversaire IA qui tire, un 1 contre 1, ou on alterne attaque et défense ? Après un panier
   ou un rebond, comment le ballon revient-il au joueur ?
   un joueur seul oui. pour le contre on alterne attaque defense. le joueur doit aller chercher le ballon.
+  *Précisé dans le chat :* vrai 1 contre 1. L'IA défend aussi quand j'attaque, et la balle
+  revient à celui qui la récupère.
 - **Touches par défaut** : quelles touches clavier pour le déplacement et Tir/Saut ? Manette
   (Gamepad API) dès la phase 1 ?
   laisser les touches modifiables dans les parametres et partir sur des touches classiques pour l'instant zqsd 
@@ -172,6 +174,9 @@ Pour coder la phase 1 :
   peu ? (référence : 35,6 % à 3 pts en simulation)
   la reference est ok pour l'instant on pourra regler cela plus tard.
   En real player%, le timing compte toujours, les stats viendront influenceer sur la barre de timing notamment
+  *Précisé à la validation du plan :* le vert parfait donne un vrai bonus au-dessus de la base,
+  ~45 % à 3 pts pour un tireur moyen sans défenseur. La cible de calibration est la moyenne
+  d'un humain réel (~35 %), pas le cas parfait. Ces valeurs sont des constantes réglables.
 - **Défense dans la proba** : en phase 1, comment mesurer la défense (distance du défenseur le
   plus proche, à partir de quand un tir est « contesté ») ? Le tir en mouvement est-il pénalisé ?
   en phase 1, on va mesurer cela avec la distance et le fait d'etre bien en face
@@ -190,9 +195,13 @@ Pour coder la phase 1 :
   a la moitie de la raquette cela devient possible.
   pas forcement en mouvement, on mettra des stats de dunk en mouvemenent et sans mouvemenet et le dunk deviendra ppossible a un seuil minimale de stats et en fonction de l'adversaire qui conteste s'il y en a, et de sa taille et sa detente, ses stats, ...
   Le layup est dans la phase 1, par defaut selon le moment ou on en declenche le tir et les stats, le dunk est prioritaire sinon layup
+  *Précisé dans le chat :* le layup passe par la jauge de timing, le dunk part sur un simple
+  appui. Trois attributs sont ajoutés dès la phase 1 : détente, dunk arrêté, dunk en mouvement.
 - **Contre** : goaltending actif en phase 1 ? Un contact au contre peut-il être une faute, ou
   on ignore les fautes en phase 1 ?
   oui goaltending actif, oui cela peut etre une faute
+  *Précisé à la validation du plan :* ordre de résolution d'un tir : contre → faute →
+  goaltending → résultat tiré au lâcher. Un contre réussi annule le résultat tiré.
 - **Fatigue** : l'énergie baisse-t-elle pendant la partie de test (et le sprint existe-t-il ?),
   ou on garde une énergie fixe en phase 1 ?
   le sprint existe pas pour l'instant, mais les joueurs peuvent avoir des vitesses differentes selon leur physique taille poids strenght.

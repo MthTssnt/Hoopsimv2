@@ -1,7 +1,8 @@
 import type { AttributeKey, Attributes, Player, Position } from './types';
 
 /**
- * Poids servant à condenser les 16 attributs en une note globale.
+ * Poids servant à condenser les 16 attributs de base en une note globale (la détente
+ * et les dunks, propres au match joué, n'y entrent pas : la simulation reste calibrée).
  * Chaque poste valorise des qualités différentes : un meneur vit de sa passe,
  * un pivot de sa présence dans la raquette.
  */

@@ -1,6 +1,6 @@
 import { makeName } from './names';
 import { clampRating, computeOverall } from './ratings';
-import type { Rng } from './rng';
+import { hashSeed, Rng } from './rng';
 import { TEAM_SEEDS } from './teamsData';
 import {
   emptyStatLine,
@@ -73,6 +73,36 @@ const ATTR_KEYS: AttributeKey[] = [
   'interiorDef', 'perimeterDef', 'steal', 'block', 'speed', 'strength', 'stamina', 'iq',
 ];
 
+/** Attributs propres au match joué, déduits du physique et des autres attributs. */
+const ATHLETIC_KEYS = ['vertical', 'standingDunk', 'drivingDunk'] as const;
+type AthleticKey = (typeof ATHLETIC_KEYS)[number];
+
+/**
+ * Détente et dunks. Le tirage utilise un générateur propre au joueur et ne consomme
+ * pas le flux aléatoire de la ligue : à graine égale, les ligues générées (et donc la
+ * calibration) restent identiques à ce qu'elles étaient avant l'ajout de ces attributs.
+ */
+function athleticAttrs(player: Pick<Player, 'id' | 'heightCm' | 'weightKg' | 'attrs'>): Record<AthleticKey, number> {
+  const { attrs: a, heightCm, weightKg } = player;
+  const rng = new Rng(hashSeed(`${player.id}|${heightCm}|${weightKg}|${a.speed}|${a.inside}`));
+  // Kilos en trop par rapport à la corpulence attendue pour la taille et la force.
+  const extraKg = weightKg - (heightCm - 100) * 1.02 - a.strength * 0.12;
+  const vertical = clampRating(a.speed * 0.65 + a.inside * 0.15 + 14 - (heightCm - 198) * 0.15 - extraKg * 0.3 + rng.normal(0, 5));
+  // Le dunk sans élan profite surtout de la taille, le dunk en mouvement de la détente.
+  const standingDunk = clampRating(a.inside * 0.35 + vertical * 0.3 + a.strength * 0.15 + (heightCm - 198) * 1.2 + 4 + rng.normal(0, 5));
+  const drivingDunk = clampRating(a.inside * 0.25 + vertical * 0.5 + a.speed * 0.1 + (heightCm - 198) * 0.6 + 6 + rng.normal(0, 5));
+  return { vertical, standingDunk, drivingDunk };
+}
+
+/** Complète les attributs athlétiques absents (sauvegardes antérieures à leur ajout). */
+export function ensureAthleticAttrs(player: Player): void {
+  if (ATHLETIC_KEYS.every((key) => typeof player.attrs[key] === 'number')) return;
+  const derived = athleticAttrs(player);
+  for (const key of ATHLETIC_KEYS) {
+    if (typeof player.attrs[key] !== 'number') player.attrs[key] = derived[key];
+  }
+}
+
 function buildTendencies(attrs: Attributes, pos: Position, overall: number, usageMult: number): Tendencies {
   const posIndex = { PG: 1, SG: 2, SF: 3, PF: 4, C: 5 }[pos];
   // Répartition « basket moderne » : beaucoup de tirs au cercle et derrière l'arc,
@@ -122,8 +152,10 @@ function makePlayer(
   const potential = clampRating(overall + growthRoom);
 
   const { firstName, lastName } = makeName(rng, usedNames);
+  const id = idSeq();
+  Object.assign(attrs, athleticAttrs({ id, heightCm, weightKg, attrs }));
   return {
-    id: idSeq(),
+    id,
     firstName,
     lastName,
     pos,

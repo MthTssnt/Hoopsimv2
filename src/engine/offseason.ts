@@ -18,6 +18,7 @@ import {
 const ATTR_KEYS: AttributeKey[] = [
   'inside', 'midRange', 'three', 'freeThrow', 'passing', 'handling', 'offReb', 'defReb',
   'interiorDef', 'perimeterDef', 'steal', 'block', 'speed', 'strength', 'stamina', 'iq',
+  'vertical', 'standingDunk', 'drivingDunk',
 ];
 
 const ROSTER_TARGET = 14;
@@ -96,7 +97,7 @@ function progressPlayer(rng: Rng, player: Player): number {
 
   for (const key of ATTR_KEYS) {
     // Les qualités athlétiques déclinent plus vite, le tir et le QI vieillissent bien.
-    const bias = key === 'speed' || key === 'stamina' ? -0.5 : key === 'iq' || key === 'three' ? 0.4 : 0;
+    const bias = key === 'speed' || key === 'stamina' || key === 'vertical' ? -0.5 : key === 'iq' || key === 'three' ? 0.4 : 0;
     player.attrs[key] = clampRating(player.attrs[key] + delta + bias + rng.normal(0, 1.2));
   }
   player.overall = computeOverall(player.attrs, player.pos);

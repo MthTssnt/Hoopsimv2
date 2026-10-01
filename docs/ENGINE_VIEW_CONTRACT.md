@@ -1,9 +1,54 @@
 # Contrat engine ⇄ match
 
-> À rédiger par Claude Code pendant la session de cadrage (phase 1).
+> Version phase 1 (1 contre 1 de test). Ce document fixe qui décide de quoi entre `src/engine/`
+> (règles, probabilités, tirages) et `src/match/` (géométrie, physique, rendu, inputs).
+> Les signatures exactes vivent dans le code (`engine/athletics.ts`, `engine/shot.ts`).
 
-Doit définir :
-- ce que `match/` reçoit de `engine/` (équipes, attributs, état du match, seed) ;
-- ce que `match/` renvoie à `engine/` (intentions du joueur : tir, passe, timing, position) ;
-- qui décide de quoi (ex. `engine/` calcule la probabilité de réussite, `match/` anime le résultat) ;
-- comment un match joué produit le même box score qu'un match simulé.
+## Principe
+- `engine/` **décide** : toute probabilité et tout tirage aléatoire passent par des fonctions
+  pures de `engine/`, à partir des attributs et d'un `Rng` seedé.
+- `match/` **mesure, met en scène et affiche** : il calcule la géométrie (distances, zone de
+  tir, orientation, écart de timing), produit une trajectoire physique qui aboutit au résultat
+  décidé et dessine le tout. Il ne tire jamais lui-même un résultat.
+- Unités partagées : mètres, secondes, attributs sur l'échelle 25-99.
+
+## Ce que `match/` reçoit de `engine/`
+- Les joueurs (`Player`) : attributs, dont détente (`vertical`), dunk arrêté (`standingDunk`)
+  et dunk en mouvement (`drivingDunk`) ; taille (`heightCm`) ; poids (`weightKg`).
+  L'énergie est fixe en phase 1.
+- Une graine : le match crée son `Rng` et le passe à chaque fonction de tirage, ce qui rend un
+  match rejouable à l'identique avec les mêmes inputs.
+- Les grandeurs athlétiques dérivées des attributs : vitesse de course (m/s), hauteur de saut
+  (m), hauteur de main bras levés (m).
+- Les paramètres du tir : largeur de la zone verte selon le mode (Timing / Real Player %), la
+  stat du tireur et la vitesse de tir choisie.
+
+## Ce que `match/` envoie à `engine/`
+| Moment | Contexte envoyé | Réponse de `engine/` |
+| --- | --- | --- |
+| Lâcher d'un tir ou d'un layup | tireur, type (tir / layup), zone (près du cercle / mi-distance / 3 pts, selon la ligne du niveau), écart de timing au sommet, mode de tir, vitesse de tir, défenseur (distance, face au tireur ou non), tir en mouvement ou non | probabilité + résultat tiré (réussi / raté) |
+| Appui sur Tir près du cercle | tireur, distance au cercle, en mouvement ou non, défenseur (distance, taille, détente) | dunk possible ou non (sinon : layup) ; si dunk, résultat tiré |
+| La main du défenseur croise le ballon pendant la montée | défenseur, tireur, qualité du contact (hauteur, timing du saut) | contre réussi ou non |
+| Contact des corps pendant un contre | défenseur, tireur, distance, vitesse d'approche | faute ou non |
+
+## Ordre de résolution d'un tir
+Le résultat du tir est tiré **au lâcher**. Pendant le vol, les événements suivants sont
+examinés dans cet ordre :
+
+1. **Contre.** Si `engine/` valide un contre, il **annule le résultat tiré** : pas de panier,
+   ballon dévié par la physique.
+2. **Faute.** Un contact pendant le contre peut être sifflé. En phase 1, sans lancers francs :
+   un panier marqué compte, sinon la balle revient au joueur fautif en haut de la raquette.
+   Un contre jugé fautif ne compte pas comme contre.
+3. **Goaltending.** Le ballon touché en redescente au-dessus du cercle : le panier compte,
+   quel que soit le résultat tiré.
+4. **Résultat tiré au lâcher.** S'il n'y a ni contre ni goaltending, la physique produit une
+   trajectoire qui aboutit exactement à ce résultat. Pour un raté, le rebond retombe de
+   préférence près du cercle.
+
+## Ce que `match/` ne décide pas
+- Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate
+  ne donne pas le résultat voulu, le solveur en essaie une autre.
+- La possession, le score et les règles du 1 contre 1 de test restent dans `match/world/` en
+  phase 1. Le box score officiel (match joué = match simulé, mêmes fonctions de `simSeason`)
+  arrive en phase 2 avec le 5 contre 5.

@@ -4,6 +4,7 @@ import {
   closeSeason,
   createNewGame,
   defaultRotation,
+  migrateLeague,
   nextUserGame,
   playoffsFinished,
   regularSeasonFinished,
@@ -73,7 +74,7 @@ class GameStore {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return false;
-      this.league = JSON.parse(raw) as League;
+      this.league = migrateLeague(JSON.parse(raw) as League);
       this.watched = null;
       this.emit();
       return true;

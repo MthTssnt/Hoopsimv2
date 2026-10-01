@@ -8,10 +8,14 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 
 ## Phase 1 — Fondations du match 🔄
 - ✅ Notes Hoop Land rangées dans GAMEPLAY_SPEC.md (périmètre phase 1, décisions d'architecture, questions ouvertes)
-- ⬜ Audit de l'existant + ENGINE_VIEW_CONTRACT.md (session de cadrage)
-- ⬜ Terrain, un joueur contrôlable, physique du ballon (cercle, planche, rebond)
-- ⬜ Tir avec jauge/timing, réussite tirée des attributs via `engine/`
-- ⬜ Saut / contre, dunk simple
+- ✅ 1. ENGINE_VIEW_CONTRACT.md (version phase 1) + attributs détente, dunk arrêté, dunk en mouvement
+- ⬜ 2. Modèle de tir dans `engine/` (timing, contestation, mouvement, dunk, contre, faute)
+- ⬜ 3. Terrain à l'échelle réelle + physique du ballon (cercle, planche, rebond)
+- ⬜ 4. Joueur contrôlable, caméra, paramètres (touches, mode et vitesse de tir, niveau)
+- ⬜ 5. Tir avec jauge + layup
+- ⬜ 6. Dunk simple
+- ⬜ 7a. 1 contre 1 : IA attaque/défense + possession
+- ⬜ 7b. Contre, goaltending, fautes
 
 ## Phase 2 — Vrai match ⬜
 - ⬜ 5v5, passes, défense, IA de base, changement de joueur contrôlé
