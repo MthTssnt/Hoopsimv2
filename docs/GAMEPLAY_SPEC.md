@@ -153,29 +153,47 @@ Gestes observés dans Hoop Land, à reprendre après la phase 1 :
 ## Questions ouvertes (Claude Code ajoute ici ce qui lui manque)
 Pour coder la phase 1 :
 - **Caméra** : suit le ballon ou le joueur ? zoom ? terrain entier ou demi-terrain visible ?
+  camera suit le joueur mais le ballon doit toujours etre visible, le zoom peut donc s'adapter en consequence, meme si on sera plus proche d'un zoom demi terrain.
 - **Échelle** : terrain aux dimensions réelles (ligne à 3 pts pro ou college ?) ou proportions
   arcade ? Taille d'un joueur à l'écran, en pixels sur 180 de haut ?
+  ligne a 3 pts college en college et pro en pro; terrain aux dimensions reelles, adapter la taille des joueurs en fonction.
 - **Scène de test** : un joueur seul sur un demi-terrain ? Pour le contre, il faut un tireur :
   un adversaire IA qui tire, un 1 contre 1, ou on alterne attaque et défense ? Après un panier
   ou un rebond, comment le ballon revient-il au joueur ?
+  un joueur seul oui. pour le contre on alterne attaque defense. le joueur doit aller chercher le ballon.
 - **Touches par défaut** : quelles touches clavier pour le déplacement et Tir/Saut ? Manette
   (Gamepad API) dès la phase 1 ?
+  laisser les touches modifiables dans les parametres et partir sur des touches classiques pour l'instant zqsd 
 - **Mode de tir** : Timing seul en phase 1, ou aussi Real Player % ? Réglage de vitesse de tir
   dès la phase 1 ?
+  le real player % doit jouer sur la barre de timing, ensuite on implementera d'autres conditions, si le tir est conteste etc, oui on regle la vitess de tir des la phase 1
 - **Poids du timing** : en mode Timing, quelle réussite viser pour un tireur moyen à 3 pts quand
   il relâche dans le vert, et hors du vert ? En Real Player %, le timing compte-t-il encore un
   peu ? (référence : 35,6 % à 3 pts en simulation)
+  la reference est ok pour l'instant on pourra regler cela plus tard.
+  En real player%, le timing compte toujours, les stats viendront influenceer sur la barre de timing notamment
 - **Défense dans la proba** : en phase 1, comment mesurer la défense (distance du défenseur le
   plus proche, à partir de quand un tir est « contesté ») ? Le tir en mouvement est-il pénalisé ?
+  en phase 1, on va mesurer cela avec la distance et le fait d'etre bien en face
+  le tir en mouvement sera pour l'instant penalise oui, a l'avenir on lui fera peut etre des stats precices comme une autre categorie de shoot
 - **Valeurs à mesurer** (jauge, saut, course, rebonds) : j'attends tes mesures, ou je pose des
   valeurs provisoires réglables dans un fichier de constantes, à remplacer ensuite ?
+  pose des valeurs provisoires
 - **Hauteur de saut** : de quoi dépend-elle ? Le moteur n'a pas d'attribut de détente. On part
   de la taille (`heightCm`), d'un attribut existant, ou on en ajoute un (impact moteur et
   calibration) ?
+  elle va dependre de la taille du joeurs, de sa vitesse et de son poids.
+  chaque joeur aura egalement une stat de detente qu'on pourra faire evoluer comme d'autre stats et qui aura un impact positif sur le dunk le contre etc
 - **Dunk simple** : à quelle distance du cercle devient-il possible ? Faut-il arriver en
   mouvement ? Entre dunk et layup, qui décide (taille, distance, attribut) ? Le layup est-il
   dans la phase 1 ? Le moteur n'a pas d'attribut « dunk » : on utilise `inside` + la taille ?
+  a la moitie de la raquette cela devient possible.
+  pas forcement en mouvement, on mettra des stats de dunk en mouvemenent et sans mouvemenet et le dunk deviendra ppossible a un seuil minimale de stats et en fonction de l'adversaire qui conteste s'il y en a, et de sa taille et sa detente, ses stats, ...
+  Le layup est dans la phase 1, par defaut selon le moment ou on en declenche le tir et les stats, le dunk est prioritaire sinon layup
 - **Contre** : goaltending actif en phase 1 ? Un contact au contre peut-il être une faute, ou
   on ignore les fautes en phase 1 ?
+  oui goaltending actif, oui cela peut etre une faute
 - **Fatigue** : l'énergie baisse-t-elle pendant la partie de test (et le sprint existe-t-il ?),
   ou on garde une énergie fixe en phase 1 ?
+  le sprint existe pas pour l'instant, mais les joueurs peuvent avoir des vitesses differentes selon leur physique taille poids strenght.
+  Energie fixe en phase 
