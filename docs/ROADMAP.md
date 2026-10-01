@@ -6,10 +6,12 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Phaser 4 ajouté, monté dans React, chargé à la demande (`?court` pour tester)
 - ✅ CLAUDE.md, permissions Claude Code, .gitignore, docs de cadrage
 
-## Phase 1 — Fondations du match ⬜
+## Phase 1 — Fondations du match 🔄
+- ✅ Notes Hoop Land rangées dans GAMEPLAY_SPEC.md (périmètre phase 1, décisions d'architecture, questions ouvertes)
 - ⬜ Audit de l'existant + ENGINE_VIEW_CONTRACT.md (session de cadrage)
 - ⬜ Terrain, un joueur contrôlable, physique du ballon (cercle, planche, rebond)
 - ⬜ Tir avec jauge/timing, réussite tirée des attributs via `engine/`
+- ⬜ Saut / contre, dunk simple
 
 ## Phase 2 — Vrai match ⬜
 - ⬜ 5v5, passes, défense, IA de base, changement de joueur contrôlé
