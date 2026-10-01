@@ -76,3 +76,13 @@ export class Rng {
 export function randomSeed(): number {
   return Math.floor(Math.random() * 0xffffffff) >>> 0;
 }
+
+/** Graine 32 bits dérivée d'une chaîne (FNV-1a), pour des tirages qui ne dépendent que d'elle. */
+export function hashSeed(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}

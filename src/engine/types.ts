@@ -38,6 +38,12 @@ export interface Attributes {
   stamina: number;
   /** QI basket (décisions, pertes de balle en moins). */
   iq: number;
+  /** Détente (hauteur de saut). Utilisée par le match joué, pas par la simulation. */
+  vertical: number;
+  /** Dunk sans élan. Utilisé par le match joué, pas par la simulation. */
+  standingDunk: number;
+  /** Dunk en mouvement. Utilisé par le match joué, pas par la simulation. */
+  drivingDunk: number;
 }
 
 export type AttributeKey = keyof Attributes;

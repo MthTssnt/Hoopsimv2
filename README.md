@@ -19,8 +19,8 @@ Test du rendu Phaser (futur mode match jouable) : ouvrir l'URL avec `?court`.
 ## Ce que le jeu contient
 
 - **Ligue générée** : 30 franchises réparties en 2 conférences et 6 divisions, 14 joueurs par
-  effectif, chacun avec 16 attributs, un archétype, une répartition de tirs, un potentiel,
-  un âge et un contrat.
+  effectif, chacun avec 19 attributs (dont détente et dunks, réservés au match joué), un
+  archétype, une répartition de tirs, un potentiel, un âge et un contrat.
 - **Saison régulière** : 82 matchs par équipe répartis sur environ 140 journées, classements
   avec différentiel et série en cours, statistiques individuelles et leaders de la ligue.
 - **Simulation possession par possession** : choix du porteur de balle, pertes de balle,

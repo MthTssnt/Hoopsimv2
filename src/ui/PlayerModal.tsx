@@ -21,6 +21,8 @@ const ATTRIBUTE_GROUPS: { title: string; keys: [keyof Player['attrs'], string][]
       ['freeThrow', 'Lancers francs'],
       ['passing', 'Passe'],
       ['handling', 'Dribble'],
+      ['standingDunk', 'Dunk arrêté'],
+      ['drivingDunk', 'Dunk en mouvement'],
     ],
   },
   {
@@ -38,6 +40,7 @@ const ATTRIBUTE_GROUPS: { title: string; keys: [keyof Player['attrs'], string][]
     title: 'Physique et mental',
     keys: [
       ['speed', 'Vitesse'],
+      ['vertical', 'Détente'],
       ['strength', 'Force'],
       ['stamina', 'Endurance'],
       ['iq', 'QI basket'],

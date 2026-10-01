@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { VIEW_HEIGHT, VIEW_WIDTH } from './config';
-import { CourtTestScene } from './scenes/CourtTestScene';
+import { MatchScene } from './scenes/MatchScene';
 
 /** Monte une instance Phaser dans React et la détruit proprement au démontage. */
 export default function PhaserGame() {
@@ -17,7 +17,7 @@ export default function PhaserGame() {
       pixelArt: true,
       backgroundColor: '#1d1d2b',
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-      scene: [CourtTestScene],
+      scene: [MatchScene],
     });
     return () => game.destroy(true);
   }, []);

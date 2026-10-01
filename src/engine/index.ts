@@ -16,6 +16,9 @@ export * from './offseason';
 export * from './coach';
 export { formatClock, simulateGame } from './simGame';
 export { generateDraftClass } from './generate';
+export { migrateLeague } from './migrate';
+export * from './shot';
+export * from './athletics';
 
 export const FIRST_SEASON = 2026;
 

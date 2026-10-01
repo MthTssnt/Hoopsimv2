@@ -1,6 +1,7 @@
 import { minuteTargets, pickLineup } from './coach';
 import { POSITION_INDEX } from './ratings';
 import type { Rng } from './rng';
+import { SHOT_MODEL } from './shot';
 import {
   emptyStatLine,
   playerName,
@@ -431,11 +432,11 @@ function runShotSequence(
       ? eff(defender, 'interiorDef') * 0.5 + lineupAvg(def, 'interiorDef') * 0.5
       : eff(defender, 'perimeterDef') * 0.65 + lineupAvg(def, 'perimeterDef') * 0.35;
 
-  const base = shotType === 'rim' ? 0.6 : shotType === 'mid' ? 0.4 : 0.348;
+  const { base, pivot, skillSlope, defenseSlope, bounds } = SHOT_MODEL;
   const courtBonus = off.isHome ? hca * 0.011 : -hca * 0.004;
-  let p = base + (skill - 64) * 0.0036 - (defRating - 64) * 0.0032 + courtBonus;
+  let p = base[shotType] + (skill - pivot) * skillSlope - (defRating - pivot) * defenseSlope + courtBonus;
   if (isPutback) p += 0.05;
-  p = shotType === 'rim' ? clamp(p, 0.34, 0.82) : shotType === 'mid' ? clamp(p, 0.22, 0.6) : clamp(p, 0.2, 0.5);
+  p = clamp(p, bounds[shotType][0], bounds[shotType][1]);
 
   shooter.line.fga += 1;
   if (shotType === 'three') shooter.line.tpa += 1;
