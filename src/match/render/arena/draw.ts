@@ -1,16 +1,21 @@
-import type Phaser from 'phaser';
 import { PALETTE, teamRamp, type TeamRamp } from '../../../assets/palette';
 import type { TeamSeed } from '../../../engine/teamsData';
 
 /** Couleur d'un caractère de grille, ou null pour « transparent ». */
 export type ColorOf = (char: string) => number | null;
 
+/** Surface peinte en aplats : un Graphics de Phaser, ou un tampon de test. */
+export interface PaintTarget {
+  fillStyle(color: number, alpha?: number): PaintTarget;
+  fillRect(x: number, y: number, width: number, height: number): PaintTarget;
+}
+
 /**
  * Dessine une grille de pixels dans un Graphics, avec un contour d'un pixel autour de la
  * silhouette (couleur `outline`, ou aucun contour si null).
  */
 export function drawGrid(
-  g: Phaser.GameObjects.Graphics,
+  g: PaintTarget,
   grid: readonly string[],
   x: number,
   y: number,

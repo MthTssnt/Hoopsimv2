@@ -189,7 +189,7 @@ gauche.
     biais exagéré pour montrer sa face (vue strictement de côté, elle serait de chant) ;
   - cercle dessiné **1,35× plus grand** que le cercle physique (~14 px de large pour un ballon
     de 6 px), moitié arrière sombre derrière le ballon, moitié avant épaisse devant ; la
-    physique garde le vrai rayon (à noter dans le contrat en S4) ;
+    physique garde le vrai rayon (noté dans `docs/ENGINE_VIEW_CONTRACT.md`) ;
   - filet à mailles croisées ;
   - ombres au sol d'un seul tenant : socle, bande sous la poutre, cercle.
 - **Terrain** :
@@ -242,6 +242,7 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
 ## 10. Ce qui reste à décider
 - Les sprites S3d (règles chiffrées), à valider sur `?style` (vues terrain, gros plan,
   poses), puis à comparer avec la planche des concepts v2 quand elle arrivera.
-- Quand afficher l'expression « joyeuse » en match (panier marqué, victoire) : S4 ou phase 2.
-- Bandes noires en fenêtre : garder le plein écran (F), ou ajouter un réglage « remplir
-  l'écran » en S4.
+- Quand afficher l'expression « joyeuse » en match (panier marqué, victoire) : avec le score
+  (incrément 7a) ou en phase 2.
+- Bandes noires en fenêtre : le match les a aussi depuis S4 (mise à l'échelle entière). Garder
+  le plein écran (F), ou ajouter un réglage « remplir l'écran » (facteur non entier).

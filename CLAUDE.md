@@ -41,9 +41,10 @@ scripts/calibrate.ts vérification des moyennes de la ligue
 À construire :
 ```
 src/match/    rendu + contrôle du match (Phaser)
-  config.ts       résolution interne 480×270, projection 3/4
+  config.ts       résolution interne 480×270, 22,5 px/m, projection 3/4 (valeurs de render/artConfig.ts)
   PhaserGame.tsx  pont React ⇄ Phaser
-  scenes/         CourtTestScene (test d'environnement, à remplacer), MatchScene, HUD
+  scenes/         MatchScene, HudScene, StyleScene (`?style`, planche de la DA)
+  render/         arène, panier, sprites cuits du rig, HUD, projection, caméra
   input/          clavier + Gamepad API, mapping configurable
   ai/             IA des joueurs non contrôlés
   physics/        trajectoire du ballon, cercle, planche
@@ -53,7 +54,7 @@ docs/         GAMEPLAY_SPEC.md (fait foi), ENGINE_VIEW_CONTRACT.md, ROADMAP.md
 Principe : `engine/` décide (résultats, stats, probabilités à partir des attributs),
 `match/` affiche et transmet les inputs. Un match joué et un match simulé produisent le
 même box score, enregistré par les mêmes fonctions de `simSeason`.
-Test du rendu en local ou sur Vercel : ajouter `?court` à l'URL.
+Test du rendu en local ou sur Vercel : ajouter `?court` à l'URL (match) ou `?style` (DA).
 
 ## Références (lire, ne pas copier)
 - github.com/rBrown1405/Basketball-game — moteur sans DOM / vue Canvas, jauge de tir clutch.
@@ -63,11 +64,13 @@ Test du rendu en local ou sur Vercel : ajouter `?court` à l'URL.
 - Wiki Hoop Land (Fandom) — modes et progression.
 
 ## Direction artistique
-- Pixel-art, résolution interne 480×270, `pixelArt: true`, mise à l'échelle par Phaser.
+- Pixel-art, résolution interne 480×270 à 22,5 px/m, `pixelArt: true`, mise à l'échelle entière
+  (F : plein écran).
+- Sprites, décor et HUD selon `docs/ART_DIRECTION.md` (règles chiffrées des sprites : font foi).
 - Vue plongeante de 3/4 (profondeur et hauteur écrasées ~2/3), toute la profondeur du terrain
   à l'écran, joueurs à grosse tête : cadrage repris de la capture de référence de Matheo,
   avec nos propres dessins, couleurs, polices et HUD.
-- En attendant les assets : placeholders générés en code, aux tailles de frames définitives.
+- Assets originaux dessinés en code (grilles de `src/assets/sprites/`), aux tailles de frames définitives.
 - Tout asset externe : licence notée dans `src/assets/CREDITS.md`.
 
 ## Qualité

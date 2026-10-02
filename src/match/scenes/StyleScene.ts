@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 import { PALETTE } from '../../assets/palette';
-import { BALL } from '../../assets/sprites/arena';
 import { createNewGame, playerName, TEAM_SEEDS, type Player } from '../../engine';
 import { hashSeed, randomSeed, Rng } from '../../engine/rng';
 import { COURT_LENGTH, makeCourt } from '../physics/court';
 import { makeProjection, type ArtProjection } from '../render/arena/artProjection';
-import { createCourtPiece } from '../render/arena/courtPiece';
-import { contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
+import { createArena, STYLE_APRON } from '../render/arena/arena';
+import { BALL_TEXTURE, createBallTextures } from '../render/arena/ball';
+import { contrastingTeam, teamLook, type TeamLook } from '../render/arena/draw';
 import { drawHoopArt } from '../render/arena/hoopArt';
-import { ART_PPM, ART_VIEW } from '../render/artConfig';
+import { ART_PPM, ART_VIEW, artPx } from '../render/artConfig';
 import { drawSmallText, normalizeText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 import { createControlRing, createNameLabel, drawPlayerCard, drawScoreboard, POSITION_SHORT } from '../render/hud/hud';
 import { appearanceFor, appearanceSignature, type Appearance } from '../render/sprites/appearance';
@@ -118,10 +118,7 @@ export class StyleScene extends Phaser.Scene {
   create() {
     // Ligne de fond de droite à 440 px, ligne de touche du fond à 41 px.
     this.proj = makeProjection(440 - COURT_LENGTH * ART_PPM, 41);
-    const g = this.add.graphics();
-    drawGrid(g, BALL, 1, 1, (c) => (c === 'b' ? PALETTE.orange : c === 'B' ? PALETTE.orangeDark : null));
-    g.generateTexture('style-ball', BALL[0].length + 2, BALL.length + 2);
-    g.destroy();
+    createBallTextures(this);
 
     this.debug = this.add.text(4, 34, '', { fontFamily: 'monospace', fontSize: '8px', color: '#f6f2ea', backgroundColor: '#18203acc' });
     this.debug.setDepth(2000).setVisible(false);
@@ -281,14 +278,14 @@ export class StyleScene extends Phaser.Scene {
         const baseY = y + 8 + FRAME.height;
         this.statics.push(this.add.image(cx, baseY, baked.key, index).setOrigin(0.5, 1).setDepth(2));
         const anchor = baked.anchors[index];
-        if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, 'style-ball').setDepth(3));
+        if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, BALL_TEXTURE).setDepth(3));
       });
     });
   }
 
   private buildStatics() {
     const court = makeCourt('pro');
-    createCourtPiece(this, 'style-court', this.proj, court, this.home, ART_VIEW);
+    createArena(this, 'style-court', this.proj, court, this.home, { size: ART_VIEW, apron: STYLE_APRON, bannerFrom: artPx(196) });
     this.statics.push(this.add.image(0, 0, 'style-court').setOrigin(0).setDepth(0));
     const rim = court.hoops.right.rim;
     const hoop = drawHoopArt(this, this.proj, court.hoops.right, this.home);
@@ -323,7 +320,7 @@ export class StyleScene extends Phaser.Scene {
     this.actors.push(this.add.image(fx, fy - 1, `style-shadow-${shadowW}`).setDepth(fy - 0.4));
     // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
     const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setDepth(fy);
-    const ball = this.add.image(0, 0, 'style-ball').setDepth(fy + 0.1).setVisible(false);
+    const ball = this.add.image(0, 0, BALL_TEXTURE).setDepth(fy + 0.1).setVisible(false);
     const actor = { sprite, ball, baked };
     const place = (frameName: string | number) => {
       const anchor = baked.anchors[Number(frameName)];

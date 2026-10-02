@@ -21,7 +21,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Style S3d. Sprites refaits selon les règles chiffrées de Matheo (tête 14×14, torse 8, bras de 2 px cernés, gabarits −2/+3 rangées, visage de face, 3 expressions), retour en 480×270 à 22,5 px/m, vues gros plan et poses dans `?style`
 - ✅ Correctif moteur : un rookie ne reprend plus l'identifiant d'un joueur actif (effectifs en double après 2 saisons) ; réparation des sauvegardes au chargement
 - ✅ S3d validé (comparaison avec la planche v2 quand elle arrivera)
-- ⬜ Style S4. Style appliqué au match (avant l'incrément 5)
+- ✅ Style S4. Style de `?style` appliqué au match : 22,5 px/m, mise à l'échelle entière et plein écran (F), arène du terrain entier (deux paniers, public tout autour), sprites cuits du rig avec ballon tenu dans la main, tableau de score et carte du joueur, debug masqué (H)
 - ⬜ 5. Tir avec jauge + layup
 - ⬜ 6. Dunk simple
 - ⬜ 7a. 1 contre 1 : IA attaque/défense + possession
@@ -33,7 +33,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ⬜ Box score enregistré comme un match simulé
 
 ## Phase 3 — DA et ressenti ⬜
-- 🔄 Direction artistique et sprites de base (chantier style S1–S4, voir phase 1)
+- ✅ Direction artistique et sprites de base (chantier style S1–S4, voir phase 1)
 - ⬜ Animations complètes, caméra, HUD final, sons
 
 ## Phase 4 — Gestion étendue ⬜

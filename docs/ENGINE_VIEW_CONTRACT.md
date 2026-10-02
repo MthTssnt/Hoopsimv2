@@ -75,3 +75,14 @@ examinés dans cet ordre :
 - La possession, le score et les règles du 1 contre 1 de test restent dans `match/world/` en
   phase 1. Le box score officiel (match joué = match simulé, mêmes fonctions de `simSeason`)
   arrive en phase 2 avec le 5 contre 5.
+
+## Écarts entre le dessin et la physique (rendu seulement)
+Le rendu prend quelques libertés pour la lisibilité. Elles ne changent ni les mesures envoyées
+à `engine/`, ni la physique :
+- **Cercle** : dessiné 1,35× plus grand que le cercle physique. La physique garde le vrai rayon :
+  un ballon qui passe dans le cercle physique passe aussi dans le dessin.
+- **Ballon tenu** : dessiné au point d'accroche de l'image courante du sprite (main du dribble,
+  ballon levé en l'air). Au lâcher et au ramassage, le dessin rejoint la position physique en
+  ~80 ms. Le ramassage, l'ombre du ballon et le départ des tirs utilisent la position physique.
+- **Taille des joueurs** : la hauteur affichée suit le gabarit du sprite (meneur, ailier, pivot ;
+  voir `docs/ART_DIRECTION.md`). La physique garde les vraies tailles (portée, saut, contre).
