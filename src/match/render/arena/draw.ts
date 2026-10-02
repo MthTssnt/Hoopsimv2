@@ -54,14 +54,28 @@ export interface TeamLook {
   city: string;
 }
 
+/** Écart minimal entre maillot et couleur secondaire pour que numéros et noms restent lisibles. */
+const MIN_TRIM_CONTRAST = 130;
+
 export function teamLook(team: TeamSeed): TeamLook {
+  const primary = teamRamp(team.colors.primary);
+  let secondary = teamRamp(team.colors.secondary);
+  // Secondaire trop proche du maillot (ex. orange et brun) : craie, ou encre sur un maillot clair.
+  if (colorDistance(secondary[1], primary[1]) < MIN_TRIM_CONTRAST) {
+    secondary = teamRamp(luminance(primary[1]) > 160 ? PALETTE.ink : PALETTE.chalk);
+  }
   return {
-    primary: teamRamp(team.colors.primary),
-    secondary: teamRamp(team.colors.secondary),
+    primary,
+    secondary,
     abbr: team.abbr,
     name: team.name,
     city: team.city,
   };
+}
+
+/** Luminance perçue (0-255). */
+function luminance(color: number): number {
+  return 0.299 * ((color >> 16) & 0xff) + 0.587 * ((color >> 8) & 0xff) + 0.114 * (color & 0xff);
 }
 
 /** Distance entre deux couleurs (0-441). */

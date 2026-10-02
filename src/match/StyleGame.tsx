@@ -3,12 +3,16 @@ import Phaser from 'phaser';
 import { ART_VIEW } from './render/artConfig';
 import { StyleScene } from './scenes/StyleScene';
 
-/** Plus grand facteur entier qui fait tenir 384×216 dans la fenêtre (pixels toujours nets). */
+/** Plus grand facteur entier qui fait tenir 640×360 dans la fenêtre (pixels toujours nets). */
 function integerZoom(): number {
   return Math.max(1, Math.floor(Math.min(window.innerWidth / ART_VIEW.width, window.innerHeight / ART_VIEW.height)));
 }
 
-/** Scène `?style` : validation à l'œil de la direction artistique, en 384×216 mis à l'échelle entière. */
+/**
+ * Scène `?style` : validation à l'œil de la direction artistique, en 640×360 mis à l'échelle
+ * entière. F bascule en plein écran (×3 en 1080p, alors qu'une fenêtre de navigateur n'offre
+ * souvent que ×2).
+ */
 export default function StyleGame() {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -21,13 +25,21 @@ export default function StyleGame() {
       height: ART_VIEW.height,
       pixelArt: true,
       backgroundColor: '#000000',
-      scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH, zoom: integerZoom() },
+      scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH, zoom: integerZoom(), fullscreenTarget: parentRef.current },
       scene: [StyleScene],
     });
     const onResize = () => game.scale.setZoom(integerZoom());
+    // Écouteur DOM direct : la demande de plein écran doit partir de l'appui lui-même.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'f' || event.key === 'F') game.scale.toggleFullscreen();
+    };
     window.addEventListener('resize', onResize);
+    document.addEventListener('fullscreenchange', onResize);
+    window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('resize', onResize);
+      document.removeEventListener('fullscreenchange', onResize);
+      window.removeEventListener('keydown', onKey);
       game.destroy(true);
     };
   }, []);

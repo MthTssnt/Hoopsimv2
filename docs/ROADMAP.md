@@ -15,7 +15,9 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ 4b. Vue 3/4 en 480×270, terrain aux couleurs de l'équipe, joueurs à grosse tête (référence de Matheo)
 - ✅ Style S1–S3. ART_DIRECTION.md, palette de 32 couleurs, sprites modulaires (6 gabarits, têtes, coiffures, peaux, animations), panier massif, arène, HUD, scène `?style`
 - ✅ Noms originaux : retrait des noms de joueurs NBA réels, « Pistons Mécaniques » devient Détroit Gears (calibration identique)
-- 🔄 Validation de `?style` par Matheo : résolution 384×216 à 18 px/m, échelle visuelle (1,1 / 1,25 / 1,4)
+- ✅ Décisions sur `?style` : cadrage de 384×216 / 18 px/m gardé, joueurs ×1,1, étiquettes au nom de famille
+- ✅ Style S3b. `?style` en 640×360 à 30 px/m (même cadrage, 1,67× plus de pixels), sprites redessinés plus fins, plein écran (F)
+- 🔄 Validation à l'œil du dessin plus fin
 - ⬜ Style S4. Style appliqué au match (avant l'incrément 5)
 - ⬜ 5. Tir avec jauge + layup
 - ⬜ 6. Dunk simple

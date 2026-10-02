@@ -8,7 +8,7 @@ import { makeProjection, type ArtProjection } from '../render/arena/artProjectio
 import { createCourtPiece } from '../render/arena/courtPiece';
 import { contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
 import { drawHoopArt } from '../render/arena/hoopArt';
-import { ART_VIEW, DEFAULT_VISUAL_SCALE, VISUAL_SCALES } from '../render/artConfig';
+import { ART_PPM, ART_VIEW, VISUAL_SCALE } from '../render/artConfig';
 import { drawSmallText, normalizeText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 import { createControlRing, createNameLabel, drawPlayerCard, drawScoreboard, POSITION_SHORT } from '../render/hud/hud';
 import { appearanceFor, appearanceSignature, type Appearance } from '../render/sprites/appearance';
@@ -19,8 +19,6 @@ const ANIM_ORDER: AnimationName[] = ['idle', 'run', 'dribble', 'dribbleIdle', 's
 /** Colonnes des joueurs (m le long du terrain) et profondeurs des deux rangées. */
 const COLUMNS = [11.2, 13.6, 16, 18.4, 20.8];
 const ROWS = { home: 3.2, away: 11.4 };
-/** Comparaison des échelles : à la profondeur du cercle, pour juger la taille face au panier. */
-const COMPARE = { depth: 7.62, columns: [22.2, 23.6, 25] };
 
 interface Actor {
   sprite: Phaser.GameObjects.Sprite;
@@ -53,13 +51,12 @@ function pickVaried(players: Player[], count: number, rng: Rng): Player[] {
 
 /**
  * Scène `?style` : planche de validation de la direction artistique (docs/ART_DIRECTION.md).
- * 10 joueurs variés animés, arbitre, panier, bout de terrain, public, photographes, HUD,
- * palette maîtresse et comparaison des échelles visuelles 1,1 / 1,25 / 1,4.
+ * 10 joueurs variés animés, arbitre, panier, bout de terrain, public, photographes, HUD et
+ * palette maîtresse, en 640×360 à 30 px/m.
  */
 export class StyleScene extends Phaser.Scene {
   private seed = 0;
   private homeIndex = 0;
-  private scaleIndex = VISUAL_SCALES.indexOf(DEFAULT_VISUAL_SCALE);
   private sameAnim: AnimationName | null = null;
   private proj!: ArtProjection;
   private home!: TeamLook;
@@ -77,19 +74,18 @@ export class StyleScene extends Phaser.Scene {
     const param = new URLSearchParams(window.location.search).get('seed');
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.homeIndex = new Rng(this.seed).int(0, TEAM_SEEDS.length - 1);
-    this.scaleIndex = VISUAL_SCALES.indexOf(DEFAULT_VISUAL_SCALE);
     this.sameAnim = null;
   }
 
   create() {
-    // Ligne de fond de droite à 352 px, ligne de touche du fond à 33 px.
-    this.proj = makeProjection(352 - COURT_LENGTH * 18, 33);
+    // Ligne de fond de droite à 587 px, ligne de touche du fond à 55 px.
+    this.proj = makeProjection(587 - COURT_LENGTH * ART_PPM, 55);
     const g = this.add.graphics();
     drawGrid(g, BALL, 1, 1, (c) => (c === 'b' ? PALETTE.orange : c === 'B' ? PALETTE.orangeDark : null));
-    g.generateTexture('style-ball', 7, 7);
+    g.generateTexture('style-ball', BALL[0].length + 2, BALL.length + 2);
     g.destroy();
 
-    this.debug = this.add.text(4, 30, '', { fontFamily: 'monospace', fontSize: '8px', color: '#f6f2ea', backgroundColor: '#18203acc' });
+    this.debug = this.add.text(6, 46, '', { fontFamily: 'monospace', fontSize: '10px', color: '#f6f2ea', backgroundColor: '#18203acc' });
     this.debug.setDepth(2000).setVisible(false);
     // Rappel discret de l'aide, en bas à droite.
     const hint = this.add.graphics().setDepth(2000);
@@ -110,10 +106,6 @@ export class StyleScene extends Phaser.Scene {
     keyboard.on('keydown-A', () => {
       const i = this.sameAnim === null ? 0 : ANIM_ORDER.indexOf(this.sameAnim) + 1;
       this.sameAnim = i >= ANIM_ORDER.length ? null : ANIM_ORDER[i];
-      this.buildActors();
-    });
-    keyboard.on('keydown-S', () => {
-      this.scaleIndex = (this.scaleIndex + 1) % VISUAL_SCALES.length;
       this.buildActors();
     });
     keyboard.on('keydown-D', () => this.debug.setVisible(!this.debug.visible));
@@ -142,25 +134,19 @@ export class StyleScene extends Phaser.Scene {
     hoop.front.setDepth(floorY + 0.5);
     this.statics.push(hoop.back, hoop.front);
 
-    // Repère de hauteur du cercle au-dessus des joueurs de comparaison.
-    const guide = this.add.graphics().setDepth(1);
-    const rimScreen = this.proj.project(rim.x, rim.y, rim.z);
-    guide.fillStyle(PALETTE.silver, 0.7);
-    for (let x = Math.round(this.proj.project(COMPARE.columns[0] - 0.9, 0).x); x < rimScreen.x - 6; x += 3) guide.fillRect(x, Math.round(rimScreen.y), 1, 1);
-    this.statics.push(guide);
-
     // Palette maîtresse en haut à droite.
     const swatches = this.add.graphics().setDepth(1500);
     const colors = Object.values(PALETTE);
-    const sx = ART_VIEW.width - 4 - colors.length * 4;
-    swatches.fillStyle(PALETTE.outline).fillRect(sx - 1, 2, colors.length * 4 + 2, 6);
-    colors.forEach((c, i) => swatches.fillStyle(c).fillRect(sx + i * 4, 3, 4, 4));
+    const sw = 6;
+    const sx = ART_VIEW.width - 6 - colors.length * sw;
+    swatches.fillStyle(PALETTE.outline).fillRect(sx - 1, 3, colors.length * sw + 2, sw + 2);
+    colors.forEach((c, i) => swatches.fillStyle(c).fillRect(sx + i * sw, 4, sw, sw));
     this.statics.push(swatches);
   }
 
-  private placeActor(look: Appearance, key: string, x: number, depth: number, opts: { team: TeamLook; anim: AnimationName; flip: boolean; scale: number; referee?: boolean; startFrame?: number }): Actor {
+  private placeActor(look: Appearance, key: string, x: number, depth: number, opts: { team: TeamLook; anim: AnimationName; flip: boolean; referee?: boolean; startFrame?: number }): Actor {
     const baked = bakePlayer(this, key, look, {
-      scale: opts.scale,
+      scale: VISUAL_SCALE,
       primary: opts.team.primary,
       secondary: opts.team.secondary,
       kit: opts.referee ? 'referee' : 'team',
@@ -169,7 +155,7 @@ export class StyleScene extends Phaser.Scene {
     const feet = this.proj.project(x, depth);
     const fx = Math.round(feet.x);
     const fy = Math.round(feet.y);
-    const shadowW = look.heavy ? 18 : 14;
+    const shadowW = look.heavy ? 28 : 22;
     bakeShadow(this, `style-shadow-${shadowW}`, shadowW);
     this.actors.push(this.add.image(fx, fy - 1, `style-shadow-${shadowW}`).setDepth(fy - 0.4));
     const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setFlipX(opts.flip).setDepth(fy);
@@ -193,7 +179,6 @@ export class StyleScene extends Phaser.Scene {
   private buildActors() {
     this.actors.forEach((o) => o.destroy());
     this.actors = [];
-    const scale = VISUAL_SCALES[this.scaleIndex];
     const players = pickVaried(Object.values(createNewGame('bos', this.seed).players), 10, new Rng(hashSeed(`style-${this.seed}`)));
     const looks = players.map((p) => appearanceFor(p));
     this.distinct = new Set(looks.map(appearanceSignature)).size;
@@ -204,38 +189,27 @@ export class StyleScene extends Phaser.Scene {
       const anim = this.sameAnim ?? ANIM_ORDER[i % ANIM_ORDER.length];
       const x = COLUMNS[i % 5];
       const depth = home ? ROWS.home : ROWS.away;
-      this.placeActor(looks[i], `style-p${i}`, x, depth, { team, anim, flip: i % 3 === 2, scale, startFrame: i });
+      this.placeActor(looks[i], `style-p${i}`, x, depth, { team, anim, flip: i % 3 === 2, startFrame: i });
       const feet = this.proj.project(x, depth);
       const controlled = i === 0;
       if (controlled) {
-        createControlRing(this, 'style-ring', 18);
+        createControlRing(this, 'style-ring', 30, 9);
         this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) - 1, 'style-ring').setDepth(feet.y - 0.3));
       }
       // Nom de famille seul, 8 lettres au plus : les étiquettes voisines ne se chevauchent pas.
       createNameLabel(this, `style-label-${i}`, normalizeText(p.lastName).slice(0, 8), controlled);
-      this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) + 3, `style-label-${i}`).setOrigin(0.5, 0).setDepth(900));
+      this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) + 5, `style-label-${i}`).setOrigin(0.5, 0).setDepth(900));
     });
 
     // Arbitre (maillot rayé générique), entre les deux rangées.
     const refLook = appearanceFor({ id: `arbitre-${this.seed}`, heightCm: 190, weightKg: 88, number: 0 });
-    this.placeActor(refLook, 'style-ref', 10.4, 7.3, { team: this.home, anim: 'idle', flip: false, scale, referee: true });
-
-    // Même joueur aux trois échelles, à la profondeur du cercle.
-    const model = looks.find((l) => l.heightClass === 'moyen' && !l.heavy) ?? looks[0];
-    VISUAL_SCALES.forEach((s, j) => {
-      const x = COMPARE.columns[j];
-      this.placeActor({ ...model, heightCm: 200 }, `style-cmp${j}`, x, COMPARE.depth, { team: this.home, anim: 'idle', flip: false, scale: s });
-      const feet = this.proj.project(x, COMPARE.depth);
-      const label = String(s).replace('.', ',');
-      createNameLabel(this, `style-cmp-label-${j}`, label, s === scale);
-      this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) + 3, `style-cmp-label-${j}`).setOrigin(0.5, 0).setDepth(900));
-    });
+    this.placeActor(refLook, 'style-ref', 10.4, 7.3, { team: this.home, anim: 'idle', flip: false, referee: true });
 
     // HUD.
     const hud = this.add.graphics().setDepth(1500);
-    drawScoreboard(hud, 4, 3, { home: this.home, away: this.away, homeScore: 48, awayScore: 37, period: 3, clock: '1:35', shotClock: 14 });
+    drawScoreboard(hud, 6, 6, { home: this.home, away: this.away, homeScore: 48, awayScore: 37, period: 3, clock: '1:35', shotClock: 14 });
     const lead = players[0];
-    drawPlayerCard(hud, 4, ART_VIEW.height - 28, {
+    drawPlayerCard(hud, 6, ART_VIEW.height - 42, {
       look: looks[0],
       team: this.home,
       name: `${lead.firstName.charAt(0)}. ${lead.lastName}`,
@@ -244,17 +218,17 @@ export class StyleScene extends Phaser.Scene {
       stats: '14 PTS 6 PD 3 RB',
     });
     this.actors.push(hud);
-    this.refreshDebug(players, scale);
+    this.refreshDebug(players);
   }
 
-  private refreshDebug(players: Player[], scale: number) {
+  private refreshDebug(players: Player[]) {
     this.debug.setText([
-      `graine ${this.seed}  échelle ${String(scale).replace('.', ',')}x`,
+      `graine ${this.seed}  ${ART_VIEW.width}×${ART_VIEW.height}  ${ART_PPM} px/m  joueurs ×${String(VISUAL_SCALE).replace('.', ',')}`,
       `${this.home.city} ${this.home.name} / ${this.away.city} ${this.away.name}`,
       `animation : ${this.sameAnim ?? 'variée'}`,
       `${this.distinct}/${players.length} apparences distinctes`,
       `${players.map((p) => playerName(p).split(' ').pop()).join(', ')}`,
-      'R joueurs  T équipe  A animation  S échelle  D aide',
+      'R joueurs  T équipe  A animation  F plein écran  D aide',
     ]);
   }
 }

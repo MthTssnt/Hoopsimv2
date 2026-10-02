@@ -1,11 +1,12 @@
+import { HEAD_GRID } from '../../../assets/sprites/heads';
 import { ART_PX_PER_M_HEIGHT } from '../artConfig';
 
 /** Cadre d'un sprite de joueur : pieds au milieu du bord bas (la rangée du sol est le contour sous la semelle). */
-export const FRAME = { width: 40, height: 56, centerX: 20, groundY: 55 } as const;
-/** Rangée des chaussettes d'un pied posé (chaussure sur les 2 rangées dessous, puis le contour). */
-export const SOCK_Y = FRAME.groundY - 3;
-export const HEAD_SIZE = 10;
-const SHOE_ROWS = 2;
+export const FRAME = { width: 64, height: 80, centerX: 32, groundY: 79 } as const;
+export const HEAD_SIZE = HEAD_GRID;
+const SHOE_ROWS = 3;
+/** Rangée des chaussettes d'un pied posé (chaussure sur les rangées dessous, puis le contour). */
+export const SOCK_Y = FRAME.groundY - SHOE_ROWS - 1;
 
 /** Dimensions du corps (px) pour un joueur, selon sa taille, sa corpulence et l'échelle visuelle. */
 export interface BodyDims {
@@ -20,12 +21,12 @@ export interface BodyDims {
 }
 
 export function bodyDims(heightCm: number, heavy: boolean, scale: number): BodyDims {
-  const height = Math.max(24, Math.min(46, Math.round((heightCm / 100) * ART_PX_PER_M_HEIGHT * scale)));
-  const shorts = heavy ? 4 : 3;
+  const height = Math.max(34, Math.min(60, Math.round((heightCm / 100) * ART_PX_PER_M_HEIGHT * scale)));
+  const shorts = heavy ? 6 : 5;
   const rest = height - HEAD_SIZE - SHOE_ROWS - shorts;
-  const torso = Math.max(heavy ? 6 : 5, Math.round(rest * 0.42));
-  const legs = Math.max(3, rest - torso);
-  return { height, torso, shorts, legs, arm: torso + shorts - 1 + (heightCm > 205 ? 1 : 0), heavy, limb: heavy ? 3 : 2 };
+  const torso = Math.max(heavy ? 8 : 7, Math.round(rest * 0.42));
+  const legs = Math.max(5, rest - torso);
+  return { height, torso, shorts, legs, arm: torso + shorts - 2 + (heightCm > 205 ? 1 : 0), heavy, limb: heavy ? 4 : 3 };
 }
 
 /** Jambe : genou [kx, ky] et pied [fx, lift], en fractions de la longueur de jambe. */

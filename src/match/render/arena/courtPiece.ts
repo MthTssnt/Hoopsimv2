@@ -22,13 +22,13 @@ function spectatorColors(rng: Rng, home: TeamLook): (char: string) => number | n
 
 /** Rangées de public lisibles dans un rectangle (vu de face). */
 function drawCrowd(g: Phaser.GameObjects.Graphics, x0: number, y0: number, x1: number, y1: number, home: TeamLook, rng: Rng): void {
-  const rowH = 9;
+  const rowH = 15;
   for (let y = y1 - rowH, row = 0; y > y0 - rowH; y -= rowH, row++) {
     g.fillStyle(row % 2 ? PALETTE.seatDark : PALETTE.seat).fillRect(x0, Math.max(y0, y), x1 - x0, rowH);
     g.fillStyle(PALETTE.seatDark).fillRect(x0, y + rowH - 2, x1 - x0, 1);
-    for (let x = x0 + 1 + (row % 2) * 3; x < x1 - 6; x += 7) {
+    for (let x = x0 + 2 + (row % 2) * 6; x < x1 - 10; x += 12) {
       if (!rng.chance(0.85)) continue;
-      const top = y + 1;
+      const top = y + 2;
       if (top < y0 - 2) continue;
       drawGrid(g, SPECTATORS[rng.int(0, SPECTATORS.length - 1)], x, top, spectatorColors(rng, home));
     }
@@ -62,16 +62,17 @@ export function createCourtPiece(scene: Phaser.Scene, key: string, proj: ArtProj
   g.fillRect(baseline, farApronTop, apronRight - baseline, view.height - farApronTop);
   const banner = `${home.city} ${home.name}`;
   g.fillStyle(home.secondary[0]);
-  const bannerY = Math.round((farApronTop + farLine - GLYPH_H) / 2);
+  const bannerY = Math.round((farApronTop + farLine - GLYPH_H * 2) / 2);
   // Le nom part après le tableau de score, et se répète tant qu'il y a de la place.
-  for (let x = 116; x + textWidth(banner) < baseline - 8; x += textWidth(banner) + 40) drawText(g, banner, x, bannerY);
+  for (let x = 196; x + textWidth(banner, 2) < baseline - 12; x += textWidth(banner, 2) + 60) drawText(g, banner, x, bannerY, 2);
 
   // Parquet en lattes.
   const floorBottom = Math.min(view.height, Math.round(P(0, W).y));
-  for (let y = farLine, row = 0; y < floorBottom; y += 3, row++) {
-    g.fillStyle(row % 2 ? PALETTE.wood : PALETTE.woodLight).fillRect(0, y, baseline, Math.min(3, floorBottom - y));
+  const plank = 5;
+  for (let y = farLine, row = 0; y < floorBottom; y += plank, row++) {
+    g.fillStyle(row % 2 ? PALETTE.wood : PALETTE.woodLight).fillRect(0, y, baseline, Math.min(plank, floorBottom - y));
     g.fillStyle(PALETTE.woodDark);
-    for (let x = rng.int(0, 24); x < baseline; x += rng.int(16, 36)) g.fillRect(x, y, 1, Math.min(3, floorBottom - y));
+    for (let x = rng.int(0, 40); x < baseline; x += rng.int(26, 60)) g.fillRect(x, y, 1, Math.min(plank, floorBottom - y));
   }
 
   // Raquette et rond central aux couleurs de l'équipe (ton sombre si trop proche du bois).
@@ -90,7 +91,7 @@ export function createCourtPiece(scene: Phaser.Scene, key: string, proj: ArtProj
   disc(CIRCLE_RADIUS * 0.8, home.secondary[1]);
   disc(CIRCLE_RADIUS * 0.7, paint);
   g.fillStyle(home.secondary[0]);
-  drawText(g, home.abbr, Math.round(center.x - textWidth(home.abbr) / 2), Math.round(center.y - GLYPH_H / 2));
+  drawText(g, home.abbr, Math.round(center.x - textWidth(home.abbr, 2) / 2), Math.round(center.y - GLYPH_H), 2);
 
   // Lignes.
   g.fillStyle(PALETTE.chalk);
@@ -112,7 +113,7 @@ export function createCourtPiece(scene: Phaser.Scene, key: string, proj: ArtProj
     ({ '1': SKIN_TONES[1][0], '2': SKIN_TONES[1][1], '3': SKIN_TONES[1][2], h: HAIR_COLORS[1][0], H: HAIR_COLORS[1][1], k: PALETTE.ink, w: PALETTE.chalk, g: PALETTE.silver, G: PALETTE.slate })[char] ?? null;
   for (const depth of [2.8, 11.6]) {
     const p = P(L + APRON.baseline / 2, depth);
-    drawGrid(g, PHOTOGRAPHER, Math.round(p.x) - 6, Math.round(p.y) - 12, pressColors, { flip: true });
+    drawGrid(g, PHOTOGRAPHER, Math.round(p.x) - 9, Math.round(p.y) - 17, pressColors, { flip: true });
   }
 
   g.generateTexture(key, view.width, view.height);

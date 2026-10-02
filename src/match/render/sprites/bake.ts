@@ -68,12 +68,17 @@ export function bakePlayer(scene: Phaser.Scene, key: string, look: Appearance, o
 }
 
 /** Ombre ovale au sol, à la largeur du joueur. */
-export function bakeShadow(scene: Phaser.Scene, key: string, width: number): void {
+export function bakeShadow(scene: Phaser.Scene, key: string, width: number, height = 6): void {
   if (scene.textures.exists(key)) return;
   const g = scene.add.graphics();
-  const h = 4;
   g.fillStyle(0x000000, 0.32);
-  g.fillRect(2, 0, width - 4, h).fillRect(0, 1, width, h - 2);
-  g.generateTexture(key, width, h);
+  const rx = width / 2;
+  const ry = height / 2;
+  for (let y = 0; y < height; y++) {
+    const dy = (y + 0.5 - ry) / ry;
+    const half = Math.round(rx * Math.sqrt(1 - dy * dy));
+    g.fillRect(Math.round(rx) - half, y, half * 2, 1);
+  }
+  g.generateTexture(key, width, height);
   g.destroy();
 }

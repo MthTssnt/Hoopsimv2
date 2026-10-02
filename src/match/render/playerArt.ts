@@ -196,7 +196,7 @@ export function createControlRingTexture(scene: Phaser.Scene, color: number): vo
   g.destroy();
 }
 
-/** « E. OJELEYE » en police pixel sur un petit fond sombre. */
+/** « E. OKONKWO » en police pixel sur un petit fond sombre. */
 export function labelText(player: { firstName: string; lastName: string }): string {
   return normalizeText(`${player.firstName.charAt(0)}. ${player.lastName}`);
 }

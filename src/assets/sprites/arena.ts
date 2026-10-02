@@ -5,33 +5,39 @@
  *   k encre · w craie · g gris clair · G gris foncé · b/B orange/orange sombre (ballon)
  */
 
-/** Spectateurs assis, 6×7 : tête et épaules. */
+/** Spectateurs assis, 10×12 : tête et épaules. */
 export const SPECTATORS: readonly (readonly string[])[] = [
   // cheveux courts
-  ['.hhhh.', 'h2222h', '.2n2n.', '.2222.', 'PPPPPP', 'PPPPPP', 'PPPPPP'],
+  ['...hhhh...', '..hhhhhh..', '..h2222h..', '..2n22n2..', '..222222..', '...2222...', '.PPPPPPPP.', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP'],
   // casquette aux couleurs de l'équipe
-  ['.SSSS.', 'SSSSSS', '.2n2n.', '.2222.', 'PPPPPP', 'PPPPPP', 'PPPPPP'],
+  ['...SSSS...', '..SSSSSS..', '..SSSSSSS.', '..2n22n2..', '..222222..', '...2222...', '.PPPPPPPP.', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP'],
   // cheveux longs
-  ['.hhhh.', 'hh22hh', 'h2n2nh', 'h2222h', 'PPPPPP', 'PPPPPP', 'PPPPPP'],
+  ['...hhhh...', '..hhhhhh..', '.hh2222hh.', '.h2n22n2h.', '.h222222h.', '.hh2222hh.', '.PPPPPPPP.', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP'],
   // crâne rasé
-  ['......', '.2222.', '.2n2n.', '.2222.', 'PPPPPP', 'PPPPPP', 'PPPPPP'],
+  ['..........', '...2222...', '..222222..', '..2n22n2..', '..222222..', '...2222...', '.PPPPPPPP.', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP', 'PPPPPPPPPP'],
 ];
 
-/** Photographe accroupi, appareil à l'œil, 12×12, tourné vers la droite. */
+/** Photographe accroupi, appareil à l'œil, 18×18, tourné vers la droite. */
 export const PHOTOGRAPHER: readonly string[] = [
-  '....hhh.....',
-  '...hhhhh....',
-  '...h22GGgg..',
-  '...222GGgg..',
-  '....2GGG....',
-  '...kkkk22...',
-  '..kkkkkk2...',
-  '..kkkkkkk...',
-  '.kkkkkkk....',
-  '.kkk..kkk...',
-  '.kkk..kkk...',
-  '.www..www...',
+  '......hhhh........',
+  '.....hhhhhh.......',
+  '.....hh22GGGG.....',
+  '.....h222GGGGgg...',
+  '.....2222GGGGgg...',
+  '......22.GGGG.....',
+  '.....kkkk22.......',
+  '....kkkkkk22......',
+  '...kkkkkkkk2......',
+  '...kkkkkkkkk......',
+  '..kkkkkkkkkk......',
+  '..kkkkkkkkkkkk....',
+  '..kkkkkkkkkkkkk...',
+  '.kkkkk...kkkkkk...',
+  '.kkkk.....kkkk....',
+  '.kkkk.....kkkk....',
+  '.wwwww....wwwww...',
+  '..................',
 ];
 
-/** Ballon, 5×5. */
-export const BALL: readonly string[] = ['.bbb.', 'bbBbb', 'bBbBb', 'bbBbb', '.bbb.'];
+/** Ballon, 8×8 : coutures en orange sombre, ombre en bas à droite. */
+export const BALL: readonly string[] = ['..bbBb..', '.bbbBbb.', 'bbbbBbbB', 'BBBBBBBB', 'bbbbBbbB', 'bbbbBbBB', '.bbbBBB.', '..BBBB..'];

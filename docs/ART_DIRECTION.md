@@ -13,45 +13,48 @@ Ce qu'on ne reprend **jamais** : sprites, palette, police, logos, mise en page d
 personnages, noms d'équipes ou de joueurs, décors précis de Hoop Land ou d'un autre jeu.
 Tout est dessiné par nous (en code pour l'instant), avec notre palette et notre police.
 
-## 2. Résolution et cadrage **[à valider]**
+## 2. Résolution et cadrage (validé)
 
-| Réglage | Valeur proposée | Pourquoi |
+Matheo a validé le **cadrage** de 384×216 à 18 px/m, puis demandé **plus de pixels sans
+agrandir** joueurs et ballon. On garde donc exactement ce cadrage, avec 1,67× plus de pixels
+partout.
+
+| Réglage | Valeur | Pourquoi |
 | --- | --- | --- |
-| Résolution interne | **384×216** | Mise à l'échelle entière : ×5 en 1080p, ×10 en 4K, ×3 sur un portable 1366×768, ×6 en 1440p (bandes noires autour) |
-| Mise à l'échelle | entière uniquement (`Scale.NONE` + `MAX_ZOOM`, recalculée au redimensionnement) | Pixels nets, jamais de pixel étiré |
-| Échelle du terrain | **18 px/m** en longueur | ~21 m de terrain visibles en largeur |
-| Vue 3/4 | profondeur ×0,66, hauteur ×0,68 | Comme aujourd'hui (incrément 4b) |
+| Résolution interne | **640×360** | Mise à l'échelle entière : ×3 en 1080p, ×4 en 1440p, ×6 en 4K, ×2 sur un portable 1366×768 et en 720p |
+| Mise à l'échelle | entière uniquement (`Scale.NONE` + zoom entier, recalculé au redimensionnement) | Pixels nets, jamais de pixel étiré |
+| Échelle du terrain | **30 px/m** en longueur | ~21 m de terrain visibles en largeur, comme à 384×216 / 18 px/m |
+| Vue 3/4 | profondeur ×0,66, hauteur ×0,68 | Toute la profondeur du terrain à l'écran |
 
-Ordres de grandeur à 18 px/m :
+**Fenêtre de navigateur** : sur un écran 1080p, une fenêtre non plein écran n'offre qu'environ
+950 px de haut. Le facteur tombe alors à ×2 (1280×720, avec des bandes). La touche **F** passe
+en plein écran, ce qui donne ×3. Un réglage « remplir l'écran » (facteur non entier) pourra
+s'ajouter si les bandes gênent.
+
+Ordres de grandeur à 30 px/m :
 
 | Élément | Taille à l'écran |
 | --- | --- |
-| Profondeur du terrain (15,24 m) | ~181 px, soit 84 % de la hauteur de l'écran |
-| Hauteur du cercle (3,05 m) | ~37 px au-dessus du sol |
-| Joueur de 2 m à l'échelle réelle | ~24 px |
+| Profondeur du terrain (15,24 m) | ~302 px, soit 84 % de la hauteur de l'écran |
+| Hauteur du cercle (3,05 m) | ~62 px au-dessus du sol |
+| Joueur de 2 m à l'échelle réelle | ~41 px |
 
-## 3. Échelle des personnages **[à valider]**
+## 3. Échelle des personnages (validé : 1,1)
 
-- **La physique reste à l'échelle réelle.** Seul le dessin des joueurs est agrandi, par un
-  facteur `VISUAL_SCALE`.
-- **Demande initiale : 1,4×.** Attention : avec un panier à l'échelle réelle, un joueur de 2 m
-  ferait alors ~34 px pour un cercle à ~37 px du sol. Il serait presque à hauteur du cercle
-  debout. Sur la capture de référence, les joueurs ne sont agrandis que d'environ 1,1× par
-  rapport au panier ; l'impression de « gros joueurs » vient surtout de la grosse tête, du
-  corps trapu et du cadrage serré.
-- **Décision à l'œil** : la scène `?style` montre le même joueur à **1,1 / 1,25 / 1,4** à côté
-  du panier.
+- **La physique reste à l'échelle réelle.** Seul le dessin des joueurs et du ballon est
+  agrandi, par `VISUAL_SCALE` = **1,1**. Matheo l'a choisi sur `?style`, en comparant 1,1,
+  1,25 et 1,4 à côté du panier. À 1,4, un joueur de 2 m arrivait presque au cercle debout.
 - **Ballon tenu** : il est dessiné dans la main du sprite (point d'accroche de chaque image).
   Au lâcher, il rejoint sa position physique en ~80 ms, pour éviter un saut visible.
 
-| Échelle | Joueur de 2 m | Tête (1/3) |
+| Joueur | Hauteur à l'écran (×1,1) | Tête |
 | --- | --- | --- |
-| 1,1× | ~27 px | ~9 px |
-| 1,25× | ~31 px | ~10 px |
-| 1,4× | ~34 px | ~11 px |
+| 1,80 m | ~40 px | 14 px |
+| 2,00 m | ~45 px | 14 px |
+| 2,20 m | ~49 px | 14 px |
 
-Cadre des sprites : **40×56 px**. Il couvre le plus grand joueur à 1,4× et le bras tendu du
-dunk ; les pieds sont au milieu du bord bas.
+Cadre des sprites : **64×80 px**. Il couvre le plus grand joueur et le bras tendu du dunk ;
+les pieds sont au milieu du bord bas. Ballon : **8×8 px**.
 
 ## 4. Palette maîtresse (32 couleurs, la nôtre)
 
@@ -100,8 +103,9 @@ Règles :
 ### Proportions et lecture
 - **Style chibi** : la tête fait ~1/3 de la hauteur et le corps est trapu. Les épaules sont
   plus larges que le bassin.
-- **Visage lisible** : yeux de 2 px (blanc + pupille), sourcils d'1 px, bouche, oreille. Les
-  joueurs sont vus de 3/4 profil et retournés selon leur orientation.
+- **Visage lisible** (tête de 14×14 px) : deux yeux de 2×2 (blanc + pupille), sourcils,
+  oreille et nez dans l'ombre de la peau, bouche. Les joueurs sont vus de 3/4 et retournés
+  selon leur orientation.
 - **Contour** : un pixel de la couleur `outline` autour de la silhouette entière, ajouté
   automatiquement après assemblage.
 - **Ombre au sol** : ovale sous les pieds ; elle reste au sol et rétrécit pendant le saut.
@@ -112,8 +116,9 @@ Corpulence : **léger** ou **lourd**, selon le poids rapporté à la taille.
 
 | | Léger | Lourd |
 | --- | --- | --- |
-| Torse | 8 px de large | 11 px de large |
-| Jambes | fines | épaisses |
+| Torse | 12 px de large | 15 px de large |
+| Short | 12 px, 5 rangées | 15 px, 6 rangées |
+| Jambes | 3 px | 4 px |
 
 Les grands ont des jambes et un torse plus longs (rangées « étirables » des grilles).
 
@@ -129,8 +134,11 @@ Tout est tiré de l'identifiant du joueur, déterministe :
 Objectif : sur 200 joueurs générés, au moins 95 % d'apparences différentes.
 
 ### Tenues
-- **Maillot et short** : rampe primaire de l'équipe (clair, base, sombre).
-- **Liserés et numéro** : rampe secondaire.
+- **Maillot et short** : rampe primaire de l'équipe (clair, base, sombre) ; ceinture du
+  short sombre.
+- **Col, emmanchures, bande latérale du short, liseré du bas et numéro** : rampe secondaire.
+  Le numéro (chiffres 3×5) est centré sur la partie du maillot que le bras avant ne couvre
+  pas.
 - **Chaussures** : `ink` avec semelle `chalk`.
 - **Équipe à l'extérieur** : rampes inversées (maillot clair) si les deux équipes sont trop
   proches.
@@ -142,7 +150,7 @@ Objectif : sur 200 joueurs générés, au moins 95 % d'apparences différentes.
 | Course | 4 | 90 ms (selon la vitesse) | Bras opposés aux jambes |
 | Dribble | 4 | cale sur le dribble (0,5 s l'aller-retour) | Jambes de course ou d'arrêt, bras + ballon |
 | Saut / tir | 3 | flexion 80 ms, montée jusqu'au sommet, lâcher jusqu'à la réception | Ballon au-dessus de la tête, puis bras tendu |
-| Dunk | 3 | élan, bras tendu vers le cercle, accroché 150 ms | Cadre de 56 px pour le bras tendu |
+| Dunk | 3 | élan, bras tendu vers le cercle, accroché 150 ms | Cadre de 80 px pour le bras tendu |
 
 ## 6. Panier et terrain
 - **Panier massif** :
@@ -156,38 +164,39 @@ Objectif : sur 200 joueurs générés, au moins 95 % d'apparences différentes.
 - **Terrain** :
   - parquet en lattes (3 tons de bois) ;
   - raquette et rond central aux couleurs de l'équipe à domicile, logo maison (abréviation
-    en police HoopSim) ;
+    en police HoopSim, à l'échelle 2) ;
   - lignes `chalk`.
 
 ## 7. Arène
 - **Bandes de touche** : aux couleurs de l'équipe à domicile, avec son nom (ville, nom du
-  club) en police HoopSim, répété le long de la bande du fond. Le nom vertical derrière la
+  club) en police HoopSim à l'échelle 2, répété le long de la bande du fond. Le nom vertical derrière la
   ligne de fond a été retiré : il passait sous le socle du panier.
-- **Public en rangées lisibles** : chaque spectateur est une petite tête (cheveux, peau) sur
-  des épaules colorées, assis sur des rangées alternées. Il y a des maillots de l'équipe à
+- **Public en rangées lisibles** : chaque spectateur (10×12 px) est une tête (cheveux, peau,
+  yeux) sur des épaules colorées, assis sur des rangées de 15 px alternées. Il y a des maillots de l'équipe à
   domicile en majorité et quelques accents.
-- **Photographes** : 2 ou 3 par ligne de fond, accroupis, appareil `ink`/`silver`.
+- **Photographes** : 2 ou 3 par ligne de fond, accroupis (18×18 px), appareil `slate`/`silver`.
 - **Arbitre** : même gabarit que les joueurs, maillot à rayures noires et blanches génériques
   (pas de marque), sifflet.
 
 ## 8. HUD original
 
 Notre mise en page, différente de la référence : tableau de score compact **en haut à
-gauche**, carte du joueur **en bas à gauche**. La police HoopSim fait 5×7, et les panneaux
-sont `navy` avec un liseré `ink`.
+gauche**, carte du joueur **en bas à gauche**. La police HoopSim fait 5×7 (scores à
+l'échelle 2), et les panneaux sont `navy` avec un liseré `ink`.
 
 ```
-Tableau de score (≈ 96×22 px)             Carte du joueur contrôlé (≈ 92×26 px)
+Tableau de score (156×34 px)              Carte du joueur contrôlé (176×36 px)
 +------------------------------+          +--------------------------------+
-| [DAL] 48   [BOS] 37          |          | [tête] E. OJELEYE   MEN         |
+| [DAL] 48   [BOS] 37          |          | [tête] E. OKONKWO   MEN         |
 | QT3  1:35   TIR 14           |          |        ######..  12 PTS 4 REB  |
 +------------------------------+          +--------------------------------+
   [DAL] = pastille aux couleurs              barre d'énergie + 3 stats
 ```
 
-- **Étiquette sous chaque joueur** : nom de famille (8 lettres au plus) en petite police 3×5
-  maison, sur fond sombre. Avec la police 5×7, elles étaient trop larges et se chevauchaient.
-  Celle du joueur contrôlé est soulignée en `yellow`, avec un anneau `yellow` au sol.
+- **Étiquette sous chaque joueur** (validé) : nom de famille seul, 8 lettres au plus, en
+  police 5×7 sur fond sombre. En 640×360, elle occupe la même place que la petite police 3×5
+  en 384×216. La petite police reste pour les indications discrètes (« D aide »). L'étiquette
+  du joueur contrôlé est soulignée en `yellow`, avec un anneau `yellow` au sol.
 - **Texte de debug** : masqué par défaut, affiché par une touche.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
@@ -198,6 +207,6 @@ Tableau de score (≈ 96×22 px)             Carte du joueur contrôlé (≈ 92�
 4. Lisible à l'échelle ×1 (capture sans zoom) ?
 
 ## 10. Ce qui reste à décider
-- Résolution 384×216 et 18 px/m (section 2).
-- `VISUAL_SCALE` (section 3), à choisir sur `?style`.
-- Le style des 8 coiffures et des 4 visages, à valider sur `?style`.
+- Le dessin plus fin (têtes, visages, coiffures, corps, ballon), à valider sur `?style`.
+- Bandes noires en fenêtre : garder le plein écran (F), ou ajouter un réglage « remplir
+  l'écran » en S4.

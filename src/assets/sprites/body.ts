@@ -13,24 +13,34 @@ export interface StretchGrid {
 
 export const TORSOS: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
   light: {
-    stretchRow: 1,
-    rows: ['pPPPSSPq', 'pPPPPPPq', 'pPPPPPPq', 'pPPPPPPq', 'qPPPPPqq'],
+    stretchRow: 2,
+    rows: ['spPPPSSSPPPs', 'spPPPPSPPPqs', 'pPPPPPPPPPPq', 'pPPPPPPPPPPq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'qqPPPPPPPqqq'],
   },
   heavy: {
-    stretchRow: 1,
-    rows: ['.pPPPPSSq.', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPqq', 'qqPPPPPqq.'],
+    stretchRow: 2,
+    rows: [
+      '.spPPPSSSPPPPs.',
+      'spPPPPPSPPPPPqs',
+      'pPPPPPPPPPPPPPq',
+      'pPPPPPPPPPPPPPq',
+      'pPPPPPPPPPPPPqq',
+      'pPPPPPPPPPPPPqq',
+      'pPPPPPPPPPPPqqq',
+      '.qqPPPPPPPPqqq.',
+    ],
   },
 };
 
+/** Short : ceinture sombre, bande latérale, liseré du bas ouvert entre les jambes. */
 export const SHORTS: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
-  light: ['pPPPPPPq', 'pPPPqPPq', 'SSSS.SSS'],
-  heavy: ['pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPqPPPq', 'SSSSS.SSSS'],
+  light: ['qqqqqqqqqqqq', 'psPPPPPPPPPq', 'psPPPPqPPPPq', 'psPPP..PPPPq', 'SSSSS..SSSSS'],
+  heavy: ['qqqqqqqqqqqqqqq', 'psPPPPPPPPPPPPq', 'psPPPPPPPPPPPPq', 'psPPPPPqPPPPPPq', 'psPPPP..PPPPPPq', 'SSSSSS..SSSSSSS'],
 };
 
-/** Chaussure tournée vers la droite (dessus encre, semelle craie). */
+/** Chaussure tournée vers la droite (dessus encre, semelle craie), 3 rangées. */
 export const SHOES: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
-  light: ['kkkk.', 'wwwww'],
-  heavy: ['kkkkk.', 'wwwwww'],
+  light: ['kkkkk.', 'kkkkkk', 'wwwwww'],
+  heavy: ['kkkkkk.', 'kkkkkkk', 'wwwwwww'],
 };
 
 /** Allonge une grille en répétant sa rangée étirable jusqu'à `height` rangées. */

@@ -4,7 +4,9 @@ import { HAIRS } from '../../../assets/sprites/heads';
 import { createNewGame, TEAM_SEEDS } from '../../../engine';
 import { appearanceFor, appearanceSignature, type Appearance } from './appearance';
 import { colorsFor, composeFrame, slotColor } from './compose';
-import { bodyDims, FRAME, FRAMES } from './rig';
+import { colorDistance, teamLook } from '../arena/draw';
+import { VISUAL_SCALE } from '../artConfig';
+import { bodyDims, FRAME, FRAMES, HEAD_SIZE } from './rig';
 
 const players = Object.values(createNewGame('bos', 11).players);
 const looks = players.map((p) => appearanceFor(p));
@@ -33,15 +35,15 @@ describe('sprites des joueurs', () => {
     for (const look of sample()) {
       const colors = colorsFor(look, primary, secondary);
       for (const frame of FRAMES) {
-        composeFrame(look, frame, bodyDims(look.heightCm, look.heavy, 1.4)).canvas.forEach((_x, _y, slot) => {
+        composeFrame(look, frame, bodyDims(look.heightCm, look.heavy, VISUAL_SCALE)).canvas.forEach((_x, _y, slot) => {
           expect(allowed.has(slotColor(slot, colors))).toBe(true);
         });
       }
     }
   });
 
-  it('tiennent dans leur cadre, contour compris, à toutes les échelles', () => {
-    for (const scale of [1.1, 1.25, 1.4]) {
+  it('tiennent dans leur cadre, contour compris, avec de la marge au-delà de l’échelle choisie', () => {
+    for (const scale of [VISUAL_SCALE, 1.25]) {
       for (const look of sample()) {
         for (const frame of FRAMES) {
           const b = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy, scale)).canvas.bounds()!;
@@ -57,7 +59,7 @@ describe('sprites des joueurs', () => {
   it('posent les pieds au sol dans les images au sol', () => {
     const look = looks[0];
     for (const i of [0, 1, 2, 4, 10, 12, 15]) {
-      const b = composeFrame(look, FRAMES[i], bodyDims(200, false, 1.25)).canvas.bounds()!;
+      const b = composeFrame(look, FRAMES[i], bodyDims(200, false, VISUAL_SCALE)).canvas.bounds()!;
       expect(b.bottom).toBe(FRAME.groundY); // contour sous la semelle
     }
   });
@@ -65,7 +67,7 @@ describe('sprites des joueurs', () => {
   it('ont un contour complet : aucun pixel coloré ne touche le vide', () => {
     for (const look of sample().slice(0, 6)) {
       for (const frame of FRAMES) {
-        const c = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy, 1.25)).canvas;
+        const c = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy, VISUAL_SCALE)).canvas;
         c.forEach((x, y, slot) => {
           if (slot === 'o') return;
           for (const [dx, dy] of [
@@ -83,7 +85,7 @@ describe('sprites des joueurs', () => {
 
   it('élargissent les lourds et grandissent les grands, et suivent l’échelle visuelle', () => {
     const look = looks[0];
-    const box = (heightCm: number, heavy: boolean, scale = 1.25) =>
+    const box = (heightCm: number, heavy: boolean, scale = VISUAL_SCALE) =>
       composeFrame({ ...look, heightCm, heavy }, FRAMES[0], bodyDims(heightCm, heavy, scale)).canvas.bounds()!;
     const light = box(200, false);
     const heavy = box(200, true);
@@ -92,16 +94,17 @@ describe('sprites des joueurs', () => {
     expect(box(200, false, 1.4).top).toBeLessThan(box(200, false, 1.1).top);
   });
 
-  it('gardent la tête autour du tiers de la hauteur', () => {
-    for (const scale of [1.1, 1.25, 1.4]) {
-      const dims = bodyDims(200, false, scale);
-      expect(10 / dims.height).toBeGreaterThan(0.25);
-      expect(10 / dims.height).toBeLessThan(0.42);
+  it('gardent la tête autour du tiers de la hauteur, et un joueur de 2 m vers 45 px', () => {
+    for (const heightCm of [180, 200, 220]) {
+      const dims = bodyDims(heightCm, false, VISUAL_SCALE);
+      expect(HEAD_SIZE / dims.height).toBeGreaterThan(0.25);
+      expect(HEAD_SIZE / dims.height).toBeLessThan(0.4);
     }
+    expect(bodyDims(200, false, VISUAL_SCALE).height).toBe(45);
   });
 
   it('placent le ballon dans la main pendant le dribble et le tir', () => {
-    const dims = bodyDims(200, false, 1.25);
+    const dims = bodyDims(200, false, VISUAL_SCALE);
     const anchors = FRAMES.map((frame) => composeFrame(looks[0], frame, dims).ball);
     expect(anchors[6]).not.toBeNull();
     expect(anchors[8]!.y).toBeGreaterThan(anchors[6]!.y); // ballon au sol plus bas que dans la main
@@ -134,6 +137,13 @@ describe('rampes d’équipe', () => {
     expect(light).toBeGreaterThan(base);
     expect(dark).toBeLessThanOrEqual(base);
     expect(((light >> 16) & 0xff) + ((light >> 8) & 0xff) + (light & 0xff)).toBeGreaterThan(150);
+  });
+
+  it('gardent numéros et noms lisibles sur le maillot de chaque équipe', () => {
+    for (const seed of TEAM_SEEDS) {
+      const look = teamLook(seed);
+      expect(colorDistance(look.secondary[1], look.primary[1])).toBeGreaterThanOrEqual(130);
+    }
   });
 
   it('la palette maîtresse compte 32 couleurs distinctes', () => {
