@@ -43,6 +43,25 @@
   plein.
 - **Contact des corps** : recouvrement en mètres, plus la vitesse du défenseur vers le tireur.
 
+### Tir et layup côté `match/` (incrément 5, réglages dans `world/shooting.ts`, `SHOT_FLOW`)
+- **Départ** : appui sur Tir avec le ballon, au sol. Le joueur saute, se tourne vers le panier
+  visé (le plus proche en phase 1) et la jauge démarre au décollage.
+- **Lâcher** : au relâchement de Tir. Si Tir est encore enfoncé quand le joueur touche le sol,
+  le tir part tout seul à ce moment-là, donc très en retard.
+- **Zone**, mesurée au décollage : près du cercle à ≤ 2,5 m du cercle ; 3 pts selon la ligne
+  du niveau (pro ou college) ; mi-distance sinon.
+- **Layup** : seulement si le joueur attaque le cercle (à ≤ 3 m, à ≥ 2,5 m/s, à moins de 60°
+  de la direction du cercle). C'est un tir `layup` en zone « près du cercle », sans pénalité
+  de mouvement. Le joueur file vers un point à ~0,7 m devant le cercle (jamais sous la
+  planche). À l'arrêt près du cercle, c'est un petit tir en suspension.
+- **En mouvement** : `moveSpeed` est la vitesse au sol au décollage.
+- **Contestation** : `null` en attendant l'adversaire (7a).
+- **Trajectoire** : le ballon part de la main, au-dessus de la tête, ramenée devant le cercle
+  si le tireur est dessous ou derrière la planche. Si aucune trajectoire n'existe (cas
+  extrême), le ballon tombe de la main : raté.
+- **Points** : 2 ou 3 quand le ballon passe vraiment dans le cercle. Les tirs de démo (R/M)
+  ne comptent pas.
+
 ### Fonctions de `engine/`
 | Fichier | Fonctions |
 | --- | --- |

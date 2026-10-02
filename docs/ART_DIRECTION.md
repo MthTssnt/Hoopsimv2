@@ -243,6 +243,16 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   au sol.
 - **Texte de debug** : masqué par défaut, affiché par une touche ; la bande des 32 couleurs de
   la palette n'apparaît qu'avec lui.
+- **Jauge de tir** : barre verticale de 4×20 px cernée de `outline`, à côté du tireur, du côté
+  opposé au panier, posée à hauteur du torse et sur le sol (elle ne suit pas le saut).
+  - Fond `navy`, zone verte `green` sur toute la largeur, remplissage `chalk` au centre (le
+    vert reste visible sur les bords), trait `yellow` au lâcher.
+  - Le sommet du saut est à ~70 % de la hauteur.
+  - Elle disparaît 0,6 s après le lâcher.
+- **Annonce du lâcher** : PARFAIT (`yellow`), BON (`green`), TÔT / TARD (`silver`), en petite
+  police sur fond sombre, au-dessus de la tête ; elle monte de 4 px et s'efface en 0,9 s.
+- **Pose du tir** : ballon levé (tir en suspension) ou bras tendu vers le cercle (layup), visage
+  concentré, toujours de profil tourné vers le panier.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

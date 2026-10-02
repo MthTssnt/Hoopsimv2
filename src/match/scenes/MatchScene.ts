@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PALETTE } from '../../assets/palette';
-import { createNewGame, gaugeTime, TEAM_SEEDS, type Player } from '../../engine';
+import { createNewGame, TEAM_SEEDS, type Player } from '../../engine';
+import { greenWindow, shotSkill, type ShotZone, type TimingGrade } from '../../engine/shot';
 import { randomSeed, Rng } from '../../engine/rng';
 import { ARENA_APRON, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
 import { KeyboardInput, NO_INPUT } from '../input/keyboard';
@@ -10,7 +11,8 @@ import { BALL_SHADOW_TEXTURE, BALL_TEXTURE, createBallTextures } from '../render
 import { contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
 import { drawHoopArt } from '../render/arena/hoopArt';
 import { CAMERA_TUNING, targetFraming } from '../render/camera';
-import { createControlRing, createNameLabel, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
+import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
+import { createControlRing, createNameLabel, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
 import { normalizeText } from '../render/pixelFont';
 import { animTimeScale, blendBall, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
@@ -20,7 +22,7 @@ import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../rende
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
 import { loadSettings, type MatchSettings } from '../settings';
-import { MatchWorld, WORLD_DT } from '../world/MatchWorld';
+import { MatchWorld, WORLD_DT, type ShotRecord } from '../world/MatchWorld';
 import { HUD_KEYS, type HudDebug } from './HudScene';
 
 /** Joueurs de test, tirés d'une ligue générée : meneur, ailier, pivot lourd. */
@@ -37,6 +39,11 @@ function smooth(current: number, target: number, rate: number, deltaMs: number):
 }
 
 const SPEED_LABELS = { slow: 'lente', normal: 'normale', fast: 'rapide' } as const;
+const ZONE_LABELS: Record<ShotZone, string> = { rim: 'près du cercle', mid: 'mi-distance', three: '3 pts' };
+const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: 'vert', early: 'tôt', late: 'tard' };
+/** Annonce du lâcher au-dessus de la tête : durée (ms) et montée (px). */
+const TAG_MS = 900;
+const TAG_RISE = 4;
 /** Cadrage validé dans `?style` : ligne de touche du fond à 41 px du haut de l'écran (la ligne proche tombe vers 267). */
 const FAR_LINE_ON_SCREEN = 41;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
@@ -86,6 +93,7 @@ export class MatchScene extends Phaser.Scene {
   private controls!: KeyboardInput;
   private blocked = false;
   private pendingJump = false;
+  private pendingRelease = false;
   private accumulator = 0;
   private cam = { x: 0, y: 0, zoom: 1 };
   private debugKey = '';
@@ -99,6 +107,13 @@ export class MatchScene extends Phaser.Scene {
   private blendClock = 0;
   /** Vue du joueur : de dos quand il monte, de profil sinon ; gardée à l'arrêt. */
   private heading: Heading = 'side';
+  /** Jauge du tir en cours ou du dernier tir (affichée encore un instant après le lâcher). */
+  private gaugeShot: { window: number; timeToApex: number; release: number | null; side: number; linger: number } | null = null;
+  /** Dernier tir déjà annoncé, et temps écoulé depuis l'annonce (ms). */
+  private seenShot: ShotRecord | null = null;
+  private tagClock = TAG_MS;
+  private points = 0;
+  private score!: ScoreboardData;
 
   private arena!: Phaser.GameObjects.Image;
   private playerSprite!: Phaser.GameObjects.Sprite;
@@ -108,6 +123,8 @@ export class MatchScene extends Phaser.Scene {
   private marker!: Phaser.GameObjects.Image;
   private ring!: Phaser.GameObjects.Image;
   private label!: Phaser.GameObjects.Image;
+  private gauge!: Phaser.GameObjects.Graphics;
+  private tag!: Phaser.GameObjects.Image;
 
   constructor() {
     super('Match');
@@ -123,6 +140,7 @@ export class MatchScene extends Phaser.Scene {
     this.cast = [];
     this.blocked = false;
     this.pendingJump = false;
+    this.pendingRelease = false;
     this.accumulator = 0;
     this.debugKey = '';
     this.debugVisible = false;
@@ -130,6 +148,10 @@ export class MatchScene extends Phaser.Scene {
     this.blendFrom = null;
     this.blendClock = 0;
     this.heading = 'side';
+    this.gaugeShot = null;
+    this.seenShot = null;
+    this.tagClock = TAG_MS;
+    this.points = 0;
   }
 
   create() {
@@ -146,6 +168,7 @@ export class MatchScene extends Phaser.Scene {
     createBallTextures(this);
     createControlRing(this, 'control-ring', 22, 7);
     createShotMarker(this, 'shot-marker');
+    for (const [grade, tag] of Object.entries(GRADE_TAGS)) createTag(this, `grade-${grade}`, tag.text, tag.color);
     this.cast = this.athletes.map((player, i) => this.bakeCastMember(player, i));
 
     const court = makeCourt(this.settings.level);
@@ -164,10 +187,12 @@ export class MatchScene extends Phaser.Scene {
     this.playerSprite = this.add.sprite(0, 0, first.baked.key, 0).setOrigin(0.5, 1);
     this.ballImage = this.add.image(0, 0, BALL_TEXTURE);
     this.label = this.add.image(0, 0, first.label).setOrigin(0.5, 0).setDepth(900);
+    this.gauge = this.add.graphics().setDepth(950);
+    this.tag = this.add.image(0, 0, 'grade-perfect').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
     const rim = court.hoops.right.rim;
     const start = { x: rim.x - 7, y: rim.y + 1.5, z: 0 };
-    this.world = new MatchWorld(court, this.athletes[0], start, gaugeTime(this.settings.shotSpeed), this.rng);
+    this.world = new MatchWorld(court, this.athletes[0], start, { mode: this.settings.shotMode, speed: this.settings.shotSpeed }, this.rng);
 
     const keyboard = this.input.keyboard!;
     this.controls = new KeyboardInput(keyboard, this.settings.bindings);
@@ -192,8 +217,8 @@ export class MatchScene extends Phaser.Scene {
     if (this.registry.get('inputBlocked')) this.setBlocked(true);
 
     // Le HUD lit ces clés à son lancement, puis suit leurs changements.
-    const score: ScoreboardData = { home, away, homeScore: 0, awayScore: 0, period: 1, clock: '12:00', shotClock: 24 };
-    this.registry.set(HUD_KEYS.score, score);
+    this.score = { home, away, homeScore: 0, awayScore: 0, period: 1, clock: '12:00', shotClock: 24 };
+    this.registry.set(HUD_KEYS.score, this.score);
     this.registry.set(HUD_KEYS.card, this.cardFor(0));
     this.registry.set(HUD_KEYS.debugVisible, false);
     this.renderWorld(0);
@@ -202,13 +227,16 @@ export class MatchScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number) {
     const input = this.blocked ? NO_INPUT : this.controls.read();
-    // Un appui est gardé jusqu'au prochain pas de simulation (aucun appui perdu à haute fréquence).
+    // Appui et relâche sont gardés jusqu'au prochain pas de simulation (rien de perdu à haute
+    // fréquence) ; un appui bref passe donc par un saut puis un lâcher immédiat.
     if (input.shootPressed) this.pendingJump = true;
+    if (input.shootReleased) this.pendingRelease = true;
     this.accumulator += Math.min(deltaMs, 100) / 1000;
     while (this.accumulator >= WORLD_DT) {
       this.accumulator -= WORLD_DT;
-      this.world.step(WORLD_DT, { x: input.moveX, y: input.moveY, jump: this.pendingJump });
+      this.world.step(WORLD_DT, { x: input.moveX, y: input.moveY, jump: this.pendingJump, release: this.pendingRelease });
       this.pendingJump = false;
+      this.pendingRelease = false;
     }
     this.renderWorld(deltaMs);
   }
@@ -250,7 +278,9 @@ export class MatchScene extends Phaser.Scene {
       this.world.court = makeCourt(next.level);
       this.arena.setTexture(`arena-${next.level}`);
     }
-    if (prev.shotSpeed !== next.shotSpeed) this.world.setJumpTiming(gaugeTime(next.shotSpeed));
+    if (prev.shotSpeed !== next.shotSpeed || prev.shotMode !== next.shotMode) {
+      this.world.setShotSettings({ mode: next.shotMode, speed: next.shotSpeed });
+    }
   }
 
   private setBlocked(blocked: boolean) {
@@ -323,8 +353,9 @@ export class MatchScene extends Phaser.Scene {
     const ground = rounded(project(pos.x, pos.y));
     const holding = this.world.holder !== null && this.world.holder === this.world.controlled;
     const speed = Math.hypot(body.vel.x, body.vel.y);
-    this.heading = nextHeading(this.heading, body.vel, body.airborne);
-    const state = spriteStateFor({ airborne: body.airborne, speed, holding, facing: body.facing, heading: this.heading });
+    const shot = this.world.shot;
+    this.heading = nextHeading(this.heading, body.vel, body.airborne, shot !== null);
+    const state = spriteStateFor({ airborne: body.airborne, speed, holding, facing: body.facing, heading: this.heading, shot: shot?.kind ?? null });
     this.applySprite(member.baked, state);
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
     this.playerSprite.anims.timeScale = animTimeScale(state, speed);
@@ -356,8 +387,62 @@ export class MatchScene extends Phaser.Scene {
     const shadow = rounded(project(ball.x, ball.y));
     this.ballShadow.setPosition(shadow.x, shadow.y + 1).setAlpha(Phaser.Math.Clamp(1 - (ball.z - BALL_RADIUS) / 6, 0.35, 1));
 
+    this.updateShotFeedback(feet, ground, member.height, deltaMs);
     this.updateCamera(feet, ground, member.height, rounded(drawn), deltaMs);
     this.updateDebug();
+  }
+
+  /**
+   * Jauge à côté du tireur (du côté opposé au panier, posée au sol pour rester stable), annonce
+   * du lâcher au-dessus de la tête, et score des paniers marqués.
+   */
+  private updateShotFeedback(feet: Point, ground: Point, height: number, deltaMs: number) {
+    const body = this.world.player;
+    const shot = this.world.shot;
+    if (shot) {
+      const { mode, speed } = this.world.shotSettings;
+      const window = greenWindow(mode, shotSkill({ shooter: body.athlete, zone: shot.zone }), speed);
+      this.gaugeShot = { window, timeToApex: body.timeToApex, release: null, side: -body.facing, linger: 0 };
+    }
+    const last = this.world.lastShot;
+    if (last && last !== this.seenShot) {
+      this.seenShot = last;
+      if (!last.demo && last.grade) {
+        this.tag.setTexture(`grade-${last.grade}`);
+        this.tagClock = 0;
+        if (this.gaugeShot) this.gaugeShot.release = last.timingError! + this.gaugeShot.timeToApex;
+      }
+    }
+
+    this.gauge.clear();
+    const g = this.gaugeShot;
+    if (g) {
+      if (!shot) g.linger += deltaMs;
+      if (g.linger > GAUGE.lingerMs) {
+        this.gaugeShot = null;
+      } else {
+        const elapsed = shot ? shot.airTime : (g.release ?? 0);
+        const view = gaugeView(elapsed, g.timeToApex, g.window);
+        const release = g.release === null ? null : gaugeView(g.release, g.timeToApex, g.window).fill;
+        const left = g.side > 0 ? ground.x + 10 : ground.x - 10 - (GAUGE.width + 2);
+        drawGauge(this.gauge, left, ground.y - 30, view, release);
+      }
+    }
+
+    this.tagClock += deltaMs;
+    const showTag = this.tagClock < TAG_MS;
+    this.tag.setVisible(showTag);
+    if (showTag) {
+      const rise = Math.round((TAG_RISE * this.tagClock) / TAG_MS);
+      const fade = Math.min(1, (TAG_MS - this.tagClock) / 300);
+      this.tag.setPosition(ground.x, feet.y - height - 3 - rise).setAlpha(fade);
+    }
+
+    if (this.world.points !== this.points) {
+      this.points = this.world.points;
+      this.score = { ...this.score, homeScore: this.points };
+      this.registry.set(HUD_KEYS.score, this.score);
+    }
   }
 
   private updateCamera(feet: Point, ground: Point, height: number, ball: Point, deltaMs: number) {
@@ -373,6 +458,18 @@ export class MatchScene extends Phaser.Scene {
     camera.centerOn(Math.round(this.cam.x), Math.round(this.cam.y));
   }
 
+  /** Dernier tir en une ligne : zone, écart au sommet, note, proba tirée, résultat voulu et observé. */
+  private shotLine(shot: ShotRecord): string {
+    const result = (v: boolean) => (v ? 'RÉUSSI' : 'RATÉ');
+    const head = shot.demo ? 'Tir démo' : shot.kind === 'layup' ? 'Layup' : 'Tir';
+    let line = `${head} ${shot.distance.toFixed(1)} m (${ZONE_LABELS[shot.zone]})`;
+    if (!shot.demo && shot.timingError !== null && shot.grade && shot.probability !== null) {
+      const error = `${shot.timingError >= 0 ? '+' : ''}${shot.timingError.toFixed(2)} s`;
+      line += ` · écart ${error} (${GRADE_LABELS[shot.grade]}${shot.forced ? ', forcé' : ''}) · proba ${Math.round(shot.probability * 100)} %`;
+    }
+    return `${line} · voulu ${result(shot.wanted)} · obtenu ${shot.live === null ? '…' : result(shot.live)}`;
+  }
+
   /** Texte de debug (affiché avec H) : publié seulement quand il change. */
   private updateDebug() {
     const body = this.world.player;
@@ -386,16 +483,12 @@ export class MatchScene extends Phaser.Scene {
         ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
     ];
     const bottom = [
-      `${k.up.label}${k.left.label}${k.down.label}${k.right.label} bouger · ${k.shoot.label} saut · R/M tir · 1-3 joueur · C caméra · F plein écran · H aide`,
+      `${k.up.label}${k.left.label}${k.down.label}${k.right.label} bouger · ${k.shoot.label} tir (maintenir, relâcher au sommet) · R/M tir démo · 1-3 joueur · C caméra · F plein écran · H aide`,
     ];
     const shot = this.world.lastShot;
-    if (shot) {
-      const result = (v: boolean) => (v ? 'RÉUSSI' : 'RATÉ');
-      bottom.unshift(
-        `Tir démo ${shot.distance.toFixed(1)} m (${shot.three ? '3' : '2'} pts) voulu ${result(shot.wanted)}` +
-          ` obtenu ${shot.live === null ? '…' : result(shot.live)}`,
-      );
-    }
+    if (shot) bottom.unshift(this.shotLine(shot));
+    const active = this.world.shot;
+    if (active) bottom.unshift(`En l'air : ${active.kind === 'layup' ? 'layup' : 'tir'} ${ZONE_LABELS[active.zone]} · ${active.airTime.toFixed(2)} s`);
     const content: HudDebug = { top, bottom };
     const key = JSON.stringify(content);
     if (key !== this.debugKey) {

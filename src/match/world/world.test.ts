@@ -12,7 +12,7 @@ const court = makeCourt('pro');
 const START = { x: 18, y: 7, z: 0 };
 
 function newWorld(athlete: Player = guard, seed = 1): MatchWorld {
-  return new MatchWorld(court, athlete, START, gaugeTime('normal'), new Rng(seed));
+  return new MatchWorld(court, athlete, START, { mode: 'timing', speed: 'normal' }, new Rng(seed));
 }
 
 function run(world: MatchWorld, seconds: number, input: MoveInput): void {
@@ -52,7 +52,7 @@ describe('joueur contrôlé', () => {
 
   it('suit la vitesse de tir : un saut plus lent quand la jauge est lente', () => {
     const world = newWorld();
-    world.setJumpTiming(gaugeTime('slow'));
+    world.setShotSettings({ mode: 'timing', speed: 'slow' });
     expect(world.player.timeToApex).toBe(gaugeTime('slow'));
   });
 
@@ -90,7 +90,7 @@ describe('joueur contrôlé', () => {
   it('un saut en pleine course avance de 1 à 2 m, quelle que soit la vitesse de tir', () => {
     for (const speed of ['slow', 'normal', 'fast'] as const) {
       const world = newWorld();
-      world.setJumpTiming(gaugeTime(speed));
+      world.setShotSettings({ mode: 'timing', speed });
       run(world, 1, RIGHT);
       const from = world.player.pos.x;
       world.step(WORLD_DT, { ...RIGHT, jump: true });
@@ -166,5 +166,109 @@ describe('déterminisme', () => {
       return JSON.stringify({ p: world.player.pos, b: world.ball, h: world.holder, s: world.lastShot });
     };
     expect(script(newWorld(guard, 9))).toBe(script(newWorld(guard, 9)));
+  });
+});
+
+describe('tir avec jauge', () => {
+  /** Saute avec Tir, puis relâche quand le temps en l'air atteint `at` (s) ; renvoie le monde. */
+  const shootAt = (world: MatchWorld, at: number, move: MoveInput = IDLE): MatchWorld => {
+    world.step(WORLD_DT, { ...move, jump: true });
+    while (world.shot && world.shot.airTime + WORLD_DT < at - 1e-9) world.step(WORLD_DT, move);
+    world.step(WORLD_DT, { ...move, release: true });
+    return world;
+  };
+  const rim = court.hoops.right.rim;
+
+  it('Tir avec le ballon : le joueur saute, se tourne vers le panier et la jauge tourne', () => {
+    const world = newWorld();
+    run(world, 0.2, { x: -1, y: 0, jump: false });
+    expect(world.player.facing).toBe(-1);
+    run(world, 0.3, IDLE);
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    expect(world.player.airborne).toBe(true);
+    expect(world.player.facing).toBe(1);
+    expect(world.shot?.kind).toBe('jump');
+    expect(world.holder).toBe(0);
+  });
+
+  it('note le lâcher : parfait au sommet, tôt avant, tard après', () => {
+    const apex = gaugeTime('normal');
+    const perfect = shootAt(newWorld(), apex).lastShot!;
+    expect(perfect.grade).toBe('perfect');
+    expect(Math.abs(perfect.timingError!)).toBeLessThanOrEqual(WORLD_DT + 1e-9);
+    expect(perfect.demo).toBe(false);
+    expect(shootAt(newWorld(), apex - 0.25).lastShot!.grade).toBe('early');
+    expect(shootAt(newWorld(), apex + 0.25).lastShot!.grade).toBe('late');
+  });
+
+  it('Tir encore enfoncé à l’atterrissage : le tir part tout seul, très en retard', () => {
+    const world = newWorld();
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    run(world, 2, IDLE);
+    const shot = world.lastShot!;
+    expect(shot.forced).toBe(true);
+    expect(shot.grade).toBe('late');
+    expect(shot.timingError!).toBeCloseTo(world.player.timeToApex, 1);
+    expect(world.shot).toBeNull();
+  });
+
+  it('met en scène exactement le résultat tiré, et compte les points marqués', () => {
+    const outcomes = new Set<boolean>();
+    for (let seed = 1; seed <= 20; seed++) {
+      const world = shootAt(newWorld(guard, seed), gaugeTime('normal'));
+      run(world, 4, IDLE);
+      const shot = world.lastShot!;
+      expect(shot.zone).toBe('three');
+      expect(shot.live).toBe(shot.wanted);
+      expect(world.points).toBe(shot.wanted ? 3 : 0);
+      outcomes.add(shot.wanted);
+    }
+    expect([...outcomes].sort()).toEqual([false, true]);
+  });
+
+  it('layup en attaquant le cercle : le joueur file vers un point devant le cercle', () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const world = new MatchWorld(court, guard, { x: rim.x - 4.5, y: rim.y, z: 0 }, { mode: 'timing', speed: 'normal' }, new Rng(seed));
+      run(world, 0.4, RIGHT);
+      expect(Math.hypot(world.player.pos.x - rim.x, world.player.pos.y - rim.y)).toBeLessThan(3);
+      world.step(WORLD_DT, { ...RIGHT, jump: true });
+      expect(world.shot?.kind).toBe('layup');
+      while (world.shot && world.shot.airTime + WORLD_DT < gaugeTime('normal')) world.step(WORLD_DT, RIGHT);
+      world.step(WORLD_DT, { ...RIGHT, release: true });
+      const shot = world.lastShot!;
+      expect(shot.kind).toBe('layup');
+      expect(shot.zone).toBe('rim');
+      expect(shot.start.x).toBeLessThan(rim.x);
+      run(world, 3, IDLE);
+      expect(shot.live).toBe(shot.wanted);
+      expect(world.points).toBe(shot.wanted ? 2 : 0);
+      // Retombé devant le cercle, côté terrain.
+      expect(world.player.pos.x).toBeLessThan(rim.x);
+      expect(world.player.pos.x).toBeGreaterThan(rim.x - 1.6);
+    }
+  });
+
+  it('près du cercle à l’arrêt : petit tir en suspension, zone « près du cercle »', () => {
+    const world = new MatchWorld(court, guard, { x: rim.x - 2, y: rim.y, z: 0 }, { mode: 'timing', speed: 'normal' }, new Rng(2));
+    shootAt(world, gaugeTime('normal'));
+    expect(world.lastShot!.kind).toBe('jump');
+    expect(world.lastShot!.zone).toBe('rim');
+  });
+
+  it('sans ballon, Tir reste un simple saut', () => {
+    const world = newWorld();
+    world.holder = null;
+    world.ball = { pos: { x: START.x + 5, y: START.y, z: BALL_RADIUS }, vel: { x: 0, y: 0, z: 0 } };
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    expect(world.player.airborne).toBe(true);
+    expect(world.shot).toBeNull();
+  });
+
+  it('transmet le mode de tir : un lâcher raté coûte moins en Real Player % qu’en Timing', () => {
+    const late = gaugeTime('normal') + 0.3;
+    const timing = shootAt(newWorld(), late).lastShot!.probability!;
+    const real = newWorld();
+    real.setShotSettings({ mode: 'realPct', speed: 'normal' });
+    expect(shootAt(real, late).lastShot!.probability!).toBeGreaterThan(timing);
   });
 });

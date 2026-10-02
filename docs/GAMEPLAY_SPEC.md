@@ -46,7 +46,7 @@
 | Tir | Tir | maintenir : le joueur saute ; relâcher vers le sommet du saut (voir §3) |
 | Passe | Passe | appuyer en étant orienté vers le coéquipier visé |
 | Dribble / crossover | ? | ? (dribbles avancés : voir « Phases suivantes ») |
-| Dunk / layup | Tir | dunk : attaquer le cercle et appuyer sur Tir ; pas automatique, peut rater. Layup : ? |
+| Dunk / layup | Tir | dunk : attaquer le cercle et appuyer sur Tir ; pas automatique, peut rater. Layup (décision de Matheo) : seulement en attaquant le cercle (en course vers lui, à moins de ~3 m), avec la jauge ; à l'arrêt près du cercle, c'est un petit tir en suspension |
 | Défense : vol | Interception | difficile. Trop près, on pousse le joueur : faute. Le bras doit être à la bonne distance du ballon. Le plus efficace : se placer dans la ligne de passe. On peut aussi sauter pour dévier une passe, puis ramasser le ballon |
 | Défense : contre / saut | Tir (devient Saut/Contre) | sauter au bon moment face au tireur. J'ai fait plus de contres que d'interceptions |
 | Changer de joueur contrôlé | ? | ? |
@@ -70,6 +70,9 @@
   (des tirs annoncés « bons » ont raté).
 - Retour visuel : zone verte sur la jauge ; le jeu annonce certains tirs « bons »
   (forme de l'annonce : ?).
+- Choix de HoopSim (incrément 5, décisions de Matheo) : jauge verticale à côté du joueur, zone
+  verte centrée sur le sommet du saut ; annonce PARFAIT / BON / TÔT / TARD au-dessus de la
+  tête. Tir encore enfoncé à l'atterrissage : le tir part tout seul, très en retard.
 - Taux de réussite ressenti :
   - mi-distance : ?
   - 3 pts : en mode Timing, une fois le rythme trouvé, plus faciles que les tirs à 2 ; un

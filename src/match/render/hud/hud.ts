@@ -104,6 +104,19 @@ export function createNameLabel(scene: Phaser.Scene, key: string, name: string, 
   g.destroy();
 }
 
+/** Petite annonce colorée (ex. note d'un tir) en police 3×5, sur fond sombre. */
+export function createTag(scene: Phaser.Scene, key: string, text: string, color: number): void {
+  if (scene.textures.exists(key)) return;
+  const w = smallTextWidth(text) + 4;
+  const h = SMALL_H + 2;
+  const g = scene.add.graphics();
+  g.fillStyle(PALETTE.navy, 0.85).fillRect(1, 0, w - 2, h).fillRect(0, 1, w, h - 2);
+  g.fillStyle(color);
+  drawSmallText(g, text, 2, 1);
+  g.generateTexture(key, w, h);
+  g.destroy();
+}
+
 /** Anneau jaune au sol sous le joueur contrôlé (ellipse d'un pixel d'épaisseur). */
 export function createControlRing(scene: Phaser.Scene, key: string, width: number, height: number): void {
   if (scene.textures.exists(key)) return;

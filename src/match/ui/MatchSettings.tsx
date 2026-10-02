@@ -102,7 +102,7 @@ export function MatchSettingsPanel({ settings, onChange, open, onOpenChange }: P
         ))}
       </Section>
 
-      <Section title="Mode de tir" hint="Utilisé dès l'incrément 5 (jauge de tir).">
+      <Section title="Mode de tir" hint="Timing : le moment du lâcher compte surtout. Real Player % : la zone verte s'élargit avec la stat de tir.">
         <Choice
           value={settings.shotMode}
           options={[
