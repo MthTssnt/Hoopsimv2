@@ -70,6 +70,10 @@
   (des tirs annoncés « bons » ont raté).
 - Retour visuel : zone verte sur la jauge ; le jeu annonce certains tirs « bons »
   (forme de l'annonce : ?).
+- Dunk (incrément 6, décisions de Matheo) : seuil du moteur gardé (seuls, ~80 % des joueurs
+  peuvent dunker en mouvement ; le défenseur fera baisser ce chiffre) ; décollage immédiat sur
+  un simple appui ; accroché ~0,3 s au cercle après un dunk réussi ; annonce « DUNK » et
+  petite secousse de caméra ; rien sur un dunk raté.
 - Choix de HoopSim (incrément 5, décisions de Matheo) : jauge verticale à côté du joueur, zone
   verte centrée sur le sommet du saut ; annonce PARFAIT / BON / TÔT / TARD au-dessus de la
   tête. Tir encore enfoncé à l'atterrissage : le tir part tout seul, très en retard.

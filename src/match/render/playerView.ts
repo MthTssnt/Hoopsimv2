@@ -1,4 +1,4 @@
-import type { ShotKind } from '../../engine/shot';
+import type { PlayKind } from '../world/MatchWorld';
 import type { Point } from './pixelDraw';
 import { sheetIndex, type Facing, type Heading } from './sprites/compose';
 import { FRAME, type AnimationName } from './sprites/rig';
@@ -20,8 +20,11 @@ export const PLAYER_VIEW_TUNING = {
   backSlope: 0.4,
 } as const;
 
-/** Images fixes en l'air : ballon levé au-dessus de la tête, bras tendu du layup, bras après le lâcher. */
-export const AIR_FRAMES = { withBall: 13, layup: 16, empty: 14 } as const;
+/**
+ * Images fixes en l'air : ballon levé au-dessus de la tête (tir), bras tendu vers le cercle
+ * (layup et montée du dunk), bras après le lâcher, accroché au cercle (après le smash).
+ */
+export const AIR_FRAMES = { withBall: 13, layup: 16, empty: 14, dunkHang: 17 } as const;
 
 /** Ce que le monde dit du joueur, réduit à ce qui choisit l'image. */
 export interface BodyView {
@@ -33,8 +36,8 @@ export interface BodyView {
   facing: number;
   /** Vue courante (voir `nextHeading`). */
   heading: Heading;
-  /** Tir en cours (ballon pas encore lâché), ou null. */
-  shot?: ShotKind | null;
+  /** Geste en cours (tir, layup ou dunk), ou null. */
+  shot?: PlayKind | null;
 }
 
 /** Animation en boucle, ou image fixe de la feuille (indice dans un bloc, avant orientation). */
@@ -54,13 +57,16 @@ export function nextHeading(previous: Heading, vel: { x: number; y: number }, ai
 
 /**
  * Choix de l'image du joueur : au sol, arrêt ou course (dribble avec le ballon) ; en l'air,
- * ballon levé (tir en suspension), bras tendu vers le cercle (layup), ou bras après le lâcher.
+ * ballon levé (tir en suspension), bras tendu vers le cercle (layup, montée du dunk), deux bras
+ * au cercle après le smash, ou bras après le lâcher.
  */
 export function spriteStateFor(body: BodyView): SpriteState {
   const facing: Facing = body.facing < 0 ? 'left' : 'right';
   const { heading } = body;
   if (body.airborne) {
-    const frame = !body.holding ? AIR_FRAMES.empty : body.shot === 'layup' ? AIR_FRAMES.layup : AIR_FRAMES.withBall;
+    let frame: number = AIR_FRAMES.empty;
+    if (body.holding) frame = body.shot === 'layup' || body.shot === 'dunk' ? AIR_FRAMES.layup : AIR_FRAMES.withBall;
+    else if (body.shot === 'dunk') frame = AIR_FRAMES.dunkHang;
     return { kind: 'frame', frame, facing, heading };
   }
   const moving = body.speed > PLAYER_VIEW_TUNING.runSpeed;
@@ -73,6 +79,16 @@ export function animTimeScale(state: SpriteState, speed: number): number {
   if (state.kind !== 'anim' || (state.name !== 'run' && state.name !== 'dribble')) return 1;
   const [min, max] = PLAYER_VIEW_TUNING.cadence;
   return Math.min(max, Math.max(min, speed / PLAYER_VIEW_TUNING.strideSpeed));
+}
+
+/**
+ * Dunk : le sprite a la taille de son gabarit, plus petite que la vraie taille du joueur. Pour
+ * que ses mains touchent le cercle, il est monté de l'écart (px) entre ses mains (`handY`) et le
+ * cercle (`rimY`), proportionnellement à la montée du saut (`progress`, de 0 au sol à 1 au
+ * sommet). La physique ne change pas : c'est de la mise en scène, comme le cercle dessiné plus grand.
+ */
+export function dunkLift(handY: number, rimY: number, progress: number): number {
+  return Math.round(Math.max(0, handY - rimY) * Math.min(1, Math.max(0, progress)));
 }
 
 /** Indice dans la feuille cuite d'une image fixe. */

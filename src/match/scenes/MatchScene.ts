@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { PALETTE } from '../../assets/palette';
 import { createNewGame, TEAM_SEEDS, type Player } from '../../engine';
-import { greenWindow, shotSkill, type ShotZone, type TimingGrade } from '../../engine/shot';
+import { DUNK_TUNING, dunkScore, greenWindow, shotSkill, type ShotZone, type TimingGrade } from '../../engine/shot';
 import { randomSeed, Rng } from '../../engine/rng';
 import { ARENA_APRON, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
 import { KeyboardInput, NO_INPUT } from '../input/keyboard';
-import { BALL_RADIUS, makeCourt, type CourtLevel } from '../physics/court';
+import { BALL_RADIUS, makeCourt, RIM_HEIGHT, type CourtLevel } from '../physics/court';
 import { createArena } from '../render/arena/arena';
 import { BALL_SHADOW_TEXTURE, BALL_TEXTURE, createBallTextures } from '../render/arena/ball';
 import { contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
@@ -15,7 +15,7 @@ import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createNameLabel, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
 import { normalizeText } from '../render/pixelFont';
-import { animTimeScale, blendBall, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
+import { animTimeScale, blendBall, dunkLift, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
@@ -44,6 +44,8 @@ const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: '
 /** Annonce du lâcher au-dessus de la tête : durée (ms) et montée (px). */
 const TAG_MS = 900;
 const TAG_RISE = 4;
+/** Dunk réussi : secousse de caméra en pixels entiers (le pixel-art reste net). */
+const SHAKE = { ms: 150, px: 2 } as const;
 /** Cadrage validé dans `?style` : ligne de touche du fond à 41 px du haut de l'écran (la ligne proche tombe vers 267). */
 const FAR_LINE_ON_SCREEN = 41;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
@@ -112,6 +114,7 @@ export class MatchScene extends Phaser.Scene {
   /** Dernier tir déjà annoncé, et temps écoulé depuis l'annonce (ms). */
   private seenShot: ShotRecord | null = null;
   private tagClock = TAG_MS;
+  private shakeMs = 0;
   private points = 0;
   private score!: ScoreboardData;
 
@@ -151,6 +154,7 @@ export class MatchScene extends Phaser.Scene {
     this.gaugeShot = null;
     this.seenShot = null;
     this.tagClock = TAG_MS;
+    this.shakeMs = 0;
     this.points = 0;
   }
 
@@ -169,6 +173,7 @@ export class MatchScene extends Phaser.Scene {
     createControlRing(this, 'control-ring', 22, 7);
     createShotMarker(this, 'shot-marker');
     for (const [grade, tag] of Object.entries(GRADE_TAGS)) createTag(this, `grade-${grade}`, tag.text, tag.color);
+    createTag(this, 'tag-dunk', 'DUNK', PALETTE.yellow);
     this.cast = this.athletes.map((player, i) => this.bakeCastMember(player, i));
 
     const court = makeCourt(this.settings.level);
@@ -349,7 +354,15 @@ export class MatchScene extends Phaser.Scene {
     const body = this.world.player;
     const member = this.cast[this.athleteIndex];
     const { pos } = body;
-    const feet = rounded(project(pos.x, pos.y, pos.z));
+    // Pendant un dunk, le sprite est monté pour que ses mains (bras levés) touchent le cercle.
+    const lifted = rounded(project(pos.x, pos.y, pos.z));
+    const dunk = this.world.shot?.dunk;
+    let lift = 0;
+    if (dunk) {
+      const handY = lifted.y + 1 - FRAME.height + bodyLayout(member.baked.dims).torsoTop - 9;
+      lift = dunkLift(handY, project(pos.x, pos.y, RIM_HEIGHT).y, pos.z / dunk.apex);
+    }
+    const feet = { x: lifted.x, y: lifted.y - lift };
     const ground = rounded(project(pos.x, pos.y));
     const holding = this.world.holder !== null && this.world.holder === this.world.controlled;
     const speed = Math.hypot(body.vel.x, body.vel.y);
@@ -399,7 +412,8 @@ export class MatchScene extends Phaser.Scene {
   private updateShotFeedback(feet: Point, ground: Point, height: number, deltaMs: number) {
     const body = this.world.player;
     const shot = this.world.shot;
-    if (shot) {
+    // Pas de jauge pour un dunk : il part sur un simple appui.
+    if (shot && shot.kind !== 'dunk') {
       const { mode, speed } = this.world.shotSettings;
       const window = greenWindow(mode, shotSkill({ shooter: body.athlete, zone: shot.zone }), speed);
       this.gaugeShot = { window, timeToApex: body.timeToApex, release: null, side: -body.facing, linger: 0 };
@@ -412,16 +426,22 @@ export class MatchScene extends Phaser.Scene {
         this.tagClock = 0;
         if (this.gaugeShot) this.gaugeShot.release = last.timingError! + this.gaugeShot.timeToApex;
       }
+      // Dunk réussi : annonce et secousse au smash (raté : rien).
+      if (last.kind === 'dunk' && last.wanted) {
+        this.tag.setTexture('tag-dunk');
+        this.tagClock = 0;
+        this.shakeMs = SHAKE.ms;
+      }
     }
 
     this.gauge.clear();
     const g = this.gaugeShot;
     if (g) {
-      if (!shot) g.linger += deltaMs;
+      if (!shot || shot.kind === 'dunk') g.linger += deltaMs;
       if (g.linger > GAUGE.lingerMs) {
         this.gaugeShot = null;
       } else {
-        const elapsed = shot ? shot.airTime : (g.release ?? 0);
+        const elapsed = shot && shot.kind !== 'dunk' ? shot.airTime : (g.release ?? 0);
         const view = gaugeView(elapsed, g.timeToApex, g.window);
         const release = g.release === null ? null : gaugeView(g.release, g.timeToApex, g.window).fill;
         const left = g.side > 0 ? ground.x + 10 : ground.x - 10 - (GAUGE.width + 2);
@@ -453,14 +473,33 @@ export class MatchScene extends Phaser.Scene {
       this.settings.camera === 'steps' ? target.zoom : smooth(this.cam.zoom, target.zoom, CAMERA_TUNING.zoomLerp, deltaMs);
     this.cam.x = smooth(this.cam.x, target.centerX, CAMERA_TUNING.followLerp, deltaMs);
     this.cam.y = smooth(this.cam.y, target.centerY, CAMERA_TUNING.followLerp, deltaMs);
+    // Secousse d'un dunk : décalage de ±2 px entiers, une image sur deux.
+    this.shakeMs = Math.max(0, this.shakeMs - deltaMs);
+    const flip = Math.floor(this.time.now / 33) % 2 === 0 ? 1 : -1;
+    const shake = this.shakeMs > 0 ? SHAKE.px * flip : 0;
     const camera = this.cameras.main;
     camera.setZoom(this.cam.zoom);
-    camera.centerOn(Math.round(this.cam.x), Math.round(this.cam.y));
+    camera.centerOn(Math.round(this.cam.x) + shake, Math.round(this.cam.y) - shake / 2);
+  }
+
+  /** Aptitude au dunk, là où est le joueur : zone, score (seuil), stat utilisée. */
+  private dunkLine(): string {
+    const ctx = this.world.dunkContext();
+    if (!ctx.inDunkZone) return 'Dunk : hors zone (moitié de la raquette)';
+    const score = Math.round(dunkScore(ctx));
+    const how = ctx.moveSpeed >= DUNK_TUNING.movingSpeed ? 'en mouvement' : 'à l’arrêt';
+    return score >= DUNK_TUNING.threshold
+      ? `Dunk possible (score ${score} ≥ ${DUNK_TUNING.threshold}, ${how})`
+      : `Dunk impossible (score ${score} < ${DUNK_TUNING.threshold}, ${how})`;
   }
 
   /** Dernier tir en une ligne : zone, écart au sommet, note, proba tirée, résultat voulu et observé. */
   private shotLine(shot: ShotRecord): string {
     const result = (v: boolean) => (v ? 'RÉUSSI' : 'RATÉ');
+    if (shot.kind === 'dunk') {
+      const p = shot.probability === null ? '' : ` · proba ${Math.round(shot.probability * 100)} %`;
+      return `Dunk${p} · voulu ${result(shot.wanted)} · obtenu ${shot.live === null ? '…' : result(shot.live)}`;
+    }
     const head = shot.demo ? 'Tir démo' : shot.kind === 'layup' ? 'Layup' : 'Tir';
     let line = `${head} ${shot.distance.toFixed(1)} m (${ZONE_LABELS[shot.zone]})`;
     if (!shot.demo && shot.timingError !== null && shot.grade && shot.probability !== null) {
@@ -488,7 +527,12 @@ export class MatchScene extends Phaser.Scene {
     const shot = this.world.lastShot;
     if (shot) bottom.unshift(this.shotLine(shot));
     const active = this.world.shot;
-    if (active) bottom.unshift(`En l'air : ${active.kind === 'layup' ? 'layup' : 'tir'} ${ZONE_LABELS[active.zone]} · ${active.airTime.toFixed(2)} s`);
+    if (active) {
+      const what = active.kind === 'dunk' ? 'dunk' : active.kind === 'layup' ? 'layup' : 'tir';
+      bottom.unshift(`En l'air : ${what} ${ZONE_LABELS[active.zone]} · ${active.airTime.toFixed(2)} s`);
+    } else if (this.world.holder === this.world.controlled) {
+      bottom.unshift(this.dunkLine());
+    }
     const content: HudDebug = { top, bottom };
     const key = JSON.stringify(content);
     if (key !== this.debugKey) {

@@ -186,7 +186,7 @@ plus une variante d'identité : c'est un état.
 | Course | 4 | 90 ms (selon la vitesse) | Bras opposés aux jambes |
 | Dribble | 4 | cale sur le dribble (0,5 s l'aller-retour) | Jambes de course ou d'arrêt, bras + ballon |
 | Saut / tir | 3 | flexion 80 ms, montée jusqu'au sommet, lâcher jusqu'à la réception | Ballon à la poitrine, puis au-dessus de la main levée à côté de la tête ; visage concentré |
-| Dunk | 3 | élan, bras tendu vers le cercle, accroché 150 ms | Visage concentré |
+| Dunk | 3 | élan, bras tendu vers le cercle, accroché ~0,3 s au cercle (deux bras) | Visage concentré ; en match, sprite monté pour que les mains touchent le cercle |
 
 Planche complète : vue « poses » de `?style` (touche V), pour les trois gabarits et vers la
 gauche ; vue « dos » pour les mêmes images vues de dos.
@@ -253,6 +253,8 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   police sur fond sombre, au-dessus de la tête ; elle monte de 4 px et s'efface en 0,9 s.
 - **Pose du tir** : ballon levé (tir en suspension) ou bras tendu vers le cercle (layup), visage
   concentré, toujours de profil tourné vers le panier.
+- **Dunk réussi** : annonce « DUNK » (`yellow`, même style que PARFAIT) et secousse de caméra de
+  ±2 px entiers pendant 0,15 s (le pixel-art reste net).
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

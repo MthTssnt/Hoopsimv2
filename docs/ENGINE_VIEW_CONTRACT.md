@@ -62,6 +62,23 @@
 - **Points** : 2 ou 3 quand le ballon passe vraiment dans le cercle. Les tirs de démo (R/M)
   ne comptent pas.
 
+### Dunk côté `match/` (incrément 6)
+- **Choix à l'appui sur Tir** (avec le ballon, au sol) : dunk si `canDunk` (moitié de la
+  raquette, `moveSpeed` = vitesse au décollage, défenseur `null` en phase 1) ; sinon layup si
+  le joueur attaque le cercle ; sinon tir en suspension.
+- **Résultat** : tiré par `resolveDunk` dès l'appui. Pas de jauge ; relâcher Tir ne fait rien.
+- **Mise en scène** :
+  - le joueur atteint au sommet un point à ~0,35 m devant le cercle, jamais sous la planche ;
+  - si sa détente ne suffit pas, le saut du dunk est relevé pour que la main dépasse le cercle
+    de 0,15 m ; le saut normal reprend ensuite ;
+  - au sommet, le ballon est smashé avec `solveDunk` (`physics/dunk.ts`) : il traverse le
+    cercle (réussi) ou frappe le fer et rebondit dehors (raté), trajectoire vérifiée par
+    simulation ;
+  - après un dunk réussi, le joueur reste accroché au cercle 0,3 s.
+- **Dessin** : le sprite, à la taille de son gabarit, est monté pour que ses mains touchent le
+  cercle (rendu seulement).
+- **Points** : 2 quand le ballon passe dans le cercle.
+
 ### Fonctions de `engine/`
 | Fichier | Fonctions |
 | --- | --- |

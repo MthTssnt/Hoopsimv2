@@ -1,12 +1,13 @@
 import { reach } from '../../engine/athletics';
 import type { Rng } from '../../engine/rng';
-import { gaugeTime, resolveShot, type ShotKind, type ShotMode, type ShotSpeed, type ShotZone, type TimingGrade } from '../../engine/shot';
+import { canDunk, gaugeTime, resolveDunk, resolveShot, type DunkContext, type ShotKind, type ShotMode, type ShotSpeed, type ShotZone, type TimingGrade } from '../../engine/shot';
 import type { Player } from '../../engine/types';
 import { BALL_PHYSICS, stepBall, type BallState } from '../physics/ball';
-import { BALL_RADIUS, distanceToRim, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
+import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
+import { solveDunk } from '../physics/dunk';
 import { solveShot } from '../physics/shotSolver';
 import { createPlayerBody, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
-import { attacksRim, layupFinish, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
+import { attacksRim, dunkFinish, dunkJumpHeight, layupFinish, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
 
 /** Valeurs provisoires, réglables à l'œil. */
 export const WORLD_TUNING = {
@@ -27,11 +28,14 @@ export const WORLD_TUNING = {
   handDepth: 0.12,
 } as const;
 
-/** Un tir dans le monde : vrai tir (jauge) ou tir de démo (R/M). */
+/** Geste de tir : tir en suspension, layup (avec la jauge) ou dunk (simple appui). */
+export type PlayKind = ShotKind | 'dunk';
+
+/** Un tir dans le monde : vrai tir (jauge), dunk, ou tir de démo (R/M). */
 export interface ShotRecord {
   /** Tir de démo (touches R/M, résultat imposé) ou vrai tir (résultat tiré par `engine/`). */
   demo: boolean;
-  kind: ShotKind;
+  kind: PlayKind;
   zone: ShotZone;
   /** Point de lâcher du ballon. */
   start: Vec3;
@@ -53,9 +57,24 @@ export interface ShotRecord {
   live: boolean | null;
 }
 
-/** Tir en cours : le joueur est en l'air, le ballon au-dessus de la tête, la jauge tourne. */
+/** Dunk en cours : résultat déjà tiré à l'appui, smash au sommet, puis accroche si réussi. */
+export interface ActiveDunk {
+  made: boolean;
+  probability: number;
+  /** Ballon smashé (le joueur ne le tient plus). */
+  slammed: boolean;
+  /** Temps d'accroche au cercle restant (s). */
+  hang: number;
+  /** Hauteur des pieds au sommet (m) : saut relevé si besoin pour que la main dépasse le cercle. */
+  apex: number;
+}
+
+/**
+ * Tir en cours : le joueur est en l'air. Tir et layup : le ballon est au-dessus de la tête et la
+ * jauge tourne jusqu'au lâcher. Dunk : jusqu'à l'atterrissage (smash, puis accroche).
+ */
 export interface ActiveShot {
-  kind: ShotKind;
+  kind: PlayKind;
   /** Zone mesurée au décollage (un layup est toujours « près du cercle »). */
   zone: ShotZone;
   hoop: Hoop;
@@ -64,6 +83,7 @@ export interface ActiveShot {
   /** Vitesse au sol au décollage (m/s) : pénalité du tir en mouvement. */
   takeoffSpeed: number;
   takeoff: Vec3;
+  dunk: ActiveDunk | null;
 }
 
 /** Réglages du tir choisis dans le panneau. */
@@ -134,22 +154,45 @@ export class MatchWorld {
     return { x, y, z: BALL_RADIUS + (t.dribbleHandHeight - BALL_RADIUS) * phase };
   }
 
+  /** Contexte de dunk du joueur contrôlé, s'il appuyait sur Tir maintenant (mesures de `match/`). */
+  dunkContext(): DunkContext {
+    const body = this.player;
+    const hoop = targetHoop(this.court, body.pos.x);
+    return {
+      dunker: body.athlete,
+      inDunkZone: inPaintHalf(this.court, hoop, body.pos.x, body.pos.y),
+      moveSpeed: Math.hypot(body.vel.x, body.vel.y),
+      defender: null,
+    };
+  }
+
   step(dt: number, input: WorldInput): void {
     const body = this.player;
     const holding = this.holder === this.controlled;
-    // Appui sur Tir avec le ballon, au sol : le tir commence avec le saut.
+    // Appui sur Tir avec le ballon, au sol : le tir commence avec le saut. Dunk d'abord (s'il est
+    // possible), sinon layup en attaquant le cercle, sinon tir en suspension.
     const startsShot = input.jump && holding && !body.airborne && this.shot === null;
     const takeoffSpeed = Math.hypot(body.vel.x, body.vel.y);
     const takeoff = { ...body.pos };
-    const layup = startsShot && attacksRim(body.pos, body.vel, targetHoop(this.court, body.pos.x));
-    stepPlayer(body, input, dt, this.court);
-    if (startsShot) this.startShot(layup ? 'layup' : 'jump', takeoffSpeed, takeoff);
+    let kind: PlayKind | null = null;
+    let dunkCtx: DunkContext | null = null;
+    if (startsShot) {
+      dunkCtx = this.dunkContext();
+      if (canDunk(dunkCtx)) kind = 'dunk';
+      else kind = attacksRim(body.pos, body.vel, targetHoop(this.court, body.pos.x)) ? 'layup' : 'jump';
+    }
+    // Accroché au cercle : le joueur ne bouge plus jusqu'à la fin de l'accroche.
+    const hanging = this.shot?.dunk && this.shot.dunk.hang > 0;
+    if (hanging) this.shot!.dunk!.hang = Math.max(0, this.shot!.dunk!.hang - dt);
+    else stepPlayer(body, input, dt, this.court);
+    if (kind) this.startShot(kind, takeoffSpeed, takeoff, dunkCtx);
     this.cooldown = Math.max(0, this.cooldown - dt);
 
     if (this.shot) {
       this.shot.airTime += dt;
+      if (this.shot.dunk) this.stepDunk();
       // Lâcher au relâchement de Tir ; Tir encore enfoncé à l'atterrissage : le tir part tout seul.
-      if (input.release) this.releaseShot(false);
+      else if (input.release) this.releaseShot(false);
       else if (!body.airborne) this.releaseShot(true);
     }
 
@@ -173,11 +216,31 @@ export class MatchWorld {
     this.tryPickup();
   }
 
-  /** Début du tir : tourné vers le panier ; un layup file vers un point devant le cercle. */
-  private startShot(kind: ShotKind, takeoffSpeed: number, takeoff: Vec3): void {
+  /**
+   * Début du tir : tourné vers le panier. Un layup file vers un point devant le cercle ; un dunk
+   * (résultat tiré dès l'appui) file tout près du cercle et l'atteint au sommet, la main au-dessus.
+   */
+  private startShot(kind: PlayKind, takeoffSpeed: number, takeoff: Vec3, dunkCtx: DunkContext | null): void {
     const body = this.player;
     const hoop = targetHoop(this.court, takeoff.x);
     body.facing = hoop.rim.x >= takeoff.x ? 1 : -1;
+    let dunk: ActiveDunk | null = null;
+    if (kind === 'dunk' && dunkCtx) {
+      const { made, probability } = resolveDunk(dunkCtx, this.rng);
+      const T = body.timeToApex;
+      // Saut relevé si besoin : la main doit dépasser le cercle au sommet (mise en scène).
+      const apex = dunkJumpHeight(body.jumpHeight, reach(body.athlete));
+      dunk = { made, probability, slammed: false, hang: 0, apex };
+      body.jumpGravity = (2 * apex) / (T * T);
+      body.vel.z = body.jumpGravity * T;
+      const finish = dunkFinish(takeoff, hoop);
+      const vx = (finish.x - takeoff.x) / T;
+      const vy = (finish.y - takeoff.y) / T;
+      const speed = Math.hypot(vx, vy);
+      const k = speed > SHOT_FLOW.dunkMaxSpeed ? SHOT_FLOW.dunkMaxSpeed / speed : 1;
+      body.vel.x = vx * k;
+      body.vel.y = vy * k;
+    }
     if (kind === 'layup') {
       // Le layup garde son propre élan (pas celui, réduit, d'un tir en suspension).
       const finish = layupFinish(takeoff, hoop);
@@ -189,14 +252,57 @@ export class MatchWorld {
       body.vel.x = vx * k;
       body.vel.y = vy * k;
     }
-    const zone: ShotZone = kind === 'layup' ? 'rim' : shotZone(this.court, hoop, takeoff.x, takeoff.y);
-    this.shot = { kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff };
+    const zone: ShotZone = kind === 'jump' ? shotZone(this.court, hoop, takeoff.x, takeoff.y) : 'rim';
+    this.shot = { kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, dunk };
+  }
+
+  /** Dunk : smash au sommet du saut, accroche au cercle s'il est réussi, fin à l'atterrissage. */
+  private stepDunk(): void {
+    const shot = this.shot!;
+    const dunk = shot.dunk!;
+    const body = this.player;
+    if (!dunk.slammed && shot.airTime >= body.timeToApex) {
+      dunk.slammed = true;
+      const plan = solveDunk(dunk.made, shot.hoop, shot.takeoff, this.court, this.rng);
+      this.ball = { pos: { ...plan.start }, vel: { ...plan.velocity } };
+      this.holder = null;
+      this.cooldown = WORLD_TUNING.pickupCooldown;
+      body.vel.x = 0;
+      body.vel.y = 0;
+      if (dunk.made) {
+        dunk.hang = SHOT_FLOW.dunkHang;
+        body.vel.z = 0;
+      }
+      this.lastShot = {
+        demo: false,
+        kind: 'dunk',
+        zone: 'rim',
+        start: plan.start,
+        distance: distanceToRim(shot.hoop, shot.takeoff.x, shot.takeoff.y),
+        three: false,
+        hoop: shot.hoop.side,
+        wanted: dunk.made,
+        probability: dunk.probability,
+        grade: null,
+        timingError: null,
+        forced: false,
+        scored: false,
+        live: null,
+      };
+    }
+    if (!body.airborne) this.endShot();
+  }
+
+  /** Fin d'un tir en cours : le saut retrouve sa hauteur normale (un dunk a pu la relever). */
+  private endShot(): void {
+    this.shot = null;
+    for (const body of this.players) setJumpTiming(body, body.timeToApex);
   }
 
   /** Lâcher : `engine/` tire le résultat, la physique produit une trajectoire qui y aboutit. */
   private releaseShot(forced: boolean): void {
     const shot = this.shot!;
-    this.shot = null;
+    this.endShot();
     const body = this.player;
     const { hoop, takeoff, zone } = shot;
     const timingError = shot.airTime - body.timeToApex;
@@ -204,7 +310,7 @@ export class MatchWorld {
       {
         shooter: body.athlete,
         zone,
-        kind: shot.kind,
+        kind: shot.kind === 'layup' ? 'layup' : 'jump',
         mode: this.shotSettings.mode,
         speed: this.shotSettings.speed,
         timingError,
@@ -295,7 +401,7 @@ export class MatchWorld {
     } catch {
       return null; // position impossible (sous ou derrière la planche)
     }
-    this.shot = null;
+    this.endShot();
     this.ball = { pos: { ...start }, vel: velocity };
     this.holder = null;
     this.cooldown = WORLD_TUNING.pickupCooldown;

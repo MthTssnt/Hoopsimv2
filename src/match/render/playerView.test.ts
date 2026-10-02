@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD_TUNING } from '../world/MatchWorld';
-import { AIR_FRAMES, animTimeScale, blendBall, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor } from './playerView';
+import { AIR_FRAMES, animTimeScale, dunkLift, blendBall, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor } from './playerView';
 import { ANIMATIONS, FRAME, FRAMES } from './sprites/rig';
 
 const ground = { airborne: false, speed: 0, holding: false, facing: 1, heading: 'side' as const };
@@ -72,6 +72,25 @@ describe('pendant un tir', () => {
     expect(spriteStateFor({ ...air, shot: 'layup' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.layup });
     expect(spriteStateFor({ ...air, holding: false, shot: null })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.empty });
     expect(FRAMES[AIR_FRAMES.layup].ball).toBe('overhead');
+  });
+
+  it('dunk : bras tendu en montant avec le ballon, deux bras au cercle après le smash', () => {
+    const air = { ...ground, airborne: true };
+    expect(spriteStateFor({ ...air, holding: true, shot: 'dunk' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.layup });
+    expect(spriteStateFor({ ...air, holding: false, shot: 'dunk' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.dunkHang });
+    expect(FRAMES[AIR_FRAMES.dunkHang].ball).toBeUndefined();
+    expect(nextHeading('back', { x: 0, y: -3 }, true, true)).toBe('side');
+  });
+});
+
+describe('mains au cercle pendant un dunk', () => {
+  it('monte le sprite de l’écart mains-cercle, selon la montée', () => {
+    expect(dunkLift(100, 90, 0)).toBe(0);
+    expect(dunkLift(100, 90, 0.5)).toBe(5);
+    expect(dunkLift(100, 90, 1)).toBe(10);
+    expect(dunkLift(100, 90, 3)).toBe(10);
+    // Mains déjà au-dessus du cercle : rien.
+    expect(dunkLift(80, 90, 1)).toBe(0);
   });
 });
 
