@@ -60,6 +60,21 @@ describe('vue de dos', () => {
   });
 });
 
+describe('pendant un tir', () => {
+  it('reste de profil, même en montant ou de dos', () => {
+    expect(nextHeading('back', { x: 0, y: -6 }, false, true)).toBe('side');
+    expect(nextHeading('back', { x: 0, y: 0 }, true, true)).toBe('side');
+  });
+
+  it('montre le ballon levé, le bras tendu du layup, puis les bras après le lâcher', () => {
+    const air = { ...ground, airborne: true, holding: true };
+    expect(spriteStateFor({ ...air, shot: 'jump' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.withBall });
+    expect(spriteStateFor({ ...air, shot: 'layup' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.layup });
+    expect(spriteStateFor({ ...air, holding: false, shot: null })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.empty });
+    expect(FRAMES[AIR_FRAMES.layup].ball).toBe('overhead');
+  });
+});
+
 describe('cadence des pas', () => {
   const run = spriteStateFor({ ...ground, speed: 7 });
   it('accélère la course et le dribble avec la vitesse, dans des bornes', () => {

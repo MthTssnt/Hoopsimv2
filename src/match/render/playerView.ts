@@ -1,3 +1,4 @@
+import type { ShotKind } from '../../engine/shot';
 import type { Point } from './pixelDraw';
 import { sheetIndex, type Facing, type Heading } from './sprites/compose';
 import { FRAME, type AnimationName } from './sprites/rig';
@@ -19,8 +20,8 @@ export const PLAYER_VIEW_TUNING = {
   backSlope: 0.4,
 } as const;
 
-/** Images fixes en l'air : ballon levé au-dessus de la tête, bras après le lâcher. */
-export const AIR_FRAMES = { withBall: 13, empty: 14 } as const;
+/** Images fixes en l'air : ballon levé au-dessus de la tête, bras tendu du layup, bras après le lâcher. */
+export const AIR_FRAMES = { withBall: 13, layup: 16, empty: 14 } as const;
 
 /** Ce que le monde dit du joueur, réduit à ce qui choisit l'image. */
 export interface BodyView {
@@ -32,6 +33,8 @@ export interface BodyView {
   facing: number;
   /** Vue courante (voir `nextHeading`). */
   heading: Heading;
+  /** Tir en cours (ballon pas encore lâché), ou null. */
+  shot?: ShotKind | null;
 }
 
 /** Animation en boucle, ou image fixe de la feuille (indice dans un bloc, avant orientation). */
@@ -41,21 +44,25 @@ export type SpriteState =
 
 /**
  * Vue du joueur : de dos dès qu'il monte (diagonales comprises), de profil sinon. À l'arrêt et
- * en l'air, il garde la vue précédente.
+ * en l'air, il garde la vue précédente. Un tireur est toujours de profil, tourné vers le panier.
  */
-export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean): Heading {
+export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean, shooting = false): Heading {
+  if (shooting) return 'side';
   if (airborne || Math.hypot(vel.x, vel.y) <= PLAYER_VIEW_TUNING.runSpeed) return previous;
   return vel.y < 0 && -vel.y >= PLAYER_VIEW_TUNING.backSlope * Math.abs(vel.x) ? 'back' : 'side';
 }
 
 /**
  * Choix de l'image du joueur : au sol, arrêt ou course (dribble avec le ballon) ; en l'air,
- * ballon levé ou bras après le lâcher. Le tir et le dunk animés arrivent avec la jauge.
+ * ballon levé (tir en suspension), bras tendu vers le cercle (layup), ou bras après le lâcher.
  */
 export function spriteStateFor(body: BodyView): SpriteState {
   const facing: Facing = body.facing < 0 ? 'left' : 'right';
   const { heading } = body;
-  if (body.airborne) return { kind: 'frame', frame: body.holding ? AIR_FRAMES.withBall : AIR_FRAMES.empty, facing, heading };
+  if (body.airborne) {
+    const frame = !body.holding ? AIR_FRAMES.empty : body.shot === 'layup' ? AIR_FRAMES.layup : AIR_FRAMES.withBall;
+    return { kind: 'frame', frame, facing, heading };
+  }
   const moving = body.speed > PLAYER_VIEW_TUNING.runSpeed;
   const name: AnimationName = body.holding ? (moving ? 'dribble' : 'dribbleIdle') : moving ? 'run' : 'idle';
   return { kind: 'anim', name, facing, heading };
