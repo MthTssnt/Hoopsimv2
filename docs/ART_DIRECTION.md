@@ -138,9 +138,21 @@ Règles :
   - joyeuse (sourire avec dents), pour les célébrations, à brancher dans le match.
 
 ### Orientation et sol
-- Corps vu de face, légèrement penché dans le sens du jeu par les poses.
-- Tournés vers la gauche, les joueurs ont leurs propres images : le dessin est retourné, puis
-  le numéro est reposé à l'endroit.
+- **De profil** : corps vu de face, légèrement penché dans le sens du jeu par les poses.
+  C'est la vue en course vers la gauche ou la droite, et en descendant.
+- **De dos** : dès que le joueur monte (diagonales comprises). La tête est vue de dos (chaque
+  coiffure a sa grille de dos, la nuque en peau, pas de visage), le col est droit, le numéro
+  est dans le dos, les chaussures sont vues du talon et les deux bras passent derrière le
+  torse. À l'arrêt, le joueur garde sa dernière vue.
+- Tournés vers la gauche, les joueurs ont leurs propres images, de profil comme de dos : le
+  dessin est retourné, puis le numéro est reposé à l'endroit. La feuille compte 4 blocs de
+  18 images.
+- **Ballon au dribble** : de profil, la main revient devant le corps et le ballon rebondit
+  devant les jambes, un peu en avant dans le sens de la course, dessiné par-dessus elles. De
+  dos, il rebondit sur le côté de la hanche.
+- **Course** : les foulées montent tout le corps d'un pixel (suspension), sans rien allonger.
+  Les pas s'accélèrent avec la vitesse au sol (foulée d'environ 0,9 m), pour que les pieds
+  accrochent le parquet.
 - **Ombre au sol** : ovale sous les pieds ; elle reste au sol et rétrécit pendant le saut.
 
 ### Variété
@@ -177,7 +189,7 @@ plus une variante d'identité : c'est un état.
 | Dunk | 3 | élan, bras tendu vers le cercle, accroché 150 ms | Visage concentré |
 
 Planche complète : vue « poses » de `?style` (touche V), pour les trois gabarits et vers la
-gauche.
+gauche ; vue « dos » pour les mêmes images vues de dos.
 
 ## 6. Panier et terrain
 - **Panier massif** :

@@ -149,6 +149,8 @@ export interface HairStyle {
   name: string;
   /** 12×12, dans la même boîte que la tête. */
   grid: readonly string[];
+  /** La même coiffure vue de dos (12×12) : la nuque reste en peau sous les cheveux. */
+  back: readonly string[];
   /** Coiffure plaquée : ne peint que sur la tête (pas de volume qui dépasse). */
   clip: boolean;
 }
@@ -159,51 +161,61 @@ const EMPTY = '............';
 export const HAIRS: readonly HairStyle[] = [
   {
     name: 'ras',
+    back: ['HHHHHHHHHHHH', 'HhHHHHhHHHHH', 'HHHHhHHHHHhH', 'HHhHHHHHhHHH', 'HHHHHHhHHHHH', 'HhHHHHHHHHhH', 'HHHHhHHHHHHH', '.HHHHHHHHHH.', EMPTY, EMPTY, EMPTY, EMPTY],
     clip: true,
     grid: ['HHHHHHHHHHHH', 'HhHHHHhHHHHH', 'HHHHhHHHHHhH', 'HH........HH', 'H..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'court',
+    back: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhHHH', '.hhhhhhhhHH.', '..hhhhhhHH..', EMPTY, EMPTY, EMPTY],
     clip: false,
     grid: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hh........HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'afro',
+    back: ['.hhhhhhhhhh.', 'hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhHHH', '.hhhhhhhHHH.', '..hhhhhHHH..', EMPTY, EMPTY],
     clip: false,
     grid: ['.hhhhhhhhhh.', 'hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hhh......hHH', 'hh........HH', 'hh........HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'tresses',
+    back: ['hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', '.HhHhHhHhHh.', '..H.H..H.H..', EMPTY, EMPTY],
     clip: true,
     grid: ['hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hH........hH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'chignon',
+    back: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhHHHHhhhH', 'hhhHhhhhHhHH', 'hhhHhhhhHhHH', 'hhhhHHHHhhHH', 'hhhhhhhhhhHH', '.hhhhhhhhHH.', EMPTY, EMPTY, EMPTY, EMPTY],
     clip: false,
     grid: ['....HhhH....', '..hhhhhhhh..', 'hhhhhhhhhhhH', 'hh..hhhh..HH', 'h..........H', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'bandeau',
+    back: ['hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'SSSSSSSSSSSS', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhHHH', 'hhhhhhhhhHHH', '.hhhhhhhhHH.', EMPTY, EMPTY, EMPTY, EMPTY],
     clip: true,
     grid: ['hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'SSSSSSSSSSSS', 'hh........HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'chauve',
+    back: [EMPTY, '...11.......', '..11........', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
     clip: true,
     grid: [EMPTY, '...11.......', '..11........', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'frange',
+    back: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhhHH', 'hhhhhhhhhHHH', '.hhhhhhhhHH.', '..hhhhhhHH..', EMPTY, EMPTY, EMPTY],
     clip: false,
     grid: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhhhhhhhhH', 'hhhhhhh..hHH', 'hhh.......HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'degrade',
+    back: ['hhhhhhhhhhhh', 'hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'HhhhhhhhhhHH', 'HHhHhHhHhHHH', '.H.H.H.H.H.H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
     clip: true,
     grid: ['hhhhhhhhhhhh', 'hhhhhhhhhhhh', 'HhhhhhhhhhhH', 'H..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'barbe',
+    back: ['HHHHHHHHHHHH', 'HhHHHHhHHHHH', 'HHHHhHHHHHhH', 'HHhHHHHHhHHH', 'HHHHHHhHHHHH', 'HhHHHHHHHHhH', 'HHHHhHHHHHHH', '.HHHHHHHHHH.', 'h..........h', 'hh........hh', '.h........h.', EMPTY],
     clip: true,
     grid: [
       'HHHHHHHHHHHH',

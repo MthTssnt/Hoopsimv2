@@ -3,7 +3,7 @@ import { createNewGame, gaugeTime, type Player } from '../../engine';
 import { Rng } from '../../engine/rng';
 import { BALL_RADIUS, makeCourt } from '../physics/court';
 import { MatchWorld, WORLD_DT, WORLD_TUNING } from './MatchWorld';
-import type { MoveInput } from './player';
+import { PLAYER_TUNING, type MoveInput } from './player';
 
 const players = Object.values(createNewGame('bos', 31).players);
 const guard = players.filter((p) => p.pos === 'PG').sort((a, b) => b.attrs.speed - a.attrs.speed)[0];
@@ -54,6 +54,59 @@ describe('joueur contrôlé', () => {
     const world = newWorld();
     world.setJumpTiming(gaugeTime('slow'));
     expect(world.player.timeToApex).toBe(gaugeTime('slow'));
+  });
+
+  /** Temps (s) jusqu'à ce que `done` soit vrai, en appliquant `input`. */
+  const timeUntil = (world: MatchWorld, input: MoveInput, done: () => boolean): number => {
+    let t = 0;
+    while (!done() && t < 3) {
+      world.step(WORLD_DT, input);
+      t += WORLD_DT;
+    }
+    return t;
+  };
+
+  it('freine net : s’arrête en moins de 0,5 m après une pleine course', () => {
+    const world = newWorld();
+    run(world, 1, RIGHT);
+    const from = world.player.pos.x;
+    const time = timeUntil(world, IDLE, () => world.player.vel.x === 0);
+    expect(time).toBeLessThanOrEqual(0.15);
+    expect(world.player.pos.x - from).toBeLessThan(0.5);
+  });
+
+  it('fait demi-tour sans reculer longtemps, et tourne à 90° sans dériver', () => {
+    const back = newWorld();
+    run(back, 1, RIGHT);
+    expect(timeUntil(back, { x: -1, y: 0, jump: false }, () => back.player.vel.x < 0)).toBeLessThanOrEqual(0.15);
+    expect(back.player.facing).toBe(-1);
+    const turn = newWorld();
+    run(turn, 1, RIGHT);
+    expect(timeUntil(turn, { x: 0, y: -1, jump: false }, () => Math.abs(turn.player.vel.x) < 1e-9)).toBeLessThanOrEqual(0.15);
+    run(turn, 1, { x: 0, y: -1, jump: false });
+    expect(turn.player.vel.y).toBeCloseTo(-turn.player.runSpeed, 5);
+  });
+
+  it('un saut en pleine course avance de 1 à 2 m, quelle que soit la vitesse de tir', () => {
+    for (const speed of ['slow', 'normal', 'fast'] as const) {
+      const world = newWorld();
+      world.setJumpTiming(gaugeTime(speed));
+      run(world, 1, RIGHT);
+      const from = world.player.pos.x;
+      world.step(WORLD_DT, { ...RIGHT, jump: true });
+      timeUntil(world, RIGHT, () => !world.player.airborne);
+      const drift = world.player.pos.x - from;
+      expect(drift).toBeGreaterThan(1);
+      expect(drift).toBeLessThanOrEqual(PLAYER_TUNING.jumpMaxDrift + 0.05);
+    }
+  });
+
+  it('un saut sur place reste sur place', () => {
+    const world = newWorld();
+    world.step(WORLD_DT, { x: 0, y: 0, jump: true });
+    run(world, 1.5, IDLE);
+    expect(world.player.pos.x).toBe(START.x);
+    expect(world.player.pos.y).toBe(START.y);
   });
 
   it('dribble avec le ballon, puis le lève au-dessus de la tête en l’air', () => {

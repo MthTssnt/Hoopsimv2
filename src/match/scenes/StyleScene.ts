@@ -13,7 +13,7 @@ import { drawSmallText, normalizeText, SMALL_H, smallTextWidth } from '../render
 import { createControlRing, createNameLabel, drawPlayerCard, drawScoreboard, POSITION_SHORT } from '../render/hud/hud';
 import { appearanceFor, appearanceSignature, type Appearance } from '../render/sprites/appearance';
 import type { SlotCanvas } from '../render/sprites/canvas';
-import { colorsFor, headLayer, slotColor } from '../render/sprites/compose';
+import { colorsFor, headLayer, sheetIndex, slotColor, type Heading } from '../render/sprites/compose';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import { ANIMATIONS, bodyDims, bodyLayout, FRAME, FRAMES, SHOE_ROWS, type AnimationName } from '../render/sprites/rig';
 import type { Expression } from '../../assets/sprites/heads';
@@ -49,9 +49,9 @@ const POSE_GROUPS = [
   { label: 'DUNK', from: 15, to: 17 },
 ];
 
-/** Vues de la scène : terrain, gros plan des gabarits, planche des poses (touche V ou `?style&vue=`). */
-type View = 'terrain' | 'gros-plan' | 'poses';
-const VIEWS: View[] = ['terrain', 'gros-plan', 'poses'];
+/** Vues de la scène : terrain, gros plan des gabarits, planches des poses de profil et de dos (touche V ou `?style&vue=`). */
+type View = 'terrain' | 'gros-plan' | 'poses' | 'dos';
+const VIEWS: View[] = ['terrain', 'gros-plan', 'poses', 'dos'];
 
 interface Actor {
   sprite: Phaser.GameObjects.Sprite;
@@ -166,7 +166,8 @@ export class StyleScene extends Phaser.Scene {
     this.actors.forEach((o) => o.destroy());
     this.actors = [];
     if (this.view === 'gros-plan') this.buildCloseup();
-    else if (this.view === 'poses') this.buildPoseSheet();
+    else if (this.view === 'poses') this.buildPoseSheet('side');
+    else if (this.view === 'dos') this.buildPoseSheet('back');
     else {
       this.buildStatics();
       this.buildActors();
@@ -255,9 +256,13 @@ export class StyleScene extends Phaser.Scene {
     });
   }
 
-  /** Planche des poses : les 18 images de chaque gabarit à l'échelle du jeu, plus l'ailier tourné vers la gauche. */
-  private buildPoseSheet() {
-    const g = this.studyBackground('PLANCHE DES POSES (ECHELLE DU JEU)');
+  /**
+   * Planche des poses : les 18 images de chaque gabarit à l'échelle du jeu, plus l'ailier tourné
+   * vers la gauche ; de profil, ou de dos (le joueur monte).
+   */
+  private buildPoseSheet(heading: Heading) {
+    const back = heading === 'back';
+    const g = this.studyBackground(back ? 'PLANCHE DES POSES DE DOS (ECHELLE DU JEU)' : 'PLANCHE DES POSES (ECHELLE DU JEU)');
     const cell = 26;
     const left = 6;
     POSE_GROUPS.forEach((group) => {
@@ -271,14 +276,15 @@ export class StyleScene extends Phaser.Scene {
       const baked = bakePlayer(this, `poses-${r}`, look, { primary: this.home.primary, secondary: this.home.secondary });
       const y = 22 + r * 61;
       g.fillStyle(PALETTE.chalk);
-      drawSmallText(g, `${spec.name}${facing === 'left' ? ' VERS LA GAUCHE' : ''}`, left, y);
+      drawSmallText(g, `${spec.name}${back ? ' DE DOS' : ''}${facing === 'left' ? ' VERS LA GAUCHE' : ''}`, left, y);
       FRAMES.forEach((_, i) => {
-        const index = (facing === 'left' ? FRAMES.length : 0) + i;
+        const index = sheetIndex(i, facing, heading);
         const cx = left + i * cell + cell / 2;
         const baseY = y + 8 + FRAME.height;
         this.statics.push(this.add.image(cx, baseY, baked.key, index).setOrigin(0.5, 1).setDepth(2));
         const anchor = baked.anchors[index];
-        if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, BALL_TEXTURE).setDepth(3));
+        // De dos, le ballon tenu passe derrière le joueur.
+        if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, BALL_TEXTURE).setDepth(back ? 1 : 3));
       });
     });
   }

@@ -1,6 +1,6 @@
 import type { Point } from './pixelDraw';
-import type { Facing } from './sprites/compose';
-import { FRAME, FRAMES, type AnimationName } from './sprites/rig';
+import { sheetIndex, type Facing, type Heading } from './sprites/compose';
+import { FRAME, type AnimationName } from './sprites/rig';
 
 /** Valeurs provisoires, réglables à l'œil. */
 export const PLAYER_VIEW_TUNING = {
@@ -8,6 +8,15 @@ export const PLAYER_VIEW_TUNING = {
   runSpeed: 0.5,
   /** Durée du raccord du ballon entre la main dessinée et sa position physique (ms). */
   ballBlendMs: 80,
+  /**
+   * Vitesse (m/s) à laquelle la course et le dribble se jouent à leur cadence de base (2 pas en
+   * 360 ms, soit des foulées de ~0,9 m) ; plus vite, les pas s'accélèrent pour accrocher le sol.
+   */
+  strideSpeed: 5,
+  /** Bornes de l'accélération des pas. */
+  cadence: [0.6, 1.6] as const,
+  /** Vue de dos quand le joueur monte : |vy| ≥ pente × |vx| (diagonales comprises). */
+  backSlope: 0.4,
 } as const;
 
 /** Images fixes en l'air : ballon levé au-dessus de la tête, bras après le lâcher. */
@@ -21,10 +30,23 @@ export interface BodyView {
   holding: boolean;
   /** +1 vers la droite, -1 vers la gauche. */
   facing: number;
+  /** Vue courante (voir `nextHeading`). */
+  heading: Heading;
 }
 
-/** Animation en boucle, ou image fixe de la feuille (indice vers la droite, avant orientation). */
-export type SpriteState = { kind: 'anim'; name: AnimationName; facing: Facing } | { kind: 'frame'; frame: number; facing: Facing };
+/** Animation en boucle, ou image fixe de la feuille (indice dans un bloc, avant orientation). */
+export type SpriteState =
+  | { kind: 'anim'; name: AnimationName; facing: Facing; heading: Heading }
+  | { kind: 'frame'; frame: number; facing: Facing; heading: Heading };
+
+/**
+ * Vue du joueur : de dos dès qu'il monte (diagonales comprises), de profil sinon. À l'arrêt et
+ * en l'air, il garde la vue précédente.
+ */
+export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean): Heading {
+  if (airborne || Math.hypot(vel.x, vel.y) <= PLAYER_VIEW_TUNING.runSpeed) return previous;
+  return vel.y < 0 && -vel.y >= PLAYER_VIEW_TUNING.backSlope * Math.abs(vel.x) ? 'back' : 'side';
+}
 
 /**
  * Choix de l'image du joueur : au sol, arrêt ou course (dribble avec le ballon) ; en l'air,
@@ -32,15 +54,23 @@ export type SpriteState = { kind: 'anim'; name: AnimationName; facing: Facing } 
  */
 export function spriteStateFor(body: BodyView): SpriteState {
   const facing: Facing = body.facing < 0 ? 'left' : 'right';
-  if (body.airborne) return { kind: 'frame', frame: body.holding ? AIR_FRAMES.withBall : AIR_FRAMES.empty, facing };
+  const { heading } = body;
+  if (body.airborne) return { kind: 'frame', frame: body.holding ? AIR_FRAMES.withBall : AIR_FRAMES.empty, facing, heading };
   const moving = body.speed > PLAYER_VIEW_TUNING.runSpeed;
   const name: AnimationName = body.holding ? (moving ? 'dribble' : 'dribbleIdle') : moving ? 'run' : 'idle';
-  return { kind: 'anim', name, facing };
+  return { kind: 'anim', name, facing, heading };
 }
 
-/** Indice dans la feuille cuite : les images tournées vers la gauche suivent celles vers la droite. */
-export function frameIndex(frame: number, facing: Facing): number {
-  return facing === 'left' ? frame + FRAMES.length : frame;
+/** Accélération des animations : les pas de course et de dribble suivent la vitesse au sol. */
+export function animTimeScale(state: SpriteState, speed: number): number {
+  if (state.kind !== 'anim' || (state.name !== 'run' && state.name !== 'dribble')) return 1;
+  const [min, max] = PLAYER_VIEW_TUNING.cadence;
+  return Math.min(max, Math.max(min, speed / PLAYER_VIEW_TUNING.strideSpeed));
+}
+
+/** Indice dans la feuille cuite d'une image fixe. */
+export function frameIndex(state: Extract<SpriteState, { kind: 'frame' }>): number {
+  return sheetIndex(state.frame, state.facing, state.heading);
 }
 
 /**

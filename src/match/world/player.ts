@@ -4,9 +4,17 @@ import type { Court, Vec3 } from '../physics/court';
 
 /** Valeurs provisoires, réglables à l'œil. */
 export const PLAYER_TUNING = {
-  /** Accélération et freinage au sol (m/s²) : réactif, façon arcade. */
+  /** Accélération au sol (m/s²) : réactif, façon arcade. */
   accel: 28,
-  decel: 34,
+  /**
+   * Freinage au sol (m/s²) : à l'arrêt, dans un demi-tour et pour la part de la vitesse qui ne va
+   * pas dans la direction voulue (virage). Fort, pour que les appuis accrochent le parquet.
+   */
+  brake: 60,
+  /** Part de la vitesse au sol gardée au décollage : un saut en course avance peu. */
+  jumpCarry: 0.25,
+  /** Distance horizontale maximale parcourue pendant un saut (m), quelle que soit sa durée. */
+  jumpMaxDrift: 2,
   /** Le joueur peut sortir des lignes d'autant (m) : le hors-jeu arrive avec les règles. */
   boundsMargin: 1.5,
 } as const;
@@ -56,27 +64,57 @@ export function setJumpTiming(body: PlayerBody, timeToApex: number): void {
   body.jumpGravity = (2 * body.jumpHeight) / (timeToApex * timeToApex);
 }
 
+/**
+ * Vitesse au sol vers la direction voulue : la composante utile accélère (ou freine si elle va à
+ * l'envers), le reste s'efface au freinage. Sans direction, le joueur freine jusqu'à l'arrêt.
+ */
+function steer(body: PlayerBody, input: MoveInput, dt: number): void {
+  const { vel } = body;
+  const t = PLAYER_TUNING;
+  const len = Math.hypot(input.x, input.y);
+  if (len === 0) {
+    const speed = Math.hypot(vel.x, vel.y);
+    const k = speed > 0 ? Math.max(0, speed - t.brake * dt) / speed : 0;
+    vel.x *= k;
+    vel.y *= k;
+    return;
+  }
+  const ux = input.x / len;
+  const uy = input.y / len;
+  let along = vel.x * ux + vel.y * uy;
+  let px = vel.x - along * ux;
+  let py = vel.y - along * uy;
+  const side = Math.hypot(px, py);
+  if (side > 0) {
+    const k = Math.max(0, side - t.brake * dt) / side;
+    px *= k;
+    py *= k;
+  }
+  if (along < 0) along = Math.min(0, along + t.brake * dt);
+  else if (along < body.runSpeed) along = Math.min(body.runSpeed, along + t.accel * dt);
+  else along = Math.max(body.runSpeed, along - t.brake * dt);
+  vel.x = along * ux + px;
+  vel.y = along * uy + py;
+}
+
 export function stepPlayer(body: PlayerBody, input: MoveInput, dt: number, court: Court): void {
   const { pos, vel } = body;
   if (!body.airborne) {
-    // Au sol : on tend vers la vitesse voulue, sans dépasser l'accélération ou le freinage.
-    const len = Math.hypot(input.x, input.y);
-    const tx = len > 0 ? (input.x / len) * body.runSpeed : 0;
-    const ty = len > 0 ? (input.y / len) * body.runSpeed : 0;
-    const dx = tx - vel.x;
-    const dy = ty - vel.y;
-    const gap = Math.hypot(dx, dy);
-    const maxStep = (len > 0 ? PLAYER_TUNING.accel : PLAYER_TUNING.decel) * dt;
-    const k = gap > maxStep ? maxStep / gap : 1;
-    vel.x += dx * k;
-    vel.y += dy * k;
+    steer(body, input, dt);
     if (input.x !== 0) body.facing = input.x > 0 ? 1 : -1;
     if (input.jump) {
       body.airborne = true;
       vel.z = body.jumpGravity * body.timeToApex;
+      // Élan réduit : une part de la vitesse au sol, sans dépasser la dérive maximale sur le saut.
+      const speed = Math.hypot(vel.x, vel.y);
+      if (speed > 0) {
+        const carried = Math.min(speed * PLAYER_TUNING.jumpCarry, PLAYER_TUNING.jumpMaxDrift / (2 * body.timeToApex));
+        vel.x *= carried / speed;
+        vel.y *= carried / speed;
+      }
     }
   }
-  // En l'air, on garde l'élan pris au sol.
+  // En l'air, on garde l'élan pris au décollage (aucun contrôle).
   if (body.airborne) {
     vel.z -= body.jumpGravity * dt;
     pos.z += vel.z * dt;
