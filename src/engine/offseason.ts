@@ -152,7 +152,8 @@ export function startNextSeason(league: League): { retired: Player[]; drafted: {
     // Petite loterie : les quatre pires bilans peuvent échanger leurs places.
     const lottery = rng.shuffle(order.slice(0, 4));
     const draftOrder = [...lottery, ...order.slice(4)];
-    const pool = generateDraftClass(rng, 60, Object.keys(league.players).length + 1);
+    const activeNames = () => Object.values(league.players).map((p) => p.lastName);
+    const pool = generateDraftClass(rng, 60, Object.keys(league.players).length + 1, activeNames());
 
     for (let round = 0; round < 2; round++) {
       for (const team of draftOrder) {
@@ -169,7 +170,7 @@ export function startNextSeason(league: League): { retired: Player[]; drafted: {
     // --- Agents libres : on complète les effectifs trop courts ---
     for (const team of league.teams) {
       while (team.roster.length < ROSTER_MINIMUM) {
-        const filler = pool.shift() ?? generateDraftClass(rng, 1, Object.keys(league.players).length + 1)[0];
+        const filler = pool.shift() ?? generateDraftClass(rng, 1, Object.keys(league.players).length + 1, activeNames())[0];
         filler.teamId = team.id;
         filler.age = rng.int(23, 31);
         league.players[filler.id] = filler;

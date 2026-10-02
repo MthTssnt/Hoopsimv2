@@ -5,6 +5,7 @@ import { advancePlayoffs, playoffsFinished, startPlayoffs } from './playoffs';
 import { closeSeason, startNextSeason } from './offseason';
 import { regularSeasonFinished, simulateDay } from './simSeason';
 import { buildStandings } from './stats';
+import { nameKey } from './names';
 import type { League } from './types';
 
 function playFullSeason(league: League): void {
@@ -191,5 +192,8 @@ describe('saison complète', () => {
       expect(player.teamId).toBeTruthy();
       expect(player.age).toBeLessThan(41);
     }
+    // Rookies et agents libres ne reprennent pas un nom de famille déjà porté.
+    const lastNames = Object.values(league.players).map((p) => nameKey(p.lastName));
+    expect(new Set(lastNames).size).toBe(lastNames.length);
   });
 });
