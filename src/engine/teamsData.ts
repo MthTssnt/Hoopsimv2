@@ -20,7 +20,7 @@ export const TEAM_SEEDS: TeamSeed[] = [
   { id: 'bkn', city: 'Brooklyn', name: 'Voltage', abbr: 'BKN', conference: 'Est', division: 'Atlantique', colors: { primary: '#111827', secondary: '#facc15' } },
 
   { id: 'chi', city: 'Chicago', name: 'Gale', abbr: 'CHI', conference: 'Est', division: 'Centrale', colors: { primary: '#0ea5e9', secondary: '#0f172a' } },
-  { id: 'det', city: 'Détroit', name: 'Pistons Mécaniques', abbr: 'DET', conference: 'Est', division: 'Centrale', colors: { primary: '#dc2626', secondary: '#1e3a8a' } },
+  { id: 'det', city: 'Détroit', name: 'Gears', abbr: 'DET', conference: 'Est', division: 'Centrale', colors: { primary: '#dc2626', secondary: '#1e3a8a' } },
   { id: 'cle', city: 'Cleveland', name: 'Anvils', abbr: 'CLE', conference: 'Est', division: 'Centrale', colors: { primary: '#7f1d1d', secondary: '#fbbf24' } },
   { id: 'mil', city: 'Milwaukee', name: 'Frost', abbr: 'MIL', conference: 'Est', division: 'Centrale', colors: { primary: '#0d9488', secondary: '#f1f5f9' } },
   { id: 'ind', city: 'Indianapolis', name: 'Racers', abbr: 'IND', conference: 'Est', division: 'Centrale', colors: { primary: '#eab308', secondary: '#1e40af' } },

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createNewGame } from './index';
+import { createNewGame, migrateLeague } from './index';
 import { Rng } from './rng';
 import { advancePlayoffs, playoffsFinished, startPlayoffs } from './playoffs';
 import { closeSeason, startNextSeason } from './offseason';
 import { regularSeasonFinished, simulateDay } from './simSeason';
 import { buildStandings } from './stats';
+import { nameKey } from './names';
 import type { League } from './types';
 
 function playFullSeason(league: League): void {
@@ -191,5 +192,33 @@ describe('saison complète', () => {
       expect(player.teamId).toBeTruthy();
       expect(player.age).toBeLessThan(41);
     }
+    // Rookies et agents libres ne reprennent pas un nom de famille déjà porté.
+    const lastNames = Object.values(league.players).map((p) => nameKey(p.lastName));
+    expect(new Set(lastNames).size).toBe(lastNames.length);
+  });
+});
+
+describe('intersaisons successives', () => {
+  it('ne donnent jamais à un rookie l’identifiant d’un joueur actif (effectifs cohérents)', () => {
+    const league = createNewGame('bos', 2024);
+    for (let season = 0; season < 4; season++) {
+      startNextSeason(league);
+      const listed = league.teams.flatMap((t) => t.roster);
+      expect(new Set(listed).size).toBe(listed.length);
+      for (const team of league.teams) {
+        for (const id of team.roster) expect(league.players[id]?.teamId).toBe(team.id);
+      }
+      expect(listed.length).toBe(Object.keys(league.players).length);
+    }
+  });
+
+  it('répare au chargement les effectifs abîmés par l’ancien bug', () => {
+    const league = JSON.parse(JSON.stringify(createNewGame('bos', 9))) as League;
+    const [a, b] = league.teams;
+    b.roster.push(a.roster[0]); // même joueur dans deux effectifs
+    migrateLeague(league);
+    const listed = league.teams.flatMap((t) => t.roster);
+    expect(new Set(listed).size).toBe(listed.length);
+    for (const team of league.teams) for (const id of team.rotation) expect(team.roster).toContain(id);
   });
 });

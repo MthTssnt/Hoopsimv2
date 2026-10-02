@@ -63,3 +63,11 @@ describe('attributs athlétiques (détente, dunks)', () => {
     }
   });
 });
+
+describe('équipe de Détroit', () => {
+  it("renomme l'ancienne équipe de Détroit au chargement d'une sauvegarde", () => {
+    const old = JSON.parse(JSON.stringify(createNewGame('bos', 3))) as League;
+    old.teams.find((t) => t.id === 'det')!.name = 'Pistons Mécaniques';
+    expect(migrateLeague(old).teams.find((t) => t.id === 'det')!.name).toBe('Gears');
+  });
+});

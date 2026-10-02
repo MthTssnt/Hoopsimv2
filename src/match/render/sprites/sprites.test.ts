@@ -1,0 +1,301 @@
+import { describe, expect, it } from 'vitest';
+import { PALETTE, teamRamp } from '../../../assets/palette';
+import { EXPRESSIONS, EYE_ROWS, HAIRS, type Expression } from '../../../assets/sprites/heads';
+import { drawJerseyNumber, JERSEY_DIGITS, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
+import { createNewGame, TEAM_SEEDS } from '../../../engine';
+import { colorDistance, teamLook } from '../arena/draw';
+import { appearanceFor, appearanceSignature, type Appearance } from './appearance';
+import type { Slot } from './canvas';
+import { colorsFor, composeFrame, NUMBER_MIN_TORSO, NUMBER_TOP, numberZone, slotColor } from './compose';
+import { BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, HEAD_SIZE, NECK_ROWS, SHOE_ROWS, SHORTS_ROWS } from './rig';
+
+const players = Object.values(createNewGame('bos', 11).players);
+const looks = players.map((p) => appearanceFor(p));
+const team = TEAM_SEEDS[0];
+const primary = teamRamp(team.colors.primary);
+const secondary = teamRamp(team.colors.secondary);
+const allowed = new Set<number>([...Object.values(PALETTE), ...primary, ...secondary]);
+const SKIN = new Set<Slot>(['1', '2', '3']);
+
+/** Un meneur (1,86 m), un ailier (2,00 m) et un pivot (2,12 m), légers. */
+const SPECIMENS = { meneur: 186, ailier: 200, pivot: 212 } as const;
+const specimen = (heightCm: number, heavy = false, number = 23): Appearance => ({ ...looks[0], heightCm, heavy, number, hair: 1, head: 0 });
+const idle = (heightCm: number, heavy = false) => composeFrame(specimen(heightCm, heavy), FRAMES[0], bodyDims(heightCm, heavy)).canvas;
+
+/** Un échantillon varié : toutes les coiffures, les deux corpulences, les trois gabarits. */
+function sample(): Appearance[] {
+  const out: Appearance[] = [];
+  for (let hair = 0; hair < HAIRS.length; hair++) {
+    for (const [heightCm, heavy] of [
+      [183, false],
+      [201, true],
+      [226, true],
+    ] as const) {
+      out.push({ ...looks[hair], hair, heightCm, heavy, skin: hair % 4, head: hair % 4, number: 7 + hair * 6 });
+    }
+  }
+  return out;
+}
+
+describe('sprites des joueurs : règles générales', () => {
+  it('n’emploient que la palette maîtresse et les rampes de l’équipe', () => {
+    for (const look of sample()) {
+      const colors = colorsFor(look, primary, secondary);
+      for (const frame of FRAMES) {
+        composeFrame(look, frame, bodyDims(look.heightCm, look.heavy)).canvas.forEach((_x, _y, slot) => {
+          expect(allowed.has(slotColor(slot, colors))).toBe(true);
+        });
+      }
+    }
+  });
+
+  it('tiennent dans leur cadre, contour compris, dans les deux orientations', () => {
+    for (const look of sample()) {
+      for (const frame of FRAMES) {
+        for (const facing of ['right', 'left'] as const) {
+          const b = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy), 'team', facing).canvas.bounds()!;
+          expect(b.left).toBeGreaterThanOrEqual(0);
+          expect(b.right).toBeLessThan(FRAME.width);
+          expect(b.top).toBeGreaterThan(0);
+          expect(b.bottom).toBeLessThanOrEqual(FRAME.groundY);
+        }
+      }
+    }
+  });
+
+  it('posent les pieds au sol dans les images au sol', () => {
+    for (const i of [0, 1, 2, 4, 10, 12, 15]) {
+      expect(composeFrame(looks[0], FRAMES[i], bodyDims(200, false)).canvas.bounds()!.bottom).toBe(FRAME.groundY);
+    }
+  });
+
+  it('ont un contour fermé : aucun pixel coloré ne touche le vide', () => {
+    for (const look of sample().slice(0, 6)) {
+      for (const frame of FRAMES) {
+        const c = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy)).canvas;
+        c.forEach((x, y, slot) => {
+          if (slot === 'o') return;
+          for (const [dx, dy] of [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ]) {
+            expect(c.get(x + dx, y + dy)).not.toBeNull();
+          }
+        });
+      }
+    }
+  });
+
+  it('placent le ballon : dans la main au dribble, au rebond plus bas, au-dessus de la main au tir', () => {
+    const anchors = FRAMES.map((frame) => composeFrame(looks[0], frame, bodyDims(200, false)).ball);
+    expect(anchors[6]).not.toBeNull();
+    expect(anchors[8]!.y).toBeGreaterThan(anchors[6]!.y);
+    expect(anchors[13]!.y).toBeLessThan(anchors[12]!.y);
+    expect(anchors[14]).toBeNull();
+  });
+});
+
+describe('sprites des joueurs : proportions chiffrées (ailier standard)', () => {
+  const dims = bodyDims(SPECIMENS.ailier, false);
+  const L = bodyLayout(dims);
+  const c = idle(SPECIMENS.ailier);
+
+  it('mesurent ~32 px : tête 13-14, cou 1, torse 8, short 3, jambes 4, chaussures 2', () => {
+    const b = c.bounds()!;
+    expect(b.bottom - b.top + 1).toBe(32);
+    const head = L.neckY - (L.headTop - 1);
+    expect(head).toBeGreaterThanOrEqual(13);
+    expect(head).toBeLessThanOrEqual(14);
+    expect(L.torsoTop - L.neckY).toBe(NECK_ROWS);
+    expect(L.shortsTop - L.torsoTop).toBe(8);
+    expect(L.shortsBottom - L.shortsTop + 1).toBe(SHORTS_ROWS);
+    expect(L.shoeTop - L.shortsBottom - 1).toBe(4);
+    expect(SHOE_ROWS).toBe(2);
+  });
+
+  it('ont une tête de 14 px de large, contour compris (≈ 40 % de la hauteur)', () => {
+    let left = Infinity;
+    let right = -Infinity;
+    for (let y = L.headTop - 1; y < L.neckY; y++) {
+      for (let x = 0; x < FRAME.width; x++) {
+        if (!c.get(x, y)) continue;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+      }
+    }
+    expect(right - left + 1).toBe(HEAD_SIZE + 2);
+    expect((L.neckY - L.headTop + 1) / 32).toBeGreaterThan(0.38);
+  });
+
+  it('ont des bras de 2 px avec un contour de chaque côté, de 8-9 px, la main de 2×2 à la taille', () => {
+    const row = L.torsoTop + 3;
+    expect(c.get(L.torsoRight + 1, row)).toBe('o');
+    expect(SKIN.has(c.get(L.torsoRight + 2, row)!)).toBe(true);
+    expect(SKIN.has(c.get(L.torsoRight + 3, row)!)).toBe(true);
+    expect(c.get(L.torsoRight + 4, row)).toBe('o');
+    let bottom = L.torsoTop;
+    while (SKIN.has(c.get(L.torsoRight + 2, bottom + 1)!)) bottom++;
+    const length = bottom - L.torsoTop + 1;
+    expect(length).toBeGreaterThanOrEqual(8);
+    expect(length).toBeLessThanOrEqual(9);
+    // Main de 2×2 au bout, au niveau de la taille (bas du torse ou haut du short).
+    expect(SKIN.has(c.get(L.torsoRight + 3, bottom)!)).toBe(true);
+    expect(SKIN.has(c.get(L.torsoRight + 3, bottom - 1)!)).toBe(true);
+    expect(bottom).toBeGreaterThanOrEqual(L.shortsTop - 1);
+    expect(bottom).toBeLessThanOrEqual(L.shortsTop + 1);
+  });
+
+  it('ont des jambes de 3 à 4 px, séparées, en posture fléchie', () => {
+    const row = L.shortsBottom + 2;
+    const runs: number[] = [];
+    let run = 0;
+    for (let x = 0; x <= FRAME.width; x++) {
+      if (SKIN.has(c.get(x, row)!)) run++;
+      else if (run) {
+        runs.push(run);
+        run = 0;
+      }
+    }
+    expect(runs).toHaveLength(2);
+    for (const w of runs) {
+      expect(w).toBeGreaterThanOrEqual(3);
+      expect(w).toBeLessThanOrEqual(4);
+    }
+  });
+});
+
+describe('gabarits', () => {
+  const height = (h: number, heavy = false) => {
+    const b = idle(h, heavy).bounds()!;
+    return b.bottom - b.top + 1;
+  };
+
+  it('pivot = ailier + 3 rangées et + 1 colonne ; meneur = ailier − 2 rangées ; même tête', () => {
+    expect(height(SPECIMENS.pivot) - height(SPECIMENS.ailier)).toBe(3);
+    expect(height(SPECIMENS.ailier) - height(SPECIMENS.meneur)).toBe(2);
+    expect(bodyDims(SPECIMENS.pivot, false).torsoWidth - bodyDims(SPECIMENS.ailier, false).torsoWidth).toBe(1);
+    expect(bodyDims(SPECIMENS.meneur, false).torsoWidth).toBe(bodyDims(SPECIMENS.ailier, false).torsoWidth);
+    for (const h of Object.values(SPECIMENS)) {
+      const L = bodyLayout(bodyDims(h, false));
+      expect(L.neckY - L.headTop).toBe(HEAD_SIZE);
+    }
+    expect(BUILDS.pivot.torso + BUILDS.pivot.legs - BUILDS.ailier.torso - BUILDS.ailier.legs).toBe(3);
+  });
+
+  it('ne rallongent jamais les bras', () => {
+    const armLength = (h: number) => {
+      const c = idle(h);
+      const L = bodyLayout(bodyDims(h, false));
+      let bottom = L.torsoTop;
+      while (SKIN.has(c.get(L.torsoRight + 2, bottom + 1)!)) bottom++;
+      return bottom - L.torsoTop;
+    };
+    expect(armLength(SPECIMENS.meneur)).toBe(armLength(SPECIMENS.ailier));
+    expect(armLength(SPECIMENS.pivot)).toBe(armLength(SPECIMENS.ailier));
+  });
+});
+
+describe('visage', () => {
+  const dark = (ch: string) => ch === 'n' || ch === 'o';
+  const all = Object.entries(EXPRESSIONS) as [Expression, readonly string[]][];
+
+  it('a des yeux symétriques : 2×2 de blanc + iris côté intérieur, 2 px d’écart, même rangée', () => {
+    for (const [, grid] of all) {
+      for (const row of EYE_ROWS) expect(grid[row]).toBe('..wwn..nww..');
+    }
+  });
+
+  it('a des sourcils de 3 px au-dessus de chaque œil (inclinés quand concentré)', () => {
+    expect(EXPRESSIONS.neutre[4]).toBe('..nnn..nnn..');
+    for (const [, grid] of all) {
+      const brows = grid.slice(0, EYE_ROWS[0]).join('');
+      expect([...brows].filter(dark)).toHaveLength(6);
+    }
+    expect(EXPRESSIONS.concentree[3]).not.toBe(EXPRESSIONS.concentree[4]);
+  });
+
+  it('a un nez d’un pixel d’ombre de peau, une bouche fermée de 4 px, un sourire seulement quand joyeux', () => {
+    for (const [, grid] of all) expect([...grid.join('')].filter((ch) => ch === '3')).toHaveLength(1);
+    expect(EXPRESSIONS.neutre[9]).toBe('....nnnn....');
+    expect(EXPRESSIONS.neutre.join('')).not.toContain('w'.repeat(4));
+    expect(EXPRESSIONS.joyeuse.join('')).toContain('wwww');
+  });
+
+  it('n’a aucun pixel sombre sur les joues', () => {
+    for (const [, grid] of all) {
+      for (let y = EYE_ROWS[1] + 1; y < 12; y++) {
+        for (const x of [0, 1, 10, 11]) expect(dark(grid[y][x])).toBe(false);
+      }
+    }
+  });
+});
+
+describe('numéros de maillot', () => {
+  it('ont 10 chiffres tous différents, de 5 rangées, avec un « 1 » étroit', () => {
+    expect(new Set(JERSEY_DIGITS.map((g) => g.join('/'))).size).toBe(10);
+    for (const glyph of JERSEY_DIGITS) expect(glyph).toHaveLength(5);
+    expect(JERSEY_DIGITS[1][0]).toHaveLength(2);
+  });
+
+  it('se lisent à l’endroit dans les deux orientations (jamais en miroir)', () => {
+    const expected: string[] = [];
+    drawJerseyNumber(12, 0, 0, (x, y) => void expected.push(`${x},${y}`));
+    for (const facing of ['right', 'left'] as const) {
+      const { canvas, numberAt } = composeFrame(specimen(186, false, 12), FRAMES[0], bodyDims(186, false), 'team', facing);
+      const drawn: string[] = [];
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < jerseyNumberWidth(12); x++) if (canvas.get(numberAt!.x + x, numberAt!.y + y) === 'S') drawn.push(`${x},${y}`);
+      }
+      expect(drawn.sort()).toEqual([...expected].sort());
+    }
+  });
+
+  it('tiennent tous (0 à 99) sur la poitrine du torse le plus étroit, sous le col', () => {
+    const narrowest = Math.min(...Object.values(SPECIMENS).map((h) => bodyDims(h, false).torsoWidth));
+    for (let n = 0; n < 100; n++) expect(jerseyNumberWidth(n)).toBeLessThanOrEqual(numberZone(narrowest).width);
+    expect(NUMBER_TOP).toBeGreaterThanOrEqual(2);
+    expect(NUMBER_MIN_TORSO).toBeLessThanOrEqual(BUILDS.meneur.torso);
+  });
+});
+
+describe('apparence des joueurs', () => {
+  it('donne des joueurs tous différents (≥ 95 % d’apparences distinctes sur 200)', () => {
+    const sample200 = looks.slice(0, 200);
+    expect(sample200).toHaveLength(200);
+    const distinct = new Set(sample200.map(appearanceSignature));
+    expect(distinct.size / sample200.length).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it('est déterministe et suit le physique', () => {
+    const p = players[0];
+    expect(appearanceFor(p)).toEqual(appearanceFor({ ...p }));
+    const tallHeavy = appearanceFor({ id: 'x', heightCm: 214, weightKg: 130, number: 50 });
+    expect(tallHeavy.heightClass).toBe('grand');
+    expect(tallHeavy.heavy).toBe(true);
+    expect(appearanceFor({ id: 'y', heightCm: 185, weightKg: 82, number: 3 }).heightClass).toBe('petit');
+  });
+});
+
+describe('rampes d’équipe', () => {
+  it('restent lisibles même pour une couleur presque noire', () => {
+    const [light, base, dark] = teamRamp('#111827');
+    expect(light).toBeGreaterThan(base);
+    expect(dark).toBeLessThanOrEqual(base);
+    expect(((light >> 16) & 0xff) + ((light >> 8) & 0xff) + (light & 0xff)).toBeGreaterThan(150);
+  });
+
+  it('gardent numéros et noms lisibles sur le maillot de chaque équipe', () => {
+    for (const seed of TEAM_SEEDS) {
+      const look = teamLook(seed);
+      expect(colorDistance(look.secondary[1], look.primary[1])).toBeGreaterThanOrEqual(130);
+    }
+  });
+
+  it('la palette maîtresse compte 32 couleurs distinctes', () => {
+    const colors = Object.values(PALETTE);
+    expect(colors).toHaveLength(32);
+    expect(new Set(colors).size).toBe(32);
+  });
+});

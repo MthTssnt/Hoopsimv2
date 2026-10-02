@@ -1,4 +1,4 @@
-import { makeName } from './names';
+import { NameGenerator } from './names';
 import { clampRating, computeOverall } from './ratings';
 import { hashSeed, Rng } from './rng';
 import { TEAM_SEEDS } from './teamsData';
@@ -128,7 +128,7 @@ function salaryFor(overall: number, age: number): number {
 
 function makePlayer(
   rng: Rng,
-  usedNames: Set<string>,
+  names: NameGenerator,
   pos: Position,
   level: number,
   idSeq: () => string,
@@ -151,7 +151,7 @@ function makePlayer(
   const growthRoom = age <= 21 ? rng.range(6, 20) : age <= 25 ? rng.range(2, 11) : age <= 29 ? rng.range(0, 4) : 0;
   const potential = clampRating(overall + growthRoom);
 
-  const { firstName, lastName } = makeName(rng, usedNames);
+  const { firstName, lastName } = names.next();
   const id = idSeq();
   Object.assign(attrs, athleticAttrs({ id, heightCm, weightKg, attrs }));
   return {
@@ -190,7 +190,8 @@ function assignNumbers(rng: Rng, players: Player[]): void {
 }
 
 export function generateLeague(rng: Rng, seed: number, userTeamId: string, season: number): League {
-  const usedNames = new Set<string>();
+  // Noms tirés à part : aucun nom de famille en double dans la ligue, donc dans un match.
+  const names = new NameGenerator(hashSeed(`noms|${seed}`));
   let counter = 0;
   const idSeq = () => `p${(counter++).toString(36)}`;
 
@@ -206,7 +207,7 @@ export function generateLeague(rng: Rng, seed: number, userTeamId: string, seaso
       let level = slotLevel + teamMod + rng.normal(0, 2.2);
       // Une franchise sur trois possède une véritable superstar.
       if (slot === 0 && rng.chance(0.3)) level += rng.range(4, 16);
-      const player = makePlayer(rng, usedNames, positions[slot], level, idSeq);
+      const player = makePlayer(rng, names, positions[slot], level, idSeq);
       player.teamId = seedTeam.id;
       roster.push(player);
     });
@@ -247,9 +248,23 @@ export function generateLeague(rng: Rng, seed: number, userTeamId: string, seaso
   };
 }
 
-/** Génère une classe de rookies pour la draft d'intersaison. */
-export function generateDraftClass(rng: Rng, size: number, startId: number): Player[] {
-  const usedNames = new Set<string>();
+/**
+ * Premier numéro libre pour les identifiants de rookies (`r…`) : au-delà de tous ceux déjà
+ * attribués, pour qu'un rookie ne reprenne jamais l'identifiant d'un joueur encore actif
+ * (le nombre de joueurs baisse avec les retraites, il ne peut pas servir de compteur).
+ */
+export function nextRookieId(players: Record<string, Player>): number {
+  let max = 0;
+  for (const id of Object.keys(players)) if (id.startsWith('r')) max = Math.max(max, parseInt(id.slice(1), 36) || 0);
+  return Math.max(Object.keys(players).length + 1, max + 1);
+}
+
+/**
+ * Génère une classe de rookies pour la draft d'intersaison. `takenLastNames` : noms de famille
+ * des joueurs actifs, que les rookies ne reprennent pas.
+ */
+export function generateDraftClass(rng: Rng, size: number, startId: number, takenLastNames: Iterable<string> = []): Player[] {
+  const names = new NameGenerator(rng.int(0, 0x7fffffff), takenLastNames);
   let counter = startId;
   const idSeq = () => `r${(counter++).toString(36)}`;
   const out: Player[] = [];
@@ -257,7 +272,7 @@ export function generateDraftClass(rng: Rng, size: number, startId: number): Pla
     // Les premiers choix sont meilleurs, avec un fort potentiel de progression.
     const level = 66 - i * 0.45 + rng.normal(0, 3);
     const pos = rng.pick(ROSTER_POSITIONS);
-    const p = makePlayer(rng, usedNames, pos, level, idSeq);
+    const p = makePlayer(rng, names, pos, level, idSeq);
     p.age = rng.int(19, 22);
     p.potential = clampRating(p.overall + rng.range(8, 24));
     p.contract = { salary: salaryFor(p.overall, p.age), years: 3 };

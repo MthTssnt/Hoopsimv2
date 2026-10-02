@@ -3,16 +3,18 @@ import { createRoot } from 'react-dom/client';
 import App from './ui/App';
 import './styles.css';
 
-// Mode test du rendu Phaser : ajouter ?court à l'URL. Phaser est chargé à part
-// pour ne pas alourdir le jeu de gestion.
+// Modes de test du rendu Phaser, chargés à part pour ne pas alourdir le jeu de gestion :
+// ?court pour le match, ?style pour la planche de direction artistique.
 const PhaserGame = lazy(() => import('./match/PhaserGame'));
-const courtTest = new URLSearchParams(window.location.search).has('court');
+const StyleGame = lazy(() => import('./match/StyleGame'));
+const params = new URLSearchParams(window.location.search);
+const TestScreen = params.has('style') ? StyleGame : params.has('court') ? PhaserGame : null;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {courtTest ? (
+    {TestScreen ? (
       <Suspense fallback={null}>
-        <PhaserGame />
+        <TestScreen />
       </Suspense>
     ) : (
       <App />

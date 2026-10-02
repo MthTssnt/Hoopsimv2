@@ -7,6 +7,16 @@
 
 ## 1. Vue et rythme
 - Vue : 2D, de côté, look rétro pixel-art façon jeux de basket des années 80-90.
+- Vue observée sur la capture de référence de Matheo :
+  - vue plongeante de 3/4 : la profondeur et la hauteur sont écrasées d'environ 2/3 par
+    rapport à la longueur ;
+  - toute la profondeur du terrain tient à l'écran, avec ~22 à 26 m de long visibles ;
+  - joueurs à grosse tête, à leur taille réelle ;
+  - nom sous les joueurs, marqueur au sol sous le joueur contrôlé.
+- Vue retenue (validée dans `?style`, appliquée au match en S4) : 480×270 à 22,5 px/m, soit
+  ~21 m de long visibles et toute la profondeur du terrain ; mise à l'échelle entière (pixels
+  nets), F pour le plein écran. Les joueurs ont la taille de leur gabarit (meneur ~30 px,
+  ailier ~32 px, pivot ~35 px) ; la physique garde les vraies tailles.
 - Caméra (suit le ballon ?, zoom ?) : ?
 - Nombre de joueurs à l'écran / taille relative : ?
 - Durée : réglable. On règle la durée totale du match, en 2 mi-temps ou 4 quart-temps
@@ -205,4 +215,9 @@ Pour coder la phase 1 :
 - **Fatigue** : l'énergie baisse-t-elle pendant la partie de test (et le sprint existe-t-il ?),
   ou on garde une énergie fixe en phase 1 ?
   le sprint existe pas pour l'instant, mais les joueurs peuvent avoir des vitesses differentes selon leur physique taille poids strenght.
-  Energie fixe en phase 
+  Energie fixe en phase
+
+Vu sur la capture de référence, pour plus tard :
+- **« J. Lawson 7% »** : que veut dire le % affiché sous le nom du porteur adverse quand on
+  défend près de lui ? Chance d'interception, proba de son tir, autre chose ? Et la zone verte
+  au sol entre le défenseur et le porteur ? 
