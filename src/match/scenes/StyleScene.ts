@@ -12,13 +12,19 @@ import { ART_PPM, ART_VIEW, VISUAL_SCALE } from '../render/artConfig';
 import { drawSmallText, normalizeText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 import { createControlRing, createNameLabel, drawPlayerCard, drawScoreboard, POSITION_SHORT } from '../render/hud/hud';
 import { appearanceFor, appearanceSignature, type Appearance } from '../render/sprites/appearance';
-import { bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
+import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import { ANIMATIONS, FRAME, type AnimationName } from '../render/sprites/rig';
 
 const ANIM_ORDER: AnimationName[] = ['idle', 'run', 'dribble', 'dribbleIdle', 'shoot', 'dunk'];
 /** Colonnes des joueurs (m le long du terrain) et profondeurs des deux rangées. */
 const COLUMNS = [11.2, 13.6, 16, 18.4, 20.8];
 const ROWS = { home: 3.2, away: 11.4 };
+/** Comparaison des gabarits : un meneur et un pivot types côte à côte, à la profondeur du cercle. */
+const BUILDS = [
+  { id: 'style-meneur', label: 'MEN 1,86', heightCm: 186, weightKg: 84, number: 12, x: 22.2 },
+  { id: 'style-pivot', label: 'PIV 2,12', heightCm: 212, weightKg: 122, number: 16, x: 24.3 },
+] as const;
+const BUILDS_DEPTH = 7.62;
 
 interface Actor {
   sprite: Phaser.GameObjects.Sprite;
@@ -64,6 +70,7 @@ export class StyleScene extends Phaser.Scene {
   private statics: Phaser.GameObjects.GameObject[] = [];
   private actors: Phaser.GameObjects.GameObject[] = [];
   private debug!: Phaser.GameObjects.Text;
+  private swatches!: Phaser.GameObjects.Graphics;
   private distinct = 0;
 
   constructor() {
@@ -108,7 +115,11 @@ export class StyleScene extends Phaser.Scene {
       this.sameAnim = i >= ANIM_ORDER.length ? null : ANIM_ORDER[i];
       this.buildActors();
     });
-    keyboard.on('keydown-D', () => this.debug.setVisible(!this.debug.visible));
+    keyboard.on('keydown-D', () => {
+      const visible = !this.debug.visible;
+      this.debug.setVisible(visible);
+      this.swatches.setVisible(visible);
+    });
 
     this.buildAll();
   }
@@ -134,8 +145,9 @@ export class StyleScene extends Phaser.Scene {
     hoop.front.setDepth(floorY + 0.5);
     this.statics.push(hoop.back, hoop.front);
 
-    // Palette maîtresse en haut à droite.
-    const swatches = this.add.graphics().setDepth(1500);
+    // Palette maîtresse en haut à droite, visible seulement en mode debug (D).
+    const swatches = this.add.graphics().setDepth(1500).setVisible(this.debug.visible);
+    this.swatches = swatches;
     const colors = Object.values(PALETTE);
     const sw = 6;
     const sx = ART_VIEW.width - 6 - colors.length * sw;
@@ -158,20 +170,20 @@ export class StyleScene extends Phaser.Scene {
     const shadowW = look.heavy ? 28 : 22;
     bakeShadow(this, `style-shadow-${shadowW}`, shadowW);
     this.actors.push(this.add.image(fx, fy - 1, `style-shadow-${shadowW}`).setDepth(fy - 0.4));
-    const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setFlipX(opts.flip).setDepth(fy);
+    // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
+    const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setDepth(fy);
     const ball = this.add.image(0, 0, 'style-ball').setDepth(fy + 0.1).setVisible(false);
     const actor = { sprite, ball, baked };
     const place = (frameName: string | number) => {
       const anchor = baked.anchors[Number(frameName)];
       ball.setVisible(anchor !== null);
       if (!anchor) return;
-      const ax = opts.flip ? FRAME.width - 1 - anchor.x : anchor.x;
-      ball.setPosition(fx - FRAME.width / 2 + ax, fy + 1 - FRAME.height + anchor.y);
+      ball.setPosition(fx - FRAME.width / 2 + anchor.x, fy + 1 - FRAME.height + anchor.y);
     };
     sprite.on('animationupdate', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
     sprite.on('animationstart', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
     const frames = ANIMATIONS[opts.anim].frames.length;
-    sprite.play({ key: `${key}:${opts.anim}`, startFrame: (opts.startFrame ?? 0) % frames });
+    sprite.play({ key: animationKey(key, opts.anim, opts.flip ? 'left' : 'right'), startFrame: (opts.startFrame ?? 0) % frames });
     this.actors.push(sprite, ball);
     return actor;
   }
@@ -196,14 +208,23 @@ export class StyleScene extends Phaser.Scene {
         createControlRing(this, 'style-ring', 30, 9);
         this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) - 1, 'style-ring').setDepth(feet.y - 0.3));
       }
-      // Nom de famille seul, 8 lettres au plus : les étiquettes voisines ne se chevauchent pas.
-      createNameLabel(this, `style-label-${i}`, normalizeText(p.lastName).slice(0, 8), controlled);
+      // Nom de famille seul, en entier : l'étiquette prend la largeur du nom.
+      createNameLabel(this, `style-label-${i}`, normalizeText(p.lastName), controlled);
       this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) + 5, `style-label-${i}`).setOrigin(0.5, 0).setDepth(900));
     });
 
     // Arbitre (maillot rayé générique), entre les deux rangées.
     const refLook = appearanceFor({ id: `arbitre-${this.seed}`, heightCm: 190, weightKg: 88, number: 0 });
     this.placeActor(refLook, 'style-ref', 10.4, 7.3, { team: this.home, anim: 'idle', flip: false, referee: true });
+
+    // Gabarits : meneur type (n° 12) et pivot type (n° 16) côte à côte.
+    BUILDS.forEach((b, j) => {
+      const look = appearanceFor({ id: `${b.id}-${this.seed}`, heightCm: b.heightCm, weightKg: b.weightKg, number: b.number });
+      this.placeActor(look, `style-build${j}`, b.x, BUILDS_DEPTH, { team: this.home, anim: 'idle', flip: false });
+      const feet = this.proj.project(b.x, BUILDS_DEPTH);
+      createNameLabel(this, `style-build-label-${j}`, b.label, false);
+      this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) + 5, `style-build-label-${j}`).setOrigin(0.5, 0).setDepth(900));
+    });
 
     // HUD.
     const hud = this.add.graphics().setDepth(1500);
@@ -228,7 +249,7 @@ export class StyleScene extends Phaser.Scene {
       `animation : ${this.sameAnim ?? 'variée'}`,
       `${this.distinct}/${players.length} apparences distinctes`,
       `${players.map((p) => playerName(p).split(' ').pop()).join(', ')}`,
-      'R joueurs  T équipe  A animation  F plein écran  D aide',
+      'R joueurs  T équipe  A animation  F plein écran  D aide et palette',
     ]);
   }
 }

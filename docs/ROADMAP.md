@@ -17,7 +17,8 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Noms originaux : retrait des noms de joueurs NBA réels, « Pistons Mécaniques » devient Détroit Gears (calibration identique)
 - ✅ Décisions sur `?style` : cadrage de 384×216 / 18 px/m gardé, joueurs ×1,1, étiquettes au nom de famille
 - ✅ Style S3b. `?style` en 640×360 à 30 px/m (même cadrage, 1,67× plus de pixels), sprites redessinés plus fins, plein écran (F)
-- 🔄 Validation à l'œil du dessin plus fin
+- ✅ Style S3c. Numéros lisibles (police dédiée, jamais en miroir), gabarits accentués, oreille, étiquettes complètes, noms uniques dans la ligue, panier ancré, palette en debug
+- 🔄 Validation à l'œil de S3c, puis S4 (style appliqué à `MatchScene`)
 - ⬜ Style S4. Style appliqué au match (avant l'incrément 5)
 - ⬜ 5. Tir avec jauge + layup
 - ⬜ 6. Dunk simple

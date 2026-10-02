@@ -9,10 +9,17 @@ import type { TeamLook } from './draw';
 const STAND = { padFrom: 0.3, padTo: 1.0, padHalfDepth: 0.55, padHeight: 1.05, pole: 0.65, poleTop: 3.75 } as const;
 /** Décalage horizontal (m par m de profondeur) qui fait voir la planche de biais plutôt que de chant. */
 const BOARD_SLANT = 0.5;
+/**
+ * Le cercle est dessiné plus grand que le cercle physique, pour être lisible à côté d'un ballon
+ * de 8 px. La physique garde le vrai rayon : un ballon qui passe dedans passe aussi dans le dessin.
+ */
+export const RIM_DRAW_SCALE = 1.35;
+/** Hauteur de la poutre qui relie le poteau à la planche (m), au milieu de la planche. */
+const BEAM_Z = BACKBOARD.bottom + 0.6;
 
 /**
- * Panier massif vu de 3/4. Renvoie deux calques : derrière le ballon (ombre, socle, poteau,
- * planche, moitié arrière du cercle) et devant (filet, moitié avant du cercle).
+ * Panier massif vu de 3/4. Renvoie deux calques : derrière le ballon (ombres, socle, poteau,
+ * poutre, planche, moitié arrière du cercle) et devant (filet, moitié avant du cercle).
  * La planche est dessinée en biais pour l'effet de profondeur ; la physique la garde droite.
  */
 export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop, home: TeamLook): { back: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics } {
@@ -22,14 +29,20 @@ export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop
   const back = scene.add.graphics();
   const front = scene.add.graphics();
   const ax = (m: number) => baselineX + out * m;
+  const faceX = toCourt > 0 ? board.max.x : board.min.x;
+  const slant = (y: number) => out * (y - rim.y) * BOARD_SLANT * proj.ppm;
+  const rimR = RIM_RADIUS * RIM_DRAW_SCALE;
 
-  // Ombres au sol : socle, et planche + cercle (ovale allongé dans la profondeur, sous le panier).
-  back.fillStyle(PALETTE.outline, 0.28);
+  // Ombres au sol, d'un seul tenant : socle, bande sous la poutre jusqu'au pied de la planche, cercle.
+  back.fillStyle(PALETTE.outline, 0.26);
   const padShadow = P(ax((STAND.padFrom + STAND.padTo) / 2), rim.y + 0.25);
   fillEllipse(back, padShadow.x, padShadow.y, ((STAND.padTo - STAND.padFrom) / 2 + 0.3) * proj.ppm, (STAND.padHalfDepth + 0.3) * proj.depthPx);
-  back.fillStyle(PALETTE.outline, 0.1);
-  const hoopShadow = P((rim.x + baselineX) / 2, rim.y + 0.3);
-  fillEllipse(back, hoopShadow.x, hoopShadow.y, 0.45 * proj.ppm, 0.9 * proj.depthPx);
+  back.fillStyle(PALETTE.outline, 0.14);
+  const beamShadowFrom = P(ax(STAND.pole), rim.y + 0.1);
+  const beamShadowTo = P(faceX, rim.y + 0.1);
+  back.fillRect(Math.min(beamShadowFrom.x, beamShadowTo.x), Math.round(beamShadowTo.y) - 1, Math.abs(beamShadowFrom.x - beamShadowTo.x), 3);
+  const rimShadow = P(rim.x, rim.y);
+  fillEllipse(back, rimShadow.x, rimShadow.y, rimR * proj.ppm, rimR * proj.depthPx);
 
   // Socle rembourré, cerné de sombre pour se détacher de la bande : dessus clair, face avant
   // ombrée, liseré de la couleur secondaire.
@@ -49,32 +62,46 @@ export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop
   back.fillStyle(home.secondary[1]);
   pixelLine(back, P(x0, yN, h * 0.55), P(x1, yN, h * 0.55));
 
-  // Poteau : manchon rembourré (cerné) puis métal ; bras en treillis jusqu'à la planche.
+  // Poteau : manchon rembourré (cerné) puis métal, avec un chapeau au sommet.
   const pole = P(ax(STAND.pole), rim.y, STAND.padHeight);
   const poleTop = P(ax(STAND.pole), rim.y, STAND.poleTop);
   const px = Math.round(pole.x);
-  back.fillStyle(PALETTE.outline).fillRect(px - 4, Math.round(poleTop.y) - 1, 8, Math.round(pole.y - poleTop.y) + 1);
-  back.fillStyle(PALETTE.slate).fillRect(px - 3, Math.round(poleTop.y), 6, Math.round(pole.y - poleTop.y));
-  back.fillStyle(PALETTE.silver).fillRect(px - 3, Math.round(poleTop.y), 2, Math.round(pole.y - poleTop.y));
+  const pyTop = Math.round(poleTop.y);
+  back.fillStyle(PALETTE.outline).fillRect(px - 4, pyTop - 1, 8, Math.round(pole.y) - pyTop + 1);
+  back.fillStyle(PALETTE.slate).fillRect(px - 3, pyTop, 6, Math.round(pole.y) - pyTop);
+  back.fillStyle(PALETTE.silver).fillRect(px - 3, pyTop, 2, Math.round(pole.y) - pyTop);
+  back.fillStyle(PALETTE.outline).fillRect(px - 5, pyTop - 3, 10, 4);
+  back.fillStyle(PALETTE.slate).fillRect(px - 4, pyTop - 2, 8, 2);
   const sleeveTop = P(ax(STAND.pole), rim.y, 2.3);
   back.fillStyle(PALETTE.outline).fillRect(px - 6, Math.round(sleeveTop.y) - 1, 12, Math.round(pole.y - sleeveTop.y) + 1);
   back.fillStyle(home.primary[1]).fillRect(px - 5, Math.round(sleeveTop.y), 10, Math.round(pole.y - sleeveTop.y));
   back.fillStyle(home.primary[0]).fillRect(px - 5, Math.round(sleeveTop.y), 3, Math.round(pole.y - sleeveTop.y));
   back.fillStyle(home.secondary[1]).fillRect(px - 5, Math.round(sleeveTop.y) + 3, 10, 2);
-  const boardBackX = toCourt > 0 ? board.min.x : board.max.x;
-  const armHigh = P(boardBackX, rim.y, BACKBOARD.bottom + 0.75);
-  const armLow = P(boardBackX, rim.y, BACKBOARD.bottom + 0.25);
-  back.fillStyle(PALETTE.slate);
-  for (let dy = 0; dy < 3; dy++) pixelLine(back, { x: poleTop.x, y: poleTop.y + dy }, { x: armHigh.x, y: armHigh.y + dy });
-  const strut = P(ax(STAND.pole), rim.y, STAND.poleTop - 0.9);
-  for (let dy = 0; dy < 2; dy++) pixelLine(back, { x: strut.x, y: strut.y + dy }, { x: armLow.x, y: armLow.y + dy });
 
-  // Planche transparente en perspective (biais exagéré pour montrer sa face) : cadre craie,
-  // carré de visée, bas rembourré.
-  const faceX = toCourt > 0 ? board.max.x : board.min.x;
+  // Poutre (contour, reflet, métal) du sommet du poteau jusqu'au milieu de la planche, où elle
+  // passe derrière le verre ; jambe de force en diagonale ; platine de fixation.
+  const beamFrom = P(ax(STAND.pole), rim.y, STAND.poleTop - 0.1);
+  const beamTo = P(faceX, rim.y, BEAM_Z);
+  const beamRows = [PALETTE.outline, PALETTE.silver, PALETTE.slate, PALETTE.slate, PALETTE.outline];
+  beamRows.forEach((color, dy) => {
+    back.fillStyle(color);
+    pixelLine(back, { x: beamFrom.x, y: beamFrom.y + dy - 2 }, { x: beamTo.x, y: beamTo.y + dy - 2 });
+  });
+  const braceFrom = P(ax(STAND.pole), rim.y, STAND.poleTop - 1.05);
+  const braceTo = { x: beamFrom.x + (beamTo.x - beamFrom.x) * 0.55, y: beamFrom.y + (beamTo.y - beamFrom.y) * 0.55 + 2 };
+  [PALETTE.outline, PALETTE.slate, PALETTE.slate, PALETTE.outline].forEach((color, dx) => {
+    back.fillStyle(color);
+    pixelLine(back, { x: braceFrom.x + dx - 2, y: braceFrom.y }, { x: braceTo.x + dx - 2, y: braceTo.y });
+  });
+  const plate = { x: Math.round(beamTo.x + out * 4), y: Math.round(beamTo.y) };
+  back.fillStyle(PALETTE.outline).fillRect(plate.x - 3, plate.y - 6, 6, 12);
+  back.fillStyle(PALETTE.slate).fillRect(plate.x - 2, plate.y - 5, 4, 10);
+
+  // Planche transparente en perspective (biais exagéré pour montrer sa face) : tranche sombre,
+  // verre, cadre craie, carré de visée, bas rembourré.
   const corner = (y: number, z: number): Point => {
     const p = P(faceX, y, z);
-    return { x: p.x + out * (y - rim.y) * BOARD_SLANT * proj.ppm, y: p.y };
+    return { x: p.x + slant(y), y: p.y };
   };
   const quad = [corner(board.min.y, board.max.z), corner(board.max.y, board.max.z), corner(board.max.y, board.min.z), corner(board.min.y, board.min.z)];
   back.fillStyle(PALETTE.ink);
@@ -89,36 +116,41 @@ export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop
   back.fillStyle(home.primary[1]);
   for (let dy = 0; dy < 3; dy++) pixelLine(back, { x: quad[2].x, y: quad[2].y + dy }, { x: quad[3].x, y: quad[3].y + dy });
 
-  // Cercle épais : moitié arrière derrière, moitié avant (2 rangs + ombre) devant ; filet.
-  const ring = (from: number, to: number, r = RIM_RADIUS, dz = 0): Point[] => {
+  // Cercle : support vers la planche, moitié arrière (sombre, derrière le ballon), moitié avant
+  // épaisse (2 rangées orange + 1 sombre, devant), filet à mailles croisées.
+  const ring = (from: number, to: number, r = rimR, dz = 0): Point[] => {
     const pts: Point[] = [];
-    for (let i = 0; i <= 18; i++) {
-      const a = from + ((to - from) * i) / 18;
+    for (let i = 0; i <= 24; i++) {
+      const a = from + ((to - from) * i) / 24;
       pts.push(P(rim.x + Math.cos(a) * r, rim.y + Math.sin(a) * r, rim.z + dz));
     }
     return pts;
   };
-  back.fillStyle(PALETTE.orange);
-  pixelPolyline(back, ring(Math.PI, Math.PI * 2));
+  const shift = (pts: Point[], dy: number) => pts.map((p) => ({ x: p.x, y: p.y + dy }));
   back.fillStyle(PALETTE.slate);
-  pixelLine(back, P(rim.x + out * RIM_RADIUS, rim.y, rim.z), P(faceX, rim.y, rim.z));
-  pixelLine(back, P(rim.x + out * RIM_RADIUS, rim.y, rim.z - 0.06), P(faceX, rim.y, rim.z - 0.12));
+  for (let dy = 0; dy < 2; dy++) pixelLine(back, { ...P(rim.x + out * rimR, rim.y, rim.z), y: P(0, rim.y, rim.z).y + dy }, { ...P(faceX, rim.y, rim.z), y: P(0, rim.y, rim.z).y + dy });
+  back.fillStyle(PALETTE.orangeDark);
+  pixelPolyline(back, ring(Math.PI, Math.PI * 2));
+  pixelPolyline(back, shift(ring(Math.PI, Math.PI * 2), 1));
 
-  const drop = 0.45;
+  const drop = 0.5;
+  const strands = 14;
   front.fillStyle(PALETTE.chalk, 0.9);
-  for (let i = 0; i <= 12; i++) {
-    const a = (Math.PI * i) / 12;
-    const upper = P(rim.x + Math.cos(a) * RIM_RADIUS, rim.y + Math.sin(a) * RIM_RADIUS, rim.z);
-    const lowerA = P(rim.x + Math.cos(a + 0.35) * RIM_RADIUS * 0.6, rim.y + Math.sin(a + 0.35) * RIM_RADIUS * 0.6, rim.z - drop);
-    pixelLine(front, upper, lowerA);
+  for (let i = 0; i <= strands; i++) {
+    const a = (Math.PI * i) / strands;
+    const upper = P(rim.x + Math.cos(a) * rimR, rim.y + Math.sin(a) * rimR, rim.z);
+    for (const lean of [0.3, -0.3]) {
+      const b = a + lean;
+      if (b < 0 || b > Math.PI) continue;
+      pixelLine(front, upper, P(rim.x + Math.cos(b) * rimR * 0.62, rim.y + Math.sin(b) * rimR * 0.62, rim.z - drop));
+    }
   }
-  pixelPolyline(front, ring(0, Math.PI, RIM_RADIUS * 0.8, -drop * 0.5));
-  pixelPolyline(front, ring(0, Math.PI, RIM_RADIUS * 0.6, -drop));
+  pixelPolyline(front, ring(0, Math.PI, rimR * 0.8, -drop * 0.5));
+  pixelPolyline(front, ring(0, Math.PI, rimR * 0.62, -drop));
   front.fillStyle(PALETTE.orangeDark);
-  pixelPolyline(front, ring(0, Math.PI).map((p) => ({ x: p.x, y: p.y + 3 })));
-  pixelPolyline(front, ring(0, Math.PI).map((p) => ({ x: p.x, y: p.y + 2 })));
+  pixelPolyline(front, shift(ring(0, Math.PI), 2));
   front.fillStyle(PALETTE.orange);
   pixelPolyline(front, ring(0, Math.PI));
-  pixelPolyline(front, ring(0, Math.PI).map((p) => ({ x: p.x, y: p.y + 1 })));
+  pixelPolyline(front, shift(ring(0, Math.PI), 1));
   return { back, front };
 }

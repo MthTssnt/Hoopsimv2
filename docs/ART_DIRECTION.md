@@ -47,13 +47,19 @@ Ordres de grandeur à 30 px/m :
 - **Ballon tenu** : il est dessiné dans la main du sprite (point d'accroche de chaque image).
   Au lâcher, il rejoint sa position physique en ~80 ms, pour éviter un saut visible.
 
-| Joueur | Hauteur à l'écran (×1,1) | Tête |
-| --- | --- | --- |
-| 1,80 m | ~40 px | 14 px |
-| 2,00 m | ~45 px | 14 px |
-| 2,20 m | ~49 px | 14 px |
+- **Gabarits accentués** (demande de Matheo) : autour de 2 m, les écarts de taille sont
+  exagérés ×2,3 au dessin (`HEIGHT_EXAGGERATION`). Un pivot de 2,12 m dépasse ainsi un meneur
+  de 1,86 m d'environ une tête (13 px). La physique garde les vraies tailles.
 
-Cadre des sprites : **64×80 px**. Il couvre le plus grand joueur et le bras tendu du dunk ;
+| Joueur | Hauteur à l'écran (×1,1, écarts ×2,3) | Tête |
+| --- | --- | --- |
+| 1,80 m | ~35 px | 14 px |
+| 1,86 m (meneur type) | ~38 px | 14 px |
+| 2,00 m | ~45 px | 14 px |
+| 2,12 m (pivot type) | ~51 px | 14 px |
+| 2,20 m | ~55 px | 14 px |
+
+Bornes : 33 à 62 px. Cadre des sprites : **64×80 px**. Il couvre le plus grand joueur et le bras tendu du dunk ;
 les pieds sont au milieu du bord bas. Ballon : **8×8 px**.
 
 ## 4. Palette maîtresse (32 couleurs, la nôtre)
@@ -104,8 +110,11 @@ Règles :
 - **Style chibi** : la tête fait ~1/3 de la hauteur et le corps est trapu. Les épaules sont
   plus larges que le bassin.
 - **Visage lisible** (tête de 14×14 px) : deux yeux de 2×2 (blanc + pupille), sourcils,
-  oreille et nez dans l'ombre de la peau, bouche. Les joueurs sont vus de 3/4 et retournés
-  selon leur orientation.
+  bouche. Oreille et nez dans le ton d'ombre propre à chaque teint ; l'oreille est un trait
+  d'un pixel, pas un bloc (un carré de 2×2 faisait tache sur les teints clairs et foncés).
+- **Orientation** : les joueurs sont vus de 3/4. Tournés vers la gauche, ils ont leurs propres
+  images (le dessin est retourné, puis le numéro est reposé à l'endroit) : un sprite
+  simplement retourné afficherait des chiffres en miroir.
 - **Contour** : un pixel de la couleur `outline` autour de la silhouette entière, ajouté
   automatiquement après assemblage.
 - **Ombre au sol** : ovale sous les pieds ; elle reste au sol et rétrécit pendant le saut.
@@ -114,13 +123,15 @@ Règles :
 Taille : **petit** (< 1,93 m), **moyen** (1,93–2,05 m), **grand** (> 2,05 m).
 Corpulence : **léger** ou **lourd**, selon le poids rapporté à la taille.
 
-| | Léger | Lourd |
-| --- | --- | --- |
-| Torse | 12 px de large | 15 px de large |
-| Short | 12 px, 5 rangées | 15 px, 6 rangées |
-| Jambes | 3 px | 4 px |
+Largeur du torse et du short (colonne « étirable » des grilles) :
 
-Les grands ont des jambes et un torse plus longs (rangées « étirables » des grilles).
+| | Petit | Moyen | Grand |
+| --- | --- | --- | --- |
+| Léger | 12 px | 13 px | 14 px |
+| Lourd | 15 px | 16 px | 17 px |
+
+Bras et jambes font 3 px, et 4 px chez les grands ou les lourds. Les grands ont aussi des
+jambes et un torse plus longs (rangée « étirable » des grilles).
 
 ### Variété
 Tout est tiré de l'identifiant du joueur, déterministe :
@@ -137,8 +148,10 @@ Objectif : sur 200 joueurs générés, au moins 95 % d'apparences différentes.
 - **Maillot et short** : rampe primaire de l'équipe (clair, base, sombre) ; ceinture du
   short sombre.
 - **Col, emmanchures, bande latérale du short, liseré du bas et numéro** : rampe secondaire.
-  Le numéro (chiffres 3×5) est centré sur la partie du maillot que le bras avant ne couvre
-  pas.
+- **Numéro** : police de chiffres dédiée (`jerseyDigits.ts`), 5 rangées, « 1 » étroit de
+  2 px, 0/6/8/9 arrondis pour ne pas se confondre. Il commence une rangée sous le col (col rond,
+  sans encolure en V qui collerait au chiffre). Il est centré sur la partie du maillot que le
+  bras avant ne couvre pas, et ne peint que le maillot encore visible.
 - **Chaussures** : `ink` avec semelle `chalk`.
 - **Équipe à l'extérieur** : rampes inversées (maillot clair) si les deux équipes sont trop
   proches.
@@ -155,12 +168,16 @@ Objectif : sur 200 joueurs générés, au moins 95 % d'apparences différentes.
 ## 6. Panier et terrain
 - **Panier massif** :
   - socle et poteau rembourrés aux couleurs de l'équipe à domicile, cernés de sombre pour se
-    détacher de la bande de même couleur, bras métallique ;
+    détacher de la bande de même couleur, chapeau au sommet du poteau ;
+  - poutre métallique (contour, reflet) du poteau jusqu'au milieu de la planche, où elle passe
+    derrière le verre, avec jambe de force et platine : la planche ne flotte pas ;
   - planche transparente en perspective, avec cadre et carré de visée ; elle est dessinée en
     biais exagéré pour montrer sa face (vue strictement de côté, elle serait de chant) ;
-  - cercle épais, avec moitié arrière et moitié avant autour du ballon ;
-  - filet à mailles ;
-  - ombre du socle et de la planche au sol.
+  - cercle dessiné **1,35× plus grand** que le cercle physique (~19 px de large pour un ballon
+    de 8 px), moitié arrière sombre derrière le ballon, moitié avant épaisse devant ; la
+    physique garde le vrai rayon (à noter dans le contrat en S4) ;
+  - filet à mailles croisées ;
+  - ombres au sol d'un seul tenant : socle, bande sous la poutre, cercle.
 - **Terrain** :
   - parquet en lattes (3 tons de bois) ;
   - raquette et rond central aux couleurs de l'équipe à domicile, logo maison (abréviation
@@ -193,11 +210,13 @@ Tableau de score (156×34 px)              Carte du joueur contrôlé (176×36 p
   [DAL] = pastille aux couleurs              barre d'énergie + 3 stats
 ```
 
-- **Étiquette sous chaque joueur** (validé) : nom de famille seul, 8 lettres au plus, en
-  police 5×7 sur fond sombre. En 640×360, elle occupe la même place que la petite police 3×5
+- **Étiquette sous chaque joueur** (validé) : nom de famille seul et en entier (l'étiquette
+  prend la largeur du nom ; les noms générés font 10 lettres au plus), en police 5×7 sur fond
+  sombre. Aucun nom de famille n'apparaît deux fois dans une ligue, donc dans un match. En 640×360, elle occupe la même place que la petite police 3×5
   en 384×216. La petite police reste pour les indications discrètes (« D aide »). L'étiquette
   du joueur contrôlé est soulignée en `yellow`, avec un anneau `yellow` au sol.
-- **Texte de debug** : masqué par défaut, affiché par une touche.
+- **Texte de debug** : masqué par défaut, affiché par une touche ; la bande des 32 couleurs de
+  la palette n'apparaît qu'avec lui.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?
@@ -207,6 +226,6 @@ Tableau de score (156×34 px)              Carte du joueur contrôlé (176×36 p
 4. Lisible à l'échelle ×1 (capture sans zoom) ?
 
 ## 10. Ce qui reste à décider
-- Le dessin plus fin (têtes, visages, coiffures, corps, ballon), à valider sur `?style`.
+- Les corrections S3c (numéros, gabarits, oreille, étiquettes, panier), à valider sur `?style`.
 - Bandes noires en fenêtre : garder le plein écran (F), ou ajouter un réglage « remplir
   l'écran » en S4.

@@ -7,6 +7,8 @@ import { colorsFor, composeFrame, slotColor } from './compose';
 import { colorDistance, teamLook } from '../arena/draw';
 import { VISUAL_SCALE } from '../artConfig';
 import { bodyDims, FRAME, FRAMES, HEAD_SIZE } from './rig';
+import { drawJerseyNumber, JERSEY_DIGITS, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
+import { NUMBER_MIN_TORSO, NUMBER_TOP, numberZone } from './compose';
 
 const players = Object.values(createNewGame('bos', 11).players);
 const looks = players.map((p) => appearanceFor(p));
@@ -94,13 +96,22 @@ describe('sprites des joueurs', () => {
     expect(box(200, false, 1.4).top).toBeLessThan(box(200, false, 1.1).top);
   });
 
-  it('gardent la tête autour du tiers de la hauteur, et un joueur de 2 m vers 45 px', () => {
+  it('gardent une grosse tête (un quart à deux cinquièmes de la hauteur), et un joueur de 2 m vers 45 px', () => {
     for (const heightCm of [180, 200, 220]) {
       const dims = bodyDims(heightCm, false, VISUAL_SCALE);
-      expect(HEAD_SIZE / dims.height).toBeGreaterThan(0.25);
-      expect(HEAD_SIZE / dims.height).toBeLessThan(0.4);
+      expect(HEAD_SIZE / dims.height).toBeGreaterThan(0.24);
+      expect(HEAD_SIZE / dims.height).toBeLessThan(0.43);
     }
     expect(bodyDims(200, false, VISUAL_SCALE).height).toBe(45);
+  });
+
+  it('accentuent les gabarits : un pivot dépasse un meneur d’environ une tête et il est plus large', () => {
+    const box = (heightCm: number, heavy: boolean, number: number) =>
+      composeFrame({ ...looks[0], heightCm, heavy, number }, FRAMES[0], bodyDims(heightCm, heavy, VISUAL_SCALE)).canvas.bounds()!;
+    const guard = box(186, false, 12);
+    const center = box(212, true, 16);
+    expect(guard.top - center.top).toBeGreaterThanOrEqual(12);
+    expect(center.right - center.left - (guard.right - guard.left)).toBeGreaterThanOrEqual(4);
   });
 
   it('placent le ballon dans la main pendant le dribble et le tir', () => {
@@ -110,6 +121,35 @@ describe('sprites des joueurs', () => {
     expect(anchors[8]!.y).toBeGreaterThan(anchors[6]!.y); // ballon au sol plus bas que dans la main
     expect(anchors[13]!.y).toBeLessThan(anchors[12]!.y); // ballon levé au-dessus de la tête
     expect(anchors[14]).toBeNull(); // lâché
+  });
+});
+
+describe('numéros de maillot', () => {
+  it('ont 10 chiffres tous différents, de 5 rangées, avec un « 1 » étroit', () => {
+    expect(new Set(JERSEY_DIGITS.map((g) => g.join('/'))).size).toBe(10);
+    for (const glyph of JERSEY_DIGITS) expect(glyph).toHaveLength(5);
+    expect(JERSEY_DIGITS[1][0]).toHaveLength(2);
+  });
+
+  it('se lisent à l’endroit dans les deux orientations (jamais en miroir)', () => {
+    const expected: string[] = [];
+    drawJerseyNumber(12, 0, 0, (x, y) => void expected.push(`${x},${y}`));
+    for (const facing of ['right', 'left'] as const) {
+      const look = { ...looks[0], heightCm: 186, heavy: false, number: 12 };
+      const { canvas, numberAt } = composeFrame(look, FRAMES[0], bodyDims(186, false, VISUAL_SCALE), 'team', facing);
+      const drawn: string[] = [];
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < jerseyNumberWidth(12); x++) if (canvas.get(numberAt!.x + x, numberAt!.y + y) === 'S') drawn.push(`${x},${y}`);
+      }
+      expect(drawn.sort()).toEqual([...expected].sort());
+    }
+  });
+
+  it('tiennent tous (0 à 99) dans la zone visible du torse le plus étroit, sous le col', () => {
+    const narrowest = Math.min(...[180, 200, 220].flatMap((h) => [false, true].map((heavy) => bodyDims(h, heavy, VISUAL_SCALE).torsoWidth)));
+    for (let n = 0; n < 100; n++) expect(jerseyNumberWidth(n)).toBeLessThanOrEqual(numberZone(narrowest).width);
+    expect(NUMBER_TOP).toBeGreaterThanOrEqual(2); // une rangée de maillot entre le col et le chiffre
+    expect(NUMBER_MIN_TORSO).toBeLessThanOrEqual(bodyDims(170, false, VISUAL_SCALE).torso);
   });
 });
 

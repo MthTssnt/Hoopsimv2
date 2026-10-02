@@ -1,5 +1,6 @@
 import { HEAD_GRID } from '../../../assets/sprites/heads';
 import { ART_PX_PER_M_HEIGHT } from '../artConfig';
+import { heightClass } from './appearance';
 
 /** Cadre d'un sprite de joueur : pieds au milieu du bord bas (la rangée du sol est le contour sous la semelle). */
 export const FRAME = { width: 64, height: 80, centerX: 32, groundY: 79 } as const;
@@ -12,21 +13,49 @@ export const SOCK_Y = FRAME.groundY - SHOE_ROWS - 1;
 export interface BodyDims {
   height: number;
   torso: number;
+  torsoWidth: number;
   shorts: number;
   legs: number;
   arm: number;
   heavy: boolean;
-  /** Épaisseur des jambes (px). */
+  /** Épaisseur des jambes et des bras (px). */
   limb: number;
+  armWidth: number;
 }
 
+/**
+ * Exagération des écarts de taille au dessin, autour de 2 m : un pivot de 2,12 m dépasse un
+ * meneur de 1,86 m d'environ une tête. La physique garde les tailles réelles.
+ */
+export const HEIGHT_EXAGGERATION = 2.3;
+const REFERENCE_M = 2;
+
+/** Largeur du torse (et du short) selon la corpulence et la classe de taille. */
+const TORSO_WIDTH = {
+  light: { petit: 12, moyen: 13, grand: 14 },
+  heavy: { petit: 15, moyen: 16, grand: 17 },
+} as const;
+
 export function bodyDims(heightCm: number, heavy: boolean, scale: number): BodyDims {
-  const height = Math.max(34, Math.min(60, Math.round((heightCm / 100) * ART_PX_PER_M_HEIGHT * scale)));
+  const drawnM = REFERENCE_M + (heightCm / 100 - REFERENCE_M) * HEIGHT_EXAGGERATION;
+  const height = Math.max(33, Math.min(62, Math.round(drawnM * ART_PX_PER_M_HEIGHT * scale)));
+  const size = heightClass(heightCm);
+  const big = heavy || size === 'grand';
   const shorts = heavy ? 6 : 5;
   const rest = height - HEAD_SIZE - SHOE_ROWS - shorts;
   const torso = Math.max(heavy ? 8 : 7, Math.round(rest * 0.42));
   const legs = Math.max(5, rest - torso);
-  return { height, torso, shorts, legs, arm: torso + shorts - 2 + (heightCm > 205 ? 1 : 0), heavy, limb: heavy ? 4 : 3 };
+  return {
+    height,
+    torso,
+    torsoWidth: TORSO_WIDTH[heavy ? 'heavy' : 'light'][size],
+    shorts,
+    legs,
+    arm: torso + shorts - 2 + (heightCm > 205 ? 1 : 0),
+    heavy,
+    limb: big ? 4 : 3,
+    armWidth: big ? 4 : 3,
+  };
 }
 
 /** Jambe : genou [kx, ky] et pied [fx, lift], en fractions de la longueur de jambe. */

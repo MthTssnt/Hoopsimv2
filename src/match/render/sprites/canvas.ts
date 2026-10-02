@@ -105,6 +105,13 @@ export class SlotCanvas {
     for (const k of edges) this.px[k] = slot;
   }
 
+  /** Copie retournée horizontalement (x devient largeur - 1 - x). */
+  mirrored(): SlotCanvas {
+    const out = new SlotCanvas(this.width, this.height);
+    this.forEach((x, y, slot) => out.set(this.width - 1 - x, y, slot));
+    return out;
+  }
+
   /** Boîte englobante des pixels peints, ou null si le tampon est vide. */
   bounds(): { left: number; right: number; top: number; bottom: number } | null {
     let left = Infinity;

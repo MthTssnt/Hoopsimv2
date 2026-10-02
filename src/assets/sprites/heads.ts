@@ -83,7 +83,8 @@ export const HEADS: readonly (readonly string[])[] = [
 
 /**
  * 4 visages, 14×14, posés sur la tête : sourcils (cheveux sombres), deux yeux de 2×2 (blanc
- * + pupille, l'œil du fond plus près du bord), oreille et nez dans l'ombre de la peau, bouche.
+ * + pupille, l'œil du fond plus près du bord), bouche. L'oreille (un trait d'un pixel, pas un
+ * bloc qui ferait tache) et le nez prennent le ton d'ombre propre à chaque teint.
  */
 export const FACES: readonly (readonly string[])[] = [
   // calme
@@ -96,8 +97,8 @@ export const FACES: readonly (readonly string[])[] = [
     '.......HH..H..',
     '.......en..en.',
     '.......en..en.',
-    '...33.......3.',
-    '...33.........',
+    '...3........3.',
+    '...3..........',
     '.........oo...',
     '..............',
     '..............',
@@ -113,8 +114,8 @@ export const FACES: readonly (readonly string[])[] = [
     '........HH.HH.',
     '.......en..en.',
     '.......nn..nn.',
-    '...33.......3.',
-    '...33.........',
+    '...3........3.',
+    '...3..........',
     '........oooo..',
     '..............',
     '..............',
@@ -130,8 +131,8 @@ export const FACES: readonly (readonly string[])[] = [
     '.......HH..H..',
     '.......en..en.',
     '.......en..en.',
-    '...33.......3.',
-    '...33...o...o.',
+    '...3........3.',
+    '...3....o...o.',
     '.........ooo..',
     '..............',
     '..............',
@@ -147,8 +148,8 @@ export const FACES: readonly (readonly string[])[] = [
     '.......ee..e..',
     '.......en..en.',
     '.......en..en.',
-    '...33.......3.',
-    '...33.........',
+    '...3........3.',
+    '...3..........',
     '..........33..',
     '..............',
     '..............',
