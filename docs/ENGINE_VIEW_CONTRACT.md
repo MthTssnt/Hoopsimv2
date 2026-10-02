@@ -137,7 +137,11 @@ Règles décidées par Matheo, appliquées par `match/world/` (pas par `engine/`
   réaction en défense dépend de `perimeterDef` (et d'`interiorDef` près du cercle). Depuis le
   7b, son saut de contestation est une vraie tentative de contre. Elle anticipe en partie la
   course de l'attaquant (35 % de son temps de réaction), ne s'avance pas vers un attaquant déjà
-  sur elle, et reste plantée une fois le tireur en l'air.
+  sur elle, et reste plantée une fois le tireur en l'air. Depuis le 8, la même IA joue chaque
+  joueur non contrôlé (`ai/playerAi.ts`) : porteur (plan, passe au démarqué quand il est serré
+  ou après sa patience), sans ballon (écartement autour de l'arc, coupes), défense individuelle
+  (duels appariés au plus près à chaque possession, aide loin du ballon), rebond (les deux plus
+  proches de chaque équipe).
 
 ## Contre, faute et goaltending côté `match/` (incrément 7b, `world/defense.ts`)
 Décisions de Matheo, appliquées par `match/world/` ; `engine/` tranche avec `resolveBlock` et
@@ -164,6 +168,25 @@ Décisions de Matheo, appliquées par `match/world/` ; `engine/` tranche avec `r
   tireur n'avait pas ressorti), le ballon est frappé, puis comme après un panier.
 - **Mesures en partie IA contre IA** (10 min, 9 parties de contrôle) : contres réussis 5-11 %
   des tirs (surtout des layups), fautes 6-11 %, goaltending ~0, réussite globale 43-49 %.
+
+## Passes et demi-terrain en équipes (incrément 8, `world/passing.ts`, `world/halfCourt.ts`)
+- **Passe** : entièrement côté `match/` en 8 (le moteur n'interviendra qu'au 9, pour
+  l'interception) :
+  - cible : le coéquipier le plus aligné avec la direction tenue (sinon l'orientation), dans un
+    cône de 60° ; à angle voisin, le plus proche ;
+  - trajectoire tendue de poitrine à poitrine, en avance sur la course du receveur (avance
+    plafonnée à 3 m), à 10-14 m/s selon la stat de passe ;
+  - seuls les coéquipiers du passeur peuvent l'attraper ; ratée, elle devient un ballon libre au
+    premier rebond (ou après 1,6 s) ;
+  - au sol seulement, 0,25 s entre deux passes ; la dernière passe attrapée est notée pour la
+    future passe décisive.
+- **Demi-terrain en équipes** : points, ressortie et vainqueur par équipe ; une obligation de
+  ressortir due le reste jusqu'à ce qu'un joueur de l'équipe tienne le ballon derrière l'arc
+  (une passe reçue derrière l'arc compte) ; un panier non valable donne le ballon à l'adversaire
+  le plus proche. La contestation, les contres et les fautes ne considèrent que les adversaires.
+- **Contrôle** (décision de Matheo) : il suit le ballon dans ton équipe (au lâcher d'une passe,
+  au ramassage) ; quand l'adversaire prend le ballon, tu prends ton défenseur le plus proche du
+  ballon ; en défense, Passe te fait changer pour lui.
 
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate

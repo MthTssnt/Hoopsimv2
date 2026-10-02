@@ -23,7 +23,8 @@ import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type Ho
 import { solveDunk } from '../physics/dunk';
 import { armContact, bodyContact, DEFENSE_FLOW, inGoaltendZone, swatVelocity } from './defense';
 import { solveShot } from '../physics/shotSolver';
-import { isCleared, mustClearAfterPickup, newOneOnOne, ONE_ON_ONE, startPositions, type OneOnOneState } from './oneOnOne';
+import { defaultTarget, HALF_COURT, isCleared, mustClearAfterPickup, newHalfCourt, startPositions, type HalfCourtState } from './halfCourt';
+import { leadPoint, PASS_FLOW, passSpeed, passTarget, passVelocity } from './passing';
 import { createPlayerBody, PLAYER_TUNING, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
 import { attacksRim, dunkFinish, dunkJumpHeight, layupFinish, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
 
@@ -157,10 +158,23 @@ export interface ShotSettings {
   speed: ShotSpeed;
 }
 
-/** Ce que le monde reçoit à chaque pas pour un joueur : direction, appui et relâche de Tir. */
+/** Ce que le monde reçoit à chaque pas pour un joueur : direction, appui et relâche de Tir, passe. */
 export interface WorldInput extends MoveInput {
   /** Tir relâché à ce pas. */
   release?: boolean;
+  /** Passe demandée à ce pas (en défense, pour le joueur contrôlé : changer de défenseur). */
+  pass?: boolean;
+}
+
+/** Passe en vol : seuls les coéquipiers du passeur peuvent l'attraper (l'interception arrive au 9). */
+export interface PassFlight {
+  passer: number;
+  receiver: number;
+  team: number;
+  /** Point visé (poitrine du receveur à l'arrivée) et temps de vol prévu (s). */
+  target: Vec3;
+  time: number;
+  elapsed: number;
 }
 
 const IDLE_INPUT: WorldInput = { x: 0, y: 0, jump: false };
@@ -170,6 +184,11 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 export class MatchWorld {
   court: Court;
   readonly players: PlayerBody[] = [];
+  /** Équipe de chaque joueur : 0 pour toi et tes coéquipiers, 1 pour l'adversaire. */
+  readonly team: number[] = [0];
+  /** Ton équipe : le contrôle passe d'un de ses joueurs à l'autre. */
+  readonly userTeam = 0;
+  /** Joueur que tu contrôles : le porteur en attaque, le défenseur le plus proche du ballon en défense. */
   controlled = 0;
   ball: BallState;
   /** Index du joueur qui tient le ballon, ou null s'il est libre. */
@@ -177,10 +196,18 @@ export class MatchWorld {
   /** Tir en cours (en l'air, ballon pas encore lâché, ou dunk jusqu'à l'atterrissage). */
   shot: ActiveShot | null = null;
   lastShot: ShotRecord | null = null;
-  /** Points marqués par chaque joueur (vrais tirs seulement). */
+  /** Points marqués par chaque équipe (vrais tirs seulement). */
   points: number[] = [0];
-  /** Règles du 1 contre 1, ou null pour un joueur seul (panier le plus proche, pas de règle). */
-  rules: OneOnOneState | null = null;
+  /** Règles du demi-terrain, ou null pour un joueur seul (panier le plus proche, pas de règle). */
+  rules: HalfCourtState | null = null;
+  /** Passe en vol, ou null. */
+  pass: PassFlight | null = null;
+  /** Dernière passe attrapée (pour la future passe décisive) : passeur, receveur, instant (s). */
+  lastPass: { passer: number; receiver: number; time: number } | null = null;
+  /** Temps de jeu écoulé depuis la création du monde (s). */
+  clock = 0;
+  /** Possession : équipe qui a le ballon (ou l'a eu en dernier) et depuis quand (s). */
+  possession: { team: number; since: number } | null = null;
   shotSettings: ShotSettings;
   /** Le joueur a lâché le ballon pendant son saut en cours (pose de la retombée du tir). */
   readonly followThrough: boolean[] = [];
@@ -188,6 +215,7 @@ export class MatchWorld {
   private dribbleTime = 0;
   private cooldown = 0;
   private play: Play | null = null;
+  private passCooldown = 0;
   /** Le tir en vol a déjà touché le cercle ou la planche (plus de goaltending possible). */
   private rimTouched = false;
 
@@ -210,14 +238,60 @@ export class MatchWorld {
   }
 
   /**
-   * Passe en 1 contre 1 sur le panier de droite contre `opponent` : chacun à sa place de départ,
-   * ballon au joueur 0, score à 0-0.
+   * Demi-terrain sur le panier de droite : `home` (ton équipe, joueurs 0…n-1) contre `away`
+   * (joueurs n…2n-1). Chacun à sa place de départ, ballon au joueur 0, score à 0-0.
    */
-  startOneOnOne(opponent: Player, target: number = ONE_ON_ONE.target): void {
-    if (this.players.length < 2) this.players.push(createPlayerBody(opponent, { x: 0, y: 0, z: 0 }, this.player.timeToApex));
-    else this.setAthlete(opponent, 1);
-    this.rules = newOneOnOne(this.players.length, target);
+  startTeams(home: readonly Player[], away: readonly Player[], target: number = defaultTarget(home.length)): void {
+    const timeToApex = this.players[0]?.timeToApex ?? gaugeTime(this.shotSettings.speed);
+    this.players.length = 0;
+    this.team.length = 0;
+    this.followThrough.length = 0;
+    [...home, ...away].forEach((athlete, i) => {
+      this.players.push(createPlayerBody(athlete, { x: 0, y: 0, z: 0 }, timeToApex));
+      this.team.push(i < home.length ? 0 : 1);
+    });
+    this.rules = newHalfCourt(2, target);
     this.resetGame();
+  }
+
+  /** 1 contre 1 : ton joueur contre `opponent`. */
+  startOneOnOne(opponent: Player, target: number = defaultTarget(1)): void {
+    this.startTeams([this.players[0].athlete], [opponent], target);
+  }
+
+  /** Joueurs par équipe. */
+  get perTeam(): number {
+    return this.team.filter((t) => t === 0).length;
+  }
+
+  /** Coéquipiers du joueur `i` (sans lui). */
+  teammatesOf(i: number): number[] {
+    return this.players.map((_, j) => j).filter((j) => j !== i && this.team[j] === this.team[i]);
+  }
+
+  /** Adversaires du joueur `i`. */
+  opponentsOf(i: number): number[] {
+    return this.players.map((_, j) => j).filter((j) => this.team[j] !== this.team[i]);
+  }
+
+  /** Joueurs d'une équipe, dans l'ordre. */
+  membersOf(team: number): number[] {
+    return this.players.map((_, j) => j).filter((j) => this.team[j] === team);
+  }
+
+  /** Joueur de `team` le plus proche d'un point (au sol). */
+  nearestOf(team: number, point: { x: number; y: number }, except: number | null = null): number | null {
+    let best: number | null = null;
+    let bestDist = Infinity;
+    for (const j of this.membersOf(team)) {
+      if (j === except) continue;
+      const d = Math.hypot(this.players[j].pos.x - point.x, this.players[j].pos.y - point.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = j;
+      }
+    }
+    return best;
   }
 
   /** Panier visé : celui de droite en 1 contre 1, sinon le plus proche. */
@@ -259,7 +333,7 @@ export class MatchWorld {
     const shooter = this.players[index].pos;
     let best: (Contest & { player: Player }) | null = null;
     this.players.forEach((body, i) => {
-      if (i === index) return;
+      if (this.team[i] === this.team[index]) return;
       const dx = body.pos.x - shooter.x;
       const dy = body.pos.y - shooter.y;
       const distance = Math.hypot(dx, dy);
@@ -291,6 +365,8 @@ export class MatchWorld {
    */
   step(dt: number, inputs: WorldInput | readonly WorldInput[]): void {
     let list: readonly WorldInput[] = Array.isArray(inputs) ? inputs : [inputs as WorldInput];
+    this.clock += dt;
+    this.passCooldown = Math.max(0, this.passCooldown - dt);
     if (this.rules && this.rules.winner !== null) {
       this.rules.pause -= dt;
       if (this.rules.pause <= 0) this.resetGame();
@@ -329,6 +405,15 @@ export class MatchWorld {
     this.checkFoul();
     this.cooldown = Math.max(0, this.cooldown - dt);
 
+    // Passe du porteur, au sol et hors tir ; en défense, le joueur contrôlé change de défenseur.
+    if (this.holder !== null && this.shot === null) {
+      const input = list[this.holder] ?? IDLE_INPUT;
+      if (input.pass && this.passCooldown <= 0 && !this.players[this.holder].airborne) this.passBall(this.holder, input);
+    }
+    const mine = list[this.controlled];
+    const defending = this.holder === null ? this.pass === null || this.pass.team !== this.userTeam : this.team[this.holder] !== this.userTeam;
+    if (mine?.pass && defending && this.rules && !this.rules.restart) this.switchDefender();
+
     if (this.shot) {
       const shooter = this.players[this.shot.shooter];
       const input = list[this.shot.shooter] ?? IDLE_INPUT;
@@ -344,14 +429,21 @@ export class MatchWorld {
       this.dribbleTime = holder.airborne ? 0 : this.dribbleTime + dt;
       this.ball.pos = this.handPosition(holder);
       this.ball.vel = { ...holder.vel };
-      // 1 contre 1 : tenir le ballon derrière l'arc le « ressort ».
-      if (this.rules?.mustClear[this.holder] && isCleared(this.court, this.court.hoops.right, holder.pos)) {
-        this.rules.mustClear[this.holder] = false;
+      // Demi-terrain : tenir le ballon derrière l'arc le « ressort » pour toute l'équipe.
+      const team = this.team[this.holder];
+      if (this.rules?.mustClear[team] && isCleared(this.court, this.court.hoops.right, holder.pos)) {
+        this.rules.mustClear[team] = false;
       }
       return;
     }
 
+    if (this.pass) {
+      this.pass.elapsed += dt;
+      if (this.pass.elapsed > PASS_FLOW.maxFlight) this.pass = null;
+    }
     for (const event of stepBall(this.ball, this.court, dt)) {
+      // Passe ratée : au premier rebond, c'est un ballon libre.
+      if (event.type === 'floor' && this.pass) this.pass = null;
       const shot = this.lastShot;
       if (!shot || shot.live !== null) continue;
       if (event.type === 'rim' || event.type === 'board') this.rimTouched = true;
@@ -379,17 +471,24 @@ export class MatchWorld {
         this.markMissed(shot);
         return;
       }
-      const other = (shot.shooter + 1) % this.players.length;
+      // Ballon à l'adversaire le plus proche, dont l'équipe doit ressortir.
+      const otherTeam = 1 - this.team[shot.shooter];
+      const other = this.nearestOf(otherTeam, this.ball.pos) ?? 0;
       this.holder = other;
       this.dribbleTime = 0;
-      rules.mustClear[other] = true;
-      rules.lastHolder = other;
+      this.pass = null;
+      rules.mustClear[otherTeam] = true;
+      rules.mustClear[this.team[shot.shooter]] = false;
+      rules.lastTeam = otherTeam;
+      this.possession = { team: otherTeam, since: this.clock };
+      this.followPossession(other);
       return;
     }
-    this.points[shot.shooter] += shot.three ? 3 : 2;
-    if (rules && rules.winner === null && this.points[shot.shooter] >= rules.target) {
-      rules.winner = shot.shooter;
-      rules.pause = ONE_ON_ONE.endPause;
+    const team = this.team[shot.shooter];
+    this.points[team] += shot.three ? 3 : 2;
+    if (rules && rules.winner === null && this.points[team] >= rules.target) {
+      rules.winner = team;
+      rules.pause = HALF_COURT.endPause;
     }
   }
 
@@ -406,7 +505,7 @@ export class MatchWorld {
       return;
     }
     for (let i = 0; i < this.players.length; i++) {
-      if (i === play.shooter) continue;
+      if (this.team[i] === this.team[play.shooter]) continue;
       const defender = this.players[i];
       const contact = bodyContact(defender, shooter);
       if (!contact) continue;
@@ -434,7 +533,7 @@ export class MatchWorld {
     const blockable = rising && shot.block === null && !play.foul?.called;
     if (!goaltend && !blockable) return;
     for (let i = 0; i < this.players.length; i++) {
-      if (i === shot.shooter) continue;
+      if (this.team[i] === this.team[shot.shooter]) continue;
       const body = this.players[i];
       if (!body.airborne) continue;
       const contact = armContact(body.pos, body.athlete.heightCm, reach(body.athlete), this.ball.pos);
@@ -479,31 +578,88 @@ export class MatchWorld {
     this.rules.restart = { shooter, pause: DEFENSE_FLOW.foulPause };
   }
 
-  /** Remise en jeu après une faute : le tireur en haut de la raquette avec le ballon, l'autre en défense. */
+  /** Remise en jeu après une faute : le tireur en haut de la raquette avec le ballon, son équipe autour, l'autre en défense. */
   private restartPlay(shooter: number): void {
     const rules = this.rules!;
-    const { attacker, defender } = startPositions(this.court, this.court.hoops.right);
-    this.placeForRestart(shooter, attacker, defender);
-    rules.mustClear = this.players.map(() => false);
-    rules.lastHolder = shooter;
+    this.placeTeams(shooter);
+    rules.mustClear = rules.mustClear.map(() => false);
+    rules.lastTeam = this.team[shooter];
     rules.restart = null;
+    this.possession = { team: this.team[shooter], since: this.clock };
     this.holder = shooter;
     this.ball = { pos: this.handPosition(this.players[shooter]), vel: { x: 0, y: 0, z: 0 } };
+    this.followPossession(shooter);
   }
 
-  /** Place l'attaquant `holder` et les autres en défense, immobiles, sans tir en cours. */
-  private placeForRestart(holder: number, attacker: Vec3, defender: Vec3): void {
-    this.players.forEach((body, i) => {
-      body.pos = { ...(i === holder ? attacker : defender) };
+  /**
+   * Place l'équipe de `holder` en attaque (lui en haut, les autres sur les ailes, derrière l'arc)
+   * et l'autre en défense, chacun devant son attaquant ; tous immobiles, sans tir ni passe.
+   */
+  private placeTeams(holder: number): void {
+    const attack = this.team[holder];
+    const { attackers, defenders } = startPositions(this.court, this.court.hoops.right, this.perTeam);
+    const att = [holder, ...this.membersOf(attack).filter((j) => j !== holder)];
+    const def = this.membersOf(1 - attack);
+    const place = (i: number, pos: Vec3, facing: 1 | -1) => {
+      const body = this.players[i];
+      body.pos = { ...pos };
       body.vel = { x: 0, y: 0, z: 0 };
       body.airborne = false;
-      body.facing = i === holder ? 1 : -1;
+      body.facing = facing;
       this.followThrough[i] = false;
-    });
+    };
+    att.forEach((i, k) => place(i, attackers[k % attackers.length], 1));
+    def.forEach((i, k) => place(i, defenders[k % defenders.length], -1));
     this.endShot();
     this.play = null;
+    this.pass = null;
     this.dribbleTime = 0;
     this.cooldown = 0;
+  }
+
+  /**
+   * Le contrôle suit le ballon : un joueur de ton équipe qui prend le ballon devient le joueur
+   * contrôlé ; si c'est l'adversaire, tu prends ton défenseur le plus proche du ballon.
+   */
+  private followPossession(holder: number): void {
+    if (this.team[holder] === this.userTeam) this.controlled = holder;
+    else this.controlled = this.nearestOf(this.userTeam, this.ball.pos) ?? this.controlled;
+  }
+
+  /** En défense (E) : tu passes au défenseur le plus proche du ballon (le suivant si c'est déjà toi). */
+  private switchDefender(): void {
+    const nearest = this.nearestOf(this.userTeam, this.ball.pos);
+    if (nearest === null) return;
+    this.controlled = nearest !== this.controlled ? nearest : (this.nearestOf(this.userTeam, this.ball.pos, this.controlled) ?? nearest);
+  }
+
+  /**
+   * Passe tendue vers le coéquipier visé (direction tenue, sinon l'orientation) : de poitrine à
+   * poitrine, en avance sur sa course. Ton équipe : tu prends le receveur dès le lâcher.
+   */
+  private passBall(passer: number, input: WorldInput): void {
+    const body = this.players[passer];
+    const mates = this.teammatesOf(passer).map((index) => ({ index, pos: this.players[index].pos }));
+    const dir = input.x !== 0 || input.y !== 0 ? { x: input.x, y: input.y } : { x: body.facing, y: 0 };
+    const receiver = passTarget(body.pos, dir, mates);
+    if (receiver === null) return;
+    const target = this.players[receiver];
+    const speed = passSpeed(body.athlete.attrs.passing);
+    const chest = (p: PlayerBody) => p.pos.z + (p.athlete.heightCm / 100) * PASS_FLOW.chestRatio;
+    const aim = leadPoint(body.pos, target, chest(target), speed);
+    // Le ballon part devant la poitrine, déjà hors du corps du passeur.
+    const dx = aim.x - body.pos.x;
+    const dy = aim.y - body.pos.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const from = { x: body.pos.x + (dx / d) * WORLD_TUNING.bodyRadius, y: body.pos.y + (dy / d) * WORLD_TUNING.bodyRadius, z: chest(body) };
+    const { vel, time } = passVelocity(from, aim, speed);
+    this.ball = { pos: from, vel };
+    this.holder = null;
+    this.cooldown = 0;
+    this.passCooldown = PASS_FLOW.cooldown;
+    body.facing = dx >= 0 ? 1 : -1;
+    this.pass = { passer, receiver, team: this.team[passer], target: aim, time, elapsed: 0 };
+    if (this.team[passer] === this.userTeam) this.controlled = receiver;
   }
 
   /** Deux joueurs ne se chevauchent jamais : on les écarte à parts égales. */
@@ -712,7 +868,10 @@ export class MatchWorld {
     const { pos } = this.ball;
     let picker: number | null = null;
     let best = Infinity;
+    const pass = this.pass;
     this.players.forEach((body, index) => {
+      // Passe en vol : seuls les coéquipiers du passeur (pas lui) peuvent l'attraper.
+      if (pass && (this.team[index] !== pass.team || index === pass.passer)) return;
       const dist = Math.hypot(pos.x - body.pos.x, pos.y - body.pos.y);
       const reachable = pos.z <= body.pos.z + reach(body.athlete) + WORLD_TUNING.pickupReachMargin;
       if (dist <= WORLD_TUNING.pickupRadius && reachable && dist < best) {
@@ -723,6 +882,15 @@ export class MatchWorld {
     if (picker === null) return;
     this.holder = picker;
     this.dribbleTime = 0;
+    const pickerTeam = this.team[picker];
+    if (pass) {
+      // Passe attrapée : la ressortie due ne change pas (une réception derrière l'arc la lève).
+      this.lastPass = { passer: pass.passer, receiver: picker, time: this.clock };
+      this.pass = null;
+      this.passCooldown = PASS_FLOW.cooldown;
+      this.followPossession(picker);
+      return;
+    }
     const shot = this.lastShot;
     // Rattrapé avant de toucher le parquet (rebond pris en l'air, ballon sous le filet) : le tir est
     // jugé là.
@@ -732,20 +900,28 @@ export class MatchWorld {
     }
     if (this.rules?.restart) return;
     if (this.rules) {
+      const rules = this.rules;
       const afterBasket = !!shot && shot.scored && !shot.invalid;
-      this.rules.mustClear[picker] = mustClearAfterPickup(picker, this.rules.lastHolder, afterBasket);
-      this.rules.lastHolder = picker;
+      // Après un panier ou un ballon pris à l'adversaire : l'équipe doit ressortir. Une
+      // obligation déjà due le reste (rebond offensif sur un tir qui n'avait pas ressorti).
+      if (mustClearAfterPickup(pickerTeam, rules.lastTeam, afterBasket)) rules.mustClear[pickerTeam] = true;
+      if (rules.lastTeam !== null && rules.lastTeam !== pickerTeam) rules.mustClear[rules.lastTeam] = false;
+      rules.lastTeam = pickerTeam;
     }
+    if (this.possession?.team !== pickerTeam) this.possession = { team: pickerTeam, since: this.clock };
+    this.followPossession(picker);
   }
 
-  /** 1 contre 1 : 0-0, positions de départ, ballon au joueur 0 qui n'a rien à ressortir. */
+  /** Demi-terrain : 0-0, positions de départ, ballon au joueur 0 qui n'a rien à ressortir. */
   private resetGame(): void {
     const rules = this.rules!;
-    const { attacker, defender } = startPositions(this.court, this.court.hoops.right);
-    this.placeForRestart(0, attacker, defender);
-    this.points = this.players.map(() => 0);
-    rules.mustClear = this.players.map(() => false);
-    rules.lastHolder = 0;
+    this.placeTeams(0);
+    this.points = [0, 0];
+    rules.mustClear = [false, false];
+    rules.lastTeam = 0;
+    this.controlled = 0;
+    this.lastPass = null;
+    this.possession = { team: 0, since: this.clock };
     rules.winner = null;
     rules.pause = 0;
     rules.restart = null;
@@ -785,6 +961,7 @@ export class MatchWorld {
     }
     this.endShot();
     this.play = null;
+    this.pass = null;
     this.ball = { pos: { ...start }, vel: velocity };
     this.holder = null;
     this.cooldown = WORLD_TUNING.pickupCooldown;

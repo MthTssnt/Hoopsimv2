@@ -272,6 +272,13 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     PARTIE À 0-0 » en petite police ;
   - étiquettes : quand les deux joueurs sont côte à côte, les étiquettes s'écartent chacune de
     son côté au lieu de se chevaucher ; seule la tienne est soulignée.
+- **Équipes (incrément 8)** :
+  - l'anneau jaune, l'étiquette soulignée et la carte du HUD suivent le joueur contrôlé ; au
+    changement de joueur, l'anneau clignote ~0,25 s pour qu'on le repère ;
+  - les étiquettes de tous les joueurs s'écartent entre elles (jamais de chevauchement) ;
+  - pose de passe provisoire : l'image 14 (bras du lâcher) pendant 0,15 s, au sol ; une vraie
+    pose de passe viendra en phase 3 ;
+  - ton équipe en tenue de l'arène, l'adversaire en tenue extérieure (`contrastingTeam`).
 - **Défense (7b)** : « CONTRE » (`yellow`) au-dessus du contreur, avec la même secousse que le
   dunk ; « FAUTE » (`red`) au-dessus du défenseur, dès le contact ; « GOALTENDING » (`yellow`)
   au-dessus du panier. Comme NON VALABLE, ils montent de 4 px et s'effacent en 1,5 s, et
