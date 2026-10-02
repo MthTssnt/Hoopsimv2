@@ -1,10 +1,10 @@
 import { HAIR_COLORS, PALETTE, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
 import { SHOES, SHORTS, TORSOS, stretch, widen } from '../../../assets/sprites/body';
-import { FACES, HAIR_OFFSET, HAIRS, HEADS } from '../../../assets/sprites/heads';
+import { EXPRESSIONS, HAIRS, HEADS, type Expression } from '../../../assets/sprites/heads';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
 import type { Appearance } from './appearance';
 import { SlotCanvas, type Slot } from './canvas';
-import { FRAME, HEAD_SIZE, SOCK_Y, type ArmPose, type BodyDims, type FrameDef, type LegPose } from './rig';
+import { bodyLayout, FRAME, HEAD_SIZE, type ArmPose, type BodyDims, type FrameDef, type LegPose } from './rig';
 
 /** Tenue : celle de l'équipe, ou le maillot rayé (générique) de l'arbitre. */
 export type Kit = 'team' | 'referee';
@@ -27,106 +27,129 @@ function refereeRemap(slot: Slot, x: number): Slot {
   return JERSEY.has(slot) ? (x % 2 === 0 ? 'w' : 'k') : slot;
 }
 
-function drawLeg(c: SlotCanvas, hip: Point, pose: LegPose, dims: BodyDims, skin: Slot, heavy: boolean): void {
-  const L = dims.legs;
-  const foot = { x: Math.round(hip.x + pose.foot[0] * L), y: Math.round(SOCK_Y - pose.foot[1] * L) };
-  const knee = { x: Math.round(hip.x + pose.knee[0] * L), y: Math.round(hip.y + pose.knee[1] * (foot.y - hip.y)) };
-  c.line(hip.x, hip.y, knee.x, knee.y, dims.limb, skin);
-  c.line(knee.x, knee.y, foot.x, foot.y, dims.limb, skin);
-  c.rect(foot.x - Math.floor((dims.limb - 1) / 2), foot.y - 1, dims.limb, 2, 'w');
-  c.stamp(SHOES[heavy ? 'heavy' : 'light'], foot.x - 1, foot.y + 1);
-}
-
-function drawArm(c: SlotCanvas, shoulder: Point, pose: ArmPose, dims: BodyDims, skin: Slot): Point {
-  const length = dims.arm;
-  const elbow = { x: Math.round(shoulder.x + pose.elbow[0] * length), y: Math.round(shoulder.y + pose.elbow[1] * length) };
-  const hand = { x: Math.round(shoulder.x + pose.hand[0] * length), y: Math.round(shoulder.y + pose.hand[1] * length) };
-  c.line(shoulder.x, shoulder.y, elbow.x, elbow.y, dims.armWidth, skin);
-  c.line(elbow.x, elbow.y, hand.x, hand.y, dims.armWidth, skin);
-  c.rect(hand.x - 1, hand.y - 1, 4, 4, skin);
-  return hand;
-}
-
-/** Rangée du haut du numéro : une rangée de maillot le sépare du col (rangée 0). */
+/** Rangée du haut du numéro : la rangée 0 est le col, la 1 reste libre. */
 export const NUMBER_TOP = 2;
 
-/**
- * Zone du numéro sur le torse (colonnes relatives) : entre le bord gauche et le bras avant,
- * qui couvre les 4 dernières colonnes quand il pend le long du corps.
- */
+/** Zone du numéro sur le torse (colonnes relatives) : toute la poitrine, hors bords. */
 export function numberZone(torsoWidth: number): { left: number; width: number } {
-  return { left: 1, width: torsoWidth - 5 };
+  return { left: 1, width: torsoWidth - 2 };
 }
 
 /** Hauteur de torse minimale pour porter un numéro sans déborder sur le short. */
 export const NUMBER_MIN_TORSO = NUMBER_TOP + JERSEY_DIGIT_HEIGHT;
 
 /**
- * Assemble une image du joueur par couches (bras et jambe arrière, short, torse, tête, visage,
- * coiffure, jambe et bras avant), puis l'entoure d'un contour. Tourné vers la droite.
+ * Un membre dans son propre calque, entouré de son propre contour : un bras qui passe devant le
+ * maillot reste séparé de lui par un trait sombre (contour de chaque côté).
+ */
+function limb(points: Point[], thickness: number, slot: Slot, extra?: (c: SlotCanvas) => void): SlotCanvas {
+  const c = new SlotCanvas(FRAME.width, FRAME.height);
+  for (let i = 1; i < points.length; i++) c.line(points[i - 1].x, points[i - 1].y, points[i].x, points[i].y, thickness, slot);
+  extra?.(c);
+  c.outline('o');
+  return c;
+}
+
+/** Bras : épaule → coude → main (main de 2×2 au bout du trait de 2 px). `side` = -1 à gauche, +1 à droite. */
+function arm(shoulder: Point, pose: ArmPose, side: 1 | -1, skin: Slot): { layer: SlotCanvas; hand: Point } {
+  const at = ([dx, dy]: [number, number]): Point => ({ x: shoulder.x + side * dx, y: shoulder.y + dy });
+  const hand = at(pose.hand);
+  return { layer: limb([shoulder, at(pose.elbow), hand], 2, skin), hand };
+}
+
+/** Jambe : hanche → genou → chaussette, puis chaussure. `side` = -1 à gauche, +1 à droite. */
+function leg(hip: Point, pose: LegPose, side: 1 | -1, dims: BodyDims, shoeTop: number, skin: Slot): SlotCanvas {
+  const sockY = shoeTop - 1 - pose.lift;
+  const knee = { x: hip.x + side * pose.knee, y: Math.round((hip.y + sockY) / 2) };
+  const foot = { x: hip.x + side * pose.foot, y: sockY };
+  const off = Math.floor((dims.limb - 1) / 2);
+  return limb([hip, knee, foot], dims.limb, skin, (c) => {
+    c.rect(foot.x - off, sockY, dims.limb, 1, 'w');
+    c.stamp(SHOES[dims.heavy || dims.build === 'pivot' ? 'heavy' : 'light'], foot.x - off, sockY + 1);
+  });
+}
+
+/** Tête complète (forme, cheveux, expression) dans son calque, avec son contour fermé. */
+export function headLayer(look: Appearance, expression: Expression, left: number, top: number, width: number = FRAME.width, height: number = FRAME.height): SlotCanvas {
+  const c = new SlotCanvas(width, height);
+  c.stamp(HEADS[look.head], left, top);
+  const hair = HAIRS[look.hair];
+  c.stamp(hair.grid, left, top, { clip: hair.clip });
+  c.stamp(EXPRESSIONS[expression], left, top);
+  c.outline('o');
+  return c;
+}
+
+/**
+ * Assemble une image du joueur vu de face, par calques : bras et jambe arrière, jambe avant,
+ * short, torse et numéro, bras avant, tête et cou, puis contour général. Le bras et la jambe
+ * « avant » sont du côté droit de l'image ; tourné vers la gauche, l'image est retournée et le
+ * numéro reposé à l'endroit.
  */
 export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, kit: Kit = 'team', facing: Facing = 'right'): ComposedFrame {
   let c = new SlotCanvas(FRAME.width, FRAME.height);
-  const cx = FRAME.centerX;
   const weight = dims.heavy ? 'heavy' : 'light';
   const remap = kit === 'referee' ? refereeRemap : undefined;
+  const L = bodyLayout(dims, frame.bob);
+  const W = dims.torsoWidth;
+  const cx = FRAME.centerX;
 
-  const torsoWidth = dims.torsoWidth;
-  const hipY = SOCK_Y - dims.legs + frame.bob;
-  const backHip = { x: cx - Math.round(torsoWidth * 0.25), y: hipY };
-  const frontHip = { x: cx + Math.round(torsoWidth * 0.18), y: hipY };
-  const shortsRows = widen(SHORTS[weight].rows, SHORTS[weight].stretchCol, torsoWidth);
-  const shortsTop = hipY - dims.shorts + 3;
-  const torsoRows = widen(stretch(TORSOS[weight], dims.torso), TORSOS[weight].stretchCol, torsoWidth);
-  const torsoLeft = cx - Math.floor(torsoWidth / 2);
-  const torsoTop = shortsTop - torsoRows.length;
-  const headTop = torsoTop - HEAD_SIZE;
-  const backShoulder = { x: torsoLeft + 2, y: torsoTop + 2 };
-  const frontShoulder = { x: torsoLeft + torsoWidth - 3, y: torsoTop + 2 };
+  // Jambes : hanches sous le short, 2 px d'écart entre les deux.
+  const off = Math.floor((dims.limb - 1) / 2);
+  const backHip = { x: cx - 2 - (dims.limb - off), y: L.shortsBottom };
+  const frontHip = { x: cx + 1 + off, y: L.shortsBottom };
+  const backShoulder = { x: L.torsoLeft - 3, y: L.torsoTop };
+  const frontShoulder = { x: L.torsoRight + 2, y: L.torsoTop };
 
-  drawArm(c, backShoulder, frame.back, dims, '3');
-  drawLeg(c, backHip, frame.legs.back, dims, '3', dims.heavy);
-  drawLeg(c, frontHip, frame.legs.front, dims, '2', dims.heavy);
-  c.stamp(shortsRows, cx - Math.floor(shortsRows[0].length / 2), shortsTop, { remap: kit === 'referee' ? () => 'k' : undefined });
-  c.stamp(torsoRows, torsoLeft, torsoTop, { remap });
-  const headLeft = cx - Math.floor(HEAD_SIZE / 2) + 1;
-  c.stamp(HEADS[look.head], headLeft, headTop);
-  c.stamp(FACES[look.face], headLeft, headTop);
-  const hair = HAIRS[look.hair];
-  c.stamp(hair.grid, headLeft + HAIR_OFFSET.x, headTop + HAIR_OFFSET.y, { clip: hair.clip });
-  const hand = drawArm(c, frontShoulder, frame.front, dims, '2');
+  const backArm = arm(backShoulder, frame.back, -1, '3');
+  c.composite(backArm.layer);
+  c.composite(leg(backHip, frame.legs.back, -1, dims, L.shoeTop, '3'));
+  c.composite(leg(frontHip, frame.legs.front, 1, dims, L.shoeTop, '2'));
+  const shortsRows = widen(stretch(SHORTS[weight], SHORTS[weight].rows.length), SHORTS[weight].stretchCol, W);
+  c.stamp(shortsRows, cx - Math.floor(shortsRows[0].length / 2), L.shortsTop, { remap: kit === 'referee' ? () => 'k' : undefined });
+  c.stamp(widen(stretch(TORSOS[weight], dims.torso), TORSOS[weight].stretchCol, W), L.torsoLeft, L.torsoTop, { remap });
+  const frontArm = arm(frontShoulder, frame.front, 1, '2');
+  const head = headLayer(look, frame.expression, cx - HEAD_SIZE / 2, L.headTop);
+  c.composite(head);
+  // Cou : une rangée de peau entre le menton et le col, par-dessus le contour du menton.
+  c.rect(cx - 2, L.neckY, 4, 1, '3');
+  c.composite(frontArm.layer);
   c.outline('o');
 
   // Tourné vers la gauche : on retourne le dessin, puis on pose le numéro à l'endroit (un sprite
   // simplement retourné afficherait des chiffres en miroir). Le numéro ne peint que le maillot
-  // encore visible, donc le bras ou la tête qui passent devant le cachent toujours.
+  // encore visible, donc un bras qui passe devant le cache toujours.
   const mirror = facing === 'left';
   if (mirror) c = c.mirrored();
   let numberAt: ComposedFrame['numberAt'] = null;
   if (kit === 'team') {
-    const zone = numberZone(torsoWidth);
-    const zoneLeft = mirror ? FRAME.width - 1 - (torsoLeft + zone.left + zone.width - 1) : torsoLeft + zone.left;
+    const zone = numberZone(W);
+    const zoneLeft = mirror ? FRAME.width - 1 - (L.torsoLeft + zone.left + zone.width - 1) : L.torsoLeft + zone.left;
     const x = zoneLeft + Math.floor((zone.width - jerseyNumberWidth(look.number)) / 2);
-    numberAt = { x, y: torsoTop + NUMBER_TOP };
-    drawJerseyNumber(look.number, x, torsoTop + NUMBER_TOP, (px, py) => {
+    numberAt = { x, y: L.torsoTop + NUMBER_TOP };
+    drawJerseyNumber(look.number, x, L.torsoTop + NUMBER_TOP, (px, py) => {
       const under = c.get(px, py);
       if (under === 'p' || under === 'P' || under === 'q') c.set(px, py, 'S');
     });
   }
 
   let ball: ComposedFrame['ball'] = null;
+  const hand = frontArm.hand;
   switch (frame.ball) {
     case 'hand':
-      ball = { x: hand.x + 4, y: hand.y + 2 };
-      break;
-    case 'overhead':
-      ball = { x: hand.x + 1, y: hand.y - 4 };
+      ball = { x: hand.x + 2, y: hand.y + 4 };
       break;
     case 'dribbleMid':
-      ball = { x: hand.x + 4, y: Math.round((hand.y + FRAME.groundY - 5) / 2) };
+      ball = { x: hand.x + 2, y: Math.round((hand.y + FRAME.groundY - 3) / 2) };
       break;
     case 'dribbleLow':
-      ball = { x: hand.x + 4, y: FRAME.groundY - 5 };
+      ball = { x: hand.x + 2, y: FRAME.groundY - 3 };
+      break;
+    case 'chest':
+      ball = { x: Math.round((hand.x + backArm.hand.x) / 2) + 1, y: hand.y + 1 };
+      break;
+    case 'overhead':
+      ball = { x: hand.x + 1, y: hand.y - 3 };
       break;
   }
   if (ball && mirror) ball = { x: FRAME.width - 1 - ball.x, y: ball.y };

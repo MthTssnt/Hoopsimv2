@@ -18,7 +18,8 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Décisions sur `?style` : cadrage de 384×216 / 18 px/m gardé, joueurs ×1,1, étiquettes au nom de famille
 - ✅ Style S3b. `?style` en 640×360 à 30 px/m (même cadrage, 1,67× plus de pixels), sprites redessinés plus fins, plein écran (F)
 - ✅ Style S3c. Numéros lisibles (police dédiée, jamais en miroir), gabarits accentués, oreille, étiquettes complètes, noms uniques dans la ligue, panier ancré, palette en debug
-- 🔄 Validation à l'œil de S3c, puis S4 (style appliqué à `MatchScene`)
+- ✅ Style S3d. Sprites refaits selon les règles chiffrées de Matheo (tête 14×14, torse 8, bras de 2 px cernés, gabarits −2/+3 rangées, visage de face, 3 expressions), retour en 480×270 à 22,5 px/m, vues gros plan et poses dans `?style`
+- 🔄 Validation à l'œil de S3d (et comparaison avec la planche v2), puis S4 (style appliqué à `MatchScene`)
 - ⬜ Style S4. Style appliqué au match (avant l'incrément 5)
 - ⬜ 5. Tir avec jauge + layup
 - ⬜ 6. Dunk simple

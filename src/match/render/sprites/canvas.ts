@@ -93,16 +93,28 @@ export class SlotCanvas {
     }
   }
 
-  /** Entoure toute la silhouette d'un pixel de contour (voisinage à 4). */
+  /**
+   * Entoure la silhouette d'un pixel de contour (voisinage à 4). Les pixels déjà en contour ne
+   * sont pas entourés à leur tour : un calque déjà cerné ne prend pas un second trait.
+   */
   outline(slot: Slot = 'o'): void {
     const edges: number[] = [];
+    const fill = (x: number, y: number) => {
+      const v = this.get(x, y);
+      return v !== null && v !== slot;
+    };
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         if (this.get(x, y)) continue;
-        if (this.get(x - 1, y) || this.get(x + 1, y) || this.get(x, y - 1) || this.get(x, y + 1)) edges.push(y * this.width + x);
+        if (fill(x - 1, y) || fill(x + 1, y) || fill(x, y - 1) || fill(x, y + 1)) edges.push(y * this.width + x);
       }
     }
     for (const k of edges) this.px[k] = slot;
+  }
+
+  /** Recopie par-dessus les pixels peints d'un autre tampon de même taille (calque). */
+  composite(layer: SlotCanvas): void {
+    layer.forEach((x, y, slot) => this.set(x, y, slot));
   }
 
   /** Copie retournée horizontalement (x devient largeur - 1 - x). */

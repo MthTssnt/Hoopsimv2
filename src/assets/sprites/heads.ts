@@ -1,348 +1,223 @@
 /**
- * Têtes, visages et coiffures des joueurs : grilles de pixels originales, indexées sur les
- * emplacements de couleur (voir `src/match/render/sprites/canvas.ts`). Tête vue de 3/4,
- * tournée vers la droite ; lumière en haut à gauche.
- *   1/2/3 peau claire/base/ombre · h/H cheveux base/ombre · e blanc de l'œil · n pupille
- *   o trait sombre · S couleur secondaire de l'équipe (bandeau)
+ * Têtes, coiffures et expressions des joueurs : grilles de pixels originales, indexées sur les
+ * emplacements de couleur (voir `src/match/render/sprites/canvas.ts`). Tête vue de face
+ * (symétrique), lumière en haut à gauche : la seule ombre de peau est sur le côté droit.
+ * Intérieur de 12×12, cheveux compris ; le contour automatique en fait 14×14.
+ *   1/2/3 peau claire/base/ombre · h/H cheveux base/ombre · w blanc · n trait sombre
+ *   S couleur secondaire de l'équipe (bandeau)
  */
 
-/** Côté d'une tête (px). */
-export const HEAD_GRID = 14;
+/** Côté intérieur d'une tête (px), sans le contour. */
+export const HEAD_GRID = 12;
 
-/** 4 formes de tête, 14×14. */
+/** 5 formes de tête, 12×12 (le haut est en général couvert par les cheveux). */
 export const HEADS: readonly (readonly string[])[] = [
-  // rond
+  // ronde
   [
-    '....111122....',
-    '..1111222222..',
-    '.111122222222.',
-    '.112222222222.',
-    '11122222222222',
-    '11222222222222',
-    '12222222222222',
-    '12222222222222',
-    '22222222222223',
-    '22222222222223',
-    '.222222222223.',
-    '.222222222233.',
-    '..2222222233..',
-    '....333333....',
+    '...111122...',
+    '.1111222222.',
+    '.11222222222',
+    '122222222223',
+    '122222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '.2222222223.',
+    '.2222222233.',
+    '...222233...',
   ],
-  // long
+  // carrée
   [
-    '....11122.....',
-    '...1111222....',
-    '..1112222222..',
-    '..1122222222..',
-    '.112222222222.',
-    '.122222222222.',
-    '.122222222222.',
-    '.222222222222.',
-    '.222222222223.',
-    '.222222222223.',
-    '.222222222223.',
-    '..2222222223..',
-    '..2222222233..',
-    '....3333333...',
+    '.1111122222.',
+    '111122222222',
+    '112222222222',
+    '122222222223',
+    '122222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '222222222233',
+    '.222222233..',
   ],
-  // carré
+  // longue
   [
-    '..1111122222..',
-    '.111112222222.',
-    '11112222222222',
-    '11222222222222',
-    '12222222222222',
-    '12222222222222',
-    '22222222222222',
-    '22222222222222',
-    '22222222222222',
-    '22222222222223',
-    '22222222222223',
-    '22222222222233',
-    '22222222222233',
-    '.333333333333.',
+    '...111122...',
+    '..11122222..',
+    '.1122222222.',
+    '.1222222223.',
+    '122222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '.222222222..',
+    '.222222223..',
+    '..22222233..',
+    '...222233...',
   ],
   // large
   [
-    '......1122....',
-    '...111122222..',
-    '..111222222222',
-    '.1112222222222',
-    '11122222222222',
-    '11222222222222',
-    '12222222222222',
-    '22222222222222',
-    '22222222222222',
-    '22222222222223',
-    '22222222222223',
-    '.222222222233.',
-    '..22222222233.',
-    '....3333333...',
+    '..11112222..',
+    '.1112222222.',
+    '112222222222',
+    '122222222223',
+    '122222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '.2222222233.',
+    '..22222233..',
+  ],
+  // ovale
+  [
+    '...111122...',
+    '..11122222..',
+    '.1122222222.',
+    '.1222222223.',
+    '122222222223',
+    '122222222223',
+    '222222222223',
+    '222222222223',
+    '222222222223',
+    '.2222222223.',
+    '..22222223..',
+    '...222233...',
   ],
 ];
 
+export type Expression = 'neutre' | 'concentree' | 'joyeuse';
+
 /**
- * 4 visages, 14×14, posés sur la tête : sourcils (cheveux sombres), deux yeux de 2×2 (blanc
- * + pupille, l'œil du fond plus près du bord), bouche. L'oreille (un trait d'un pixel, pas un
- * bloc qui ferait tache) et le nez prennent le ton d'ombre propre à chaque teint.
+ * Expressions, posées par-dessus la tête et les cheveux. Yeux : 2×2 de blanc et une colonne
+ * d'iris côté intérieur, 2 px d'écart, sur la même rangée. Sourcils : 3 px au-dessus de chaque
+ * œil. Nez : 1 px d'ombre de peau. Bouche : ligne fermée de 4 px (sourire avec dents seulement
+ * pour « joyeuse »). Aucun pixel sombre sur les joues.
  */
-export const FACES: readonly (readonly string[])[] = [
-  // calme
-  [
-    '..............',
-    '..............',
-    '..............',
-    '..............',
-    '..............',
-    '.......HH..H..',
-    '.......en..en.',
-    '.......en..en.',
-    '...3........3.',
-    '...3..........',
-    '.........oo...',
-    '..............',
-    '..............',
-    '..............',
+export const EXPRESSIONS: Readonly<Record<Expression, readonly string[]>> = {
+  neutre: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '..nnn..nnn..',
+    '..wwn..nww..',
+    '..wwn..nww..',
+    '............',
+    '......3.....',
+    '....nnnn....',
+    '............',
+    '............',
   ],
-  // déterminé
-  [
-    '..............',
-    '..............',
-    '..............',
-    '..............',
-    '.......H......',
-    '........HH.HH.',
-    '.......en..en.',
-    '.......nn..nn.',
-    '...3........3.',
-    '...3..........',
-    '........oooo..',
-    '..............',
-    '..............',
-    '..............',
+  concentree: [
+    '............',
+    '............',
+    '............',
+    '..n......n..',
+    '...nn..nn...',
+    '..wwn..nww..',
+    '..wwn..nww..',
+    '............',
+    '......3.....',
+    '....nnnn....',
+    '............',
+    '............',
   ],
-  // souriant
-  [
-    '..............',
-    '..............',
-    '..............',
-    '..............',
-    '..............',
-    '.......HH..H..',
-    '.......en..en.',
-    '.......en..en.',
-    '...3........3.',
-    '...3....o...o.',
-    '.........ooo..',
-    '..............',
-    '..............',
-    '..............',
+  joyeuse: [
+    '............',
+    '............',
+    '............',
+    '..nnn..nnn..',
+    '............',
+    '..wwn..nww..',
+    '..wwn..nww..',
+    '............',
+    '......3.....',
+    '...nwwwwn...',
+    '....nnnn....',
+    '............',
   ],
-  // grands yeux
-  [
-    '..............',
-    '..............',
-    '..............',
-    '..............',
-    '.......HHH.HH.',
-    '.......ee..e..',
-    '.......en..en.',
-    '.......en..en.',
-    '...3........3.',
-    '...3..........',
-    '..........33..',
-    '..............',
-    '..............',
-    '..............',
-  ],
-];
+};
+
+/** Rangées occupées par les yeux dans une expression (pour les tests et le gros plan). */
+export const EYE_ROWS = [5, 6] as const;
 
 export interface HairStyle {
   name: string;
-  /** 18×18, posée 2 px à gauche et 3 px au-dessus de la tête. */
+  /** 12×12, dans la même boîte que la tête. */
   grid: readonly string[];
   /** Coiffure plaquée : ne peint que sur la tête (pas de volume qui dépasse). */
   clip: boolean;
 }
 
-/** Décalage de la grille de coiffure par rapport au coin haut-gauche de la tête. */
-export const HAIR_OFFSET = { x: -2, y: -3 } as const;
+const EMPTY = '............';
 
-const EMPTY = '..................';
-
-/** 8 coiffures. */
+/** 10 coiffures, toutes dans la boîte de 12×12 : la tête, cheveux compris, fait 14×14 avec le contour. */
 export const HAIRS: readonly HairStyle[] = [
   {
     name: 'ras',
     clip: true,
-    grid: [
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      '..HHHHHHHHHHHHHH..',
-      '..HHhHHHHhHHHHHH..',
-      '..HHHHHhHHHHHH....',
-      '..HHhHHHH.........',
-      '..HHHHHH..........',
-      '..HHhH............',
-      '..HHH.............',
-      '..HH..............',
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-    ],
+    grid: ['HHHHHHHHHHHH', 'HhHHHHhHHHHH', 'HHHHhHHHHHhH', 'HH........HH', 'H..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'court',
     clip: false,
-    grid: [
-      EMPTY,
-      '.....hhhhhhh......',
-      '...hhhhhhhhhhh....',
-      '..hhhhhhhhhhhhhh..',
-      '.hhhhhhhhhhhhhhhH.',
-      '.hhhhhhhhhHHHHHH..',
-      '.hhhhhhhHH........',
-      '.hhhhhHH..........',
-      '.hhhhH............',
-      '.hhhH.............',
-      '..hH..............',
-      '..H...............',
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-    ],
+    grid: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hh........HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'afro',
     clip: false,
-    grid: [
-      '.....hhhhhhh......',
-      '...hhhhhhhhhhh....',
-      '..hhhhhhhhhhhhhh..',
-      '.hhhhhhhhhhhhhhhh.',
-      'hhhhhhhhhhhhhhhhhh',
-      'hhhhhhhhhhhhhhhhH.',
-      'hhhhhhhhhhhHHHH...',
-      'hhhhhhhhhH........',
-      'hhhhhhhhH.........',
-      'hhhhhhhH..........',
-      'hhhhhhH...........',
-      '.hhhhH............',
-      '..hhH.............',
-      '...H..............',
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-    ],
+    grid: ['.hhhhhhhhhh.', 'hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'hhhhhhhhhhHH', 'hhh......hHH', 'hh........HH', 'hh........HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'tresses',
     clip: true,
-    grid: [
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      '..hHhHhHhHhHhHhH..',
-      '..hHhHhHhHhHhHhH..',
-      '..hHhHhHhHhHhH....',
-      '..hHhHhHh.........',
-      '..hHhHhH..........',
-      '..hHhH............',
-      '..hHh.............',
-      '..hH..............',
-      '..h...............',
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-    ],
+    grid: ['hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hHhHhHhHhHhH', 'hH........hH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'chignon',
     clip: false,
-    grid: [
-      '..HhhH............',
-      '.hhhhhh...........',
-      '.hhhhhhhhhh.......',
-      '..hhhhhhhhhhhh....',
-      '..hhhhhhhhhhhhH...',
-      '..hhhhhhhHHHH.....',
-      '..hhhhHH..........',
-      '..hhhH............',
-      '..hhH.............',
-      '..hH..............',
-      '..H...............',
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-    ],
+    grid: ['....HhhH....', '..hhhhhhhh..', 'hhhhhhhhhhhH', 'hh..hhhh..HH', 'h..........H', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'bandeau',
     clip: true,
-    grid: [
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      '..HHHHHHHHHHHHHH..',
-      '..HHhHHHHhHHHHHH..',
-      '..HHHHHHHHHHHH....',
-      '..SSSSSSSSSSSSSSSS',
-      '..SSSSSSSSSSSSSSSS',
-      '..HHhH............',
-      '..HHH.............',
-      '..HH..............',
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      EMPTY,
-    ],
+    grid: ['hhhhhhhhhhhh', 'hhhhhhhhhhhH', 'SSSSSSSSSSSS', 'hh........HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'chauve',
     clip: true,
-    grid: [EMPTY, EMPTY, EMPTY, EMPTY, '.......11.........', '......11..........', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+    grid: [EMPTY, '...11.......', '..11........', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+  },
+  {
+    name: 'frange',
+    clip: false,
+    grid: ['..hhhhhhhh..', '.hhhhhhhhhh.', 'hhhhhhhhhhhH', 'hhhhhhh..hHH', 'hhh.......HH', 'h..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+  },
+  {
+    name: 'degrade',
+    clip: true,
+    grid: ['hhhhhhhhhhhh', 'hhhhhhhhhhhh', 'HhhhhhhhhhhH', 'H..........H', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
   },
   {
     name: 'barbe',
     clip: true,
     grid: [
+      'HHHHHHHHHHHH',
+      'HhHHHHhHHHHH',
+      'HHHHhHHHHHhH',
+      'HH........HH',
+      'H..........H',
       EMPTY,
       EMPTY,
-      EMPTY,
-      '..HHHHHHHHHHHHHH..',
-      '..HHhHHHHhHHHHHH..',
-      '..HHHHHhHHHHHH....',
-      '..HHhHHHH.........',
-      '..HHHHHH..........',
-      '..HHhH............',
-      '..HHH.............',
-      '..HH..............',
-      '..hhh.............',
-      '..hhh.....hhhhh...',
-      '..hhhhhhh.....hh..',
-      '..hhhhhhhhhhhhhh..',
-      '...hhhhhhhhhhhh...',
-      '.....hhhhhhhhh....',
-      EMPTY,
+      'h..........h',
+      'hh........hh',
+      'hhh......hhh',
+      'hhhh....hhhh',
+      '.hhhhhhhhhh.',
     ],
   },
 ];

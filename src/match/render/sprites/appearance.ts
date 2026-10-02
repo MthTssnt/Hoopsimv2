@@ -1,5 +1,5 @@
 import { HAIR_COLORS, SKIN_TONES } from '../../../assets/palette';
-import { FACES, HAIRS, HEADS } from '../../../assets/sprites/heads';
+import { HAIRS, HEADS } from '../../../assets/sprites/heads';
 import { hashSeed, Rng } from '../../../engine/rng';
 
 /** Apparence d'un joueur : déterministe, tirée de son identifiant et de son physique. */
@@ -9,7 +9,6 @@ export interface Appearance {
   heightClass: 'petit' | 'moyen' | 'grand';
   skin: number;
   head: number;
-  face: number;
   hair: number;
   hairColor: number;
   number: number;
@@ -48,7 +47,6 @@ export function appearanceFor(player: AppearanceSource): Appearance {
     heightClass: heightClass(player.heightCm),
     skin,
     head: rng.int(0, HEADS.length - 1),
-    face: rng.int(0, FACES.length - 1),
     hair: rng.int(0, HAIRS.length - 1),
     hairColor: Math.min(HAIR_COLORS.length - 1, pickHairColor(rng, skin, player.age)),
     number: player.number,
@@ -57,5 +55,5 @@ export function appearanceFor(player: AppearanceSource): Appearance {
 
 /** Ce qui distingue deux joueurs à l'œil (hors numéro de maillot). */
 export function appearanceSignature(a: Appearance): string {
-  return [a.heightClass, a.heavy ? 'lourd' : 'léger', a.skin, a.head, a.face, a.hair, a.hairColor].join('/');
+  return [a.heightClass, a.heavy ? 'lourd' : 'léger', a.skin, a.head, a.hair, a.hairColor].join('/');
 }

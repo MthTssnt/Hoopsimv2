@@ -3,15 +3,15 @@ import Phaser from 'phaser';
 import { ART_VIEW } from './render/artConfig';
 import { StyleScene } from './scenes/StyleScene';
 
-/** Plus grand facteur entier qui fait tenir 640×360 dans la fenêtre (pixels toujours nets). */
+/** Plus grand facteur entier qui fait tenir 480×270 dans la fenêtre (pixels toujours nets). */
 function integerZoom(): number {
   return Math.max(1, Math.floor(Math.min(window.innerWidth / ART_VIEW.width, window.innerHeight / ART_VIEW.height)));
 }
 
 /**
- * Scène `?style` : validation à l'œil de la direction artistique, en 640×360 mis à l'échelle
- * entière. F bascule en plein écran (×3 en 1080p, alors qu'une fenêtre de navigateur n'offre
- * souvent que ×2).
+ * Scène `?style` : validation à l'œil de la direction artistique, en 480×270 mis à l'échelle
+ * entière. F bascule en plein écran (×4 en 1080p, alors qu'une fenêtre de navigateur n'offre
+ * souvent que ×3).
  */
 export default function StyleGame() {
   const parentRef = useRef<HTMLDivElement>(null);

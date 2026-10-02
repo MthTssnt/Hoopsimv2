@@ -1,8 +1,8 @@
 /**
- * Corps des joueurs : torses, shorts et chaussures, en grilles originales indexées sur les
- * emplacements de couleur. Deux corpulences (léger / lourd) ; la taille s'obtient en répétant
- * la rangée « étirable » du torse, la largeur en répétant sa colonne étirable (les jambes et
- * les bras sont tracés par le rig).
+ * Corps des joueurs vus de face : torses, shorts et chaussures, en grilles originales indexées
+ * sur les emplacements de couleur. Deux corpulences (léger / lourd) ; les gabarits plus grands
+ * répètent la rangée « étirable » du torse, les plus larges sa colonne étirable (bras et
+ * jambes, de longueur fixe, sont tracés par le rig).
  *   p/P/q équipe primaire claire/base/sombre · S secondaire (col, liseré) · k encre · w craie
  */
 
@@ -14,43 +14,33 @@ export interface StretchGrid {
   stretchCol: number;
 }
 
-/** Torses de base (largeur minimale de chaque corpulence) ; col rond, sans encolure en V qui collerait au numéro. */
+/**
+ * Torse vu de face, à la largeur et à la hauteur minimales (meneur léger : 10×7) ; col rond sur
+ * la rangée du haut, emmanchures aux deux coins, une rangée libre avant le numéro, ourlet sombre.
+ */
 export const TORSOS: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
   light: {
     stretchRow: 2,
-    stretchCol: 3,
-    rows: ['spPPPSSSPPPs', 'spPPPPPPPPqs', 'pPPPPPPPPPPq', 'pPPPPPPPPPPq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'qqPPPPPPPqqq'],
+    stretchCol: 2,
+    rows: ['sPPSSSSPPs', 'sPPPPPPPPs', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'qqPPPPPPqq'],
   },
   heavy: {
     stretchRow: 2,
-    stretchCol: 4,
-    rows: [
-      '.spPPPSSSPPPPs.',
-      'spPPPPPPPPPPPqs',
-      'pPPPPPPPPPPPPPq',
-      'pPPPPPPPPPPPPPq',
-      'pPPPPPPPPPPPPqq',
-      'pPPPPPPPPPPPPqq',
-      'pPPPPPPPPPPPqqq',
-      '.qqPPPPPPPPqqq.',
-    ],
+    stretchCol: 2,
+    rows: ['sPPPSSSSPPs', 'sPPPPPPPPPs', 'pPPPPPPPPPq', 'pPPPPPPPPPq', 'pPPPPPPPPPq', 'pPPPPPPPPqq', 'qqPPPPPPPqq'],
   },
 };
 
-/** Short : ceinture sombre, bande latérale, liseré du bas ouvert entre les jambes. */
+/** Short de 3 rangées : ceinture sombre, bandes latérales, liseré du bas ouvert entre les jambes. */
 export const SHORTS: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
-  light: { stretchRow: 1, stretchCol: 3, rows: ['qqqqqqqqqqqq', 'psPPPPPPPPPq', 'psPPPPqPPPPq', 'psPPP..PPPPq', 'SSSSS..SSSSS'] },
-  heavy: {
-    stretchRow: 1,
-    stretchCol: 3,
-    rows: ['qqqqqqqqqqqqqqq', 'psPPPPPPPPPPPPq', 'psPPPPPPPPPPPPq', 'psPPPPPqPPPPPPq', 'psPPPP..PPPPPPq', 'SSSSSS..SSSSSSS'],
-  },
+  light: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqq', 'psPPPPPPsq', 'SSSS..SSSS'] },
+  heavy: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqqq', 'psPPPPPPPsq', 'SSSS...SSSS'] },
 };
 
-/** Chaussure tournée vers la droite (dessus encre, semelle craie), 3 rangées. */
+/** Chaussure (2 rangées : dessus encre, semelle craie), la pointe vers la droite. */
 export const SHOES: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
-  light: ['kkkkk.', 'kkkkkk', 'wwwwww'],
-  heavy: ['kkkkkk.', 'kkkkkkk', 'wwwwwww'],
+  light: ['kkkk.', 'wwwww'],
+  heavy: ['kkkkk.', 'wwwwww'],
 };
 
 /** Allonge une grille en répétant sa rangée étirable jusqu'à `height` rangées. */

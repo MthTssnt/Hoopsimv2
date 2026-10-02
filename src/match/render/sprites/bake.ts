@@ -16,7 +16,6 @@ export interface BakedPlayer {
 }
 
 export interface BakeOptions {
-  scale: number;
   primary: TeamRamp;
   secondary: TeamRamp;
   kit?: Kit;
@@ -37,7 +36,7 @@ export function animationKey(key: string, name: AnimationName, facing: Facing): 
  * posées ici.
  */
 export function bakePlayer(scene: Phaser.Scene, key: string, look: Appearance, options: BakeOptions): BakedPlayer {
-  const dims = bodyDims(look.heightCm, look.heavy, options.scale);
+  const dims = bodyDims(look.heightCm, look.heavy);
   const colors: SlotColors = colorsFor(look, options.primary, options.secondary);
   const count = FRAMES.length * FACINGS.length;
   const width = FRAME.width * count;

@@ -1,11 +1,9 @@
 import type Phaser from 'phaser';
 import { PALETTE } from '../../../assets/palette';
-import { FACES, HAIR_OFFSET, HAIRS, HEADS } from '../../../assets/sprites/heads';
 import type { TeamLook } from '../arena/draw';
-import { drawText, GLYPH_H, textWidth } from '../pixelFont';
+import { drawSmallText, drawText, GLYPH_H, SMALL_H, smallTextWidth, textWidth } from '../pixelFont';
 import type { Appearance } from '../sprites/appearance';
-import { SlotCanvas } from '../sprites/canvas';
-import { colorsFor, slotColor } from '../sprites/compose';
+import { colorsFor, headLayer, slotColor } from '../sprites/compose';
 
 /** Postes en abrégé, en français. */
 export const POSITION_SHORT: Record<string, string> = { PG: 'MEN', SG: 'ARR', SF: 'AIL', PF: 'AF', C: 'PIV' };
@@ -18,11 +16,11 @@ function panel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, 
 
 /** Pastille aux couleurs d'une équipe avec son abréviation. */
 function chip(g: Phaser.GameObjects.Graphics, team: TeamLook, x: number, y: number): number {
-  const w = textWidth(team.abbr) + 6;
-  g.fillStyle(team.primary[2]).fillRect(x, y, w, 11);
-  g.fillStyle(team.primary[1]).fillRect(x, y, w, 10);
+  const w = textWidth(team.abbr) + 4;
+  g.fillStyle(team.primary[2]).fillRect(x, y, w, GLYPH_H + 3);
+  g.fillStyle(team.primary[1]).fillRect(x, y, w, GLYPH_H + 2);
   g.fillStyle(team.secondary[0]);
-  drawText(g, team.abbr, x + 3, y + 2);
+  drawText(g, team.abbr, x + 2, y + 1);
   return w;
 }
 
@@ -36,37 +34,31 @@ export interface ScoreboardData {
   shotClock: number;
 }
 
-/** Tableau de score compact (haut à gauche) : pastilles + scores en grand, puis période, chrono et horloge des tirs. */
+/** Tableau de score compact (haut à gauche) : pastilles + scores, puis période, chrono et horloge des tirs. */
 export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: number, d: ScoreboardData): void {
-  const w = 156;
-  panel(g, x, y, w, 34);
-  let cx = x + 4;
-  cx += chip(g, d.home, cx, y + 5) + 4;
+  const w = 116;
+  panel(g, x, y, w, 25);
+  let cx = x + 3;
+  cx += chip(g, d.home, cx, y + 3) + 3;
   g.fillStyle(PALETTE.chalk);
-  drawText(g, String(d.homeScore), cx, y + 3, 2);
+  drawText(g, String(d.homeScore), cx, y + 4);
   cx = x + w / 2 + 2;
-  cx += chip(g, d.away, cx, y + 5) + 4;
-  drawText(g, String(d.awayScore), cx, y + 3, 2);
-  drawText(g, `QT${d.period}`, x + 5, y + 23);
+  cx += chip(g, d.away, cx, y + 3) + 3;
+  drawText(g, String(d.awayScore), cx, y + 4);
+  drawText(g, `QT${d.period}`, x + 4, y + 15);
   g.fillStyle(PALETTE.yellow);
-  drawText(g, d.clock, x + 40, y + 23);
+  drawText(g, d.clock, x + 30, y + 15);
   g.fillStyle(PALETTE.silver);
   const shot = `TIR ${d.shotClock}`;
-  drawText(g, shot, x + w - 5 - textWidth(shot), y + 23);
+  drawText(g, shot, x + w - 4 - textWidth(shot), y + 15);
 }
 
-/** Taille du portrait (px) : tête, visage et coiffure dans un carré. */
-export const PORTRAIT_SIZE = 22;
+/** Taille du portrait (px) : la tête 14×14, contour compris, avec une marge. */
+export const PORTRAIT_SIZE = 16;
 
-/** Portrait (tête, visage, coiffure) dessiné à partir de l'apparence du joueur. */
+/** Portrait (tête, cheveux, expression neutre) dessiné à partir de l'apparence du joueur. */
 export function drawPortrait(g: Phaser.GameObjects.Graphics, look: Appearance, team: TeamLook, x: number, y: number): void {
-  const c = new SlotCanvas(PORTRAIT_SIZE, PORTRAIT_SIZE);
-  const head = { x: 4, y: 6 };
-  c.stamp(HEADS[look.head], head.x, head.y);
-  c.stamp(FACES[look.face], head.x, head.y);
-  const hair = HAIRS[look.hair];
-  c.stamp(hair.grid, head.x + HAIR_OFFSET.x, head.y + HAIR_OFFSET.y, { clip: hair.clip });
-  c.outline('o');
+  const c = headLayer(look, 'neutre', 2, 2, PORTRAIT_SIZE, PORTRAIT_SIZE);
   const colors = colorsFor(look, team.primary, team.secondary);
   c.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px, y + py, 1, 1));
 }
@@ -82,31 +74,31 @@ export interface PlayerCardData {
 
 /** Carte du joueur contrôlé (bas à gauche) : portrait, nom, poste, énergie, statistiques. */
 export function drawPlayerCard(g: Phaser.GameObjects.Graphics, x: number, y: number, d: PlayerCardData): void {
-  const w = 176;
-  panel(g, x, y, w, 36);
-  g.fillStyle(d.team.primary[1]).fillRect(x + 4, y + 4, 26, 28);
-  g.fillStyle(d.team.primary[2]).fillRect(x + 4, y + 26, 26, 6);
-  drawPortrait(g, d.look, d.team, x + 6, y + 6);
-  const tx = x + 36;
+  const w = 150;
+  panel(g, x, y, w, 28);
+  g.fillStyle(d.team.primary[1]).fillRect(x + 3, y + 3, PORTRAIT_SIZE + 2, 22);
+  g.fillStyle(d.team.primary[2]).fillRect(x + 3, y + 19, PORTRAIT_SIZE + 2, 6);
+  drawPortrait(g, d.look, d.team, x + 4, y + 4);
+  const tx = x + PORTRAIT_SIZE + 9;
   g.fillStyle(PALETTE.chalk);
-  drawText(g, d.name, tx, y + 5);
+  drawText(g, d.name, tx, y + 4);
   g.fillStyle(PALETTE.yellow);
-  drawText(g, d.position, x + w - 5 - textWidth(d.position), y + 5);
-  g.fillStyle(PALETTE.outline).fillRect(tx, y + 15, 64, 4);
-  g.fillStyle(PALETTE.green).fillRect(tx, y + 15, Math.round(64 * d.energy), 4);
+  drawText(g, d.position, x + w - 4 - textWidth(d.position), y + 4);
+  g.fillStyle(PALETTE.outline).fillRect(tx, y + 13, 52, 3);
+  g.fillStyle(PALETTE.green).fillRect(tx, y + 13, Math.round(52 * d.energy), 3);
   g.fillStyle(PALETTE.silver);
-  drawText(g, d.stats, tx, y + 24);
+  drawText(g, d.stats, tx, y + 18);
 }
 
-/** Étiquette de nom sous un joueur ; celle du joueur contrôlé est soulignée en jaune. */
+/** Étiquette de nom sous un joueur, en petite police 3×5 ; celle du joueur contrôlé est soulignée en jaune. */
 export function createNameLabel(scene: Phaser.Scene, key: string, name: string, controlled: boolean): void {
   if (scene.textures.exists(key)) scene.textures.remove(key);
-  const w = textWidth(name) + 6;
-  const h = GLYPH_H + 4;
+  const w = smallTextWidth(name) + 4;
+  const h = SMALL_H + 2;
   const g = scene.add.graphics();
   g.fillStyle(PALETTE.navy, 0.8).fillRect(1, 0, w - 2, h).fillRect(0, 1, w, h - 2);
   g.fillStyle(PALETTE.chalk);
-  drawText(g, name, 3, 2);
+  drawSmallText(g, name, 2, 1);
   if (controlled) g.fillStyle(PALETTE.yellow).fillRect(1, h - 1, w - 2, 1);
   g.generateTexture(key, w, h);
   g.destroy();
