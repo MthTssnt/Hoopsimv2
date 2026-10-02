@@ -1,5 +1,5 @@
 import type { ShotZone } from '../../engine/shot';
-import { distanceToRim, isThreePoint, type Court, type Hoop, type Vec3 } from '../physics/court';
+import { distanceToRim, isThreePoint, RIM_HEIGHT, type Court, type Hoop, type Vec3 } from '../physics/court';
 
 /** Mesures du tir côté `match/` (valeurs provisoires, réglables). */
 export const SHOT_FLOW = {
@@ -21,6 +21,16 @@ export const SHOT_FLOW = {
   minFront: 0.5,
   /** …quand le joueur est dans la largeur de la planche (demi-largeur + marge, m). */
   boardShadow: 1.1,
+  /** Dunk : le joueur arrive au sommet à cette distance devant le cercle (m)… */
+  dunkFinish: 0.35,
+  /** …jamais plus près de la ligne de fond que ça, mesuré dans l'axe du terrain (m)… */
+  dunkMinFront: 0.2,
+  /** …avec un élan d'au plus (m/s). */
+  dunkMaxSpeed: 6,
+  /** Au sommet d'un dunk, la main dépasse le cercle d'au moins (m). */
+  dunkClearance: 0.15,
+  /** Accroché au cercle après un dunk réussi (s). */
+  dunkHang: 0.3,
 } as const;
 
 /** Panier visé : le plus proche (au 7a, ce sera le panier attaqué). */
@@ -45,17 +55,34 @@ export function attacksRim(pos: Vec3, vel: Vec3, hoop: Hoop): boolean {
   return cos >= Math.cos((SHOT_FLOW.layupMaxAngle * Math.PI) / 180);
 }
 
-/** Point d'arrivée d'un layup : devant le cercle, sur la ligne joueur → cercle, côté terrain. */
-export function layupFinish(pos: Vec3, hoop: Hoop): { x: number; y: number } {
+/**
+ * Point à `distance` du cercle sur la ligne joueur → cercle, ramené à au moins `minFront`
+ * devant le cercle dans l'axe du terrain (venu de la ligne de fond, on finit quand même devant).
+ */
+function finishPoint(pos: Vec3, hoop: Hoop, distance: number, minFront: number): { x: number; y: number } {
   const { rim, toCourt } = hoop;
   const dx = pos.x - rim.x;
   const dy = pos.y - rim.y;
   const len = Math.hypot(dx, dy) || 1;
-  let x = rim.x + (dx / len) * SHOT_FLOW.layupFinish;
-  const y = rim.y + (dy / len) * SHOT_FLOW.layupFinish;
-  // Venu de la ligne de fond : on finit quand même devant le cercle.
-  if ((x - rim.x) * toCourt < SHOT_FLOW.minFront) x = rim.x + toCourt * SHOT_FLOW.minFront;
+  let x = rim.x + (dx / len) * distance;
+  const y = rim.y + (dy / len) * distance;
+  if ((x - rim.x) * toCourt < minFront) x = rim.x + toCourt * minFront;
   return { x, y };
+}
+
+/** Point d'arrivée d'un layup : devant le cercle, sur la ligne joueur → cercle, côté terrain. */
+export function layupFinish(pos: Vec3, hoop: Hoop): { x: number; y: number } {
+  return finishPoint(pos, hoop, SHOT_FLOW.layupFinish, SHOT_FLOW.minFront);
+}
+
+/** Point atteint au sommet d'un dunk : tout près du cercle, côté terrain, jamais sous la planche. */
+export function dunkFinish(pos: Vec3, hoop: Hoop): { x: number; y: number } {
+  return finishPoint(pos, hoop, SHOT_FLOW.dunkFinish, SHOT_FLOW.dunkMinFront);
+}
+
+/** Hauteur de saut d'un dunk : la sienne, relevée si besoin pour que la main dépasse le cercle. */
+export function dunkJumpHeight(jumpHeight: number, reach: number): number {
+  return Math.max(jumpHeight, RIM_HEIGHT + SHOT_FLOW.dunkClearance - reach);
 }
 
 /**

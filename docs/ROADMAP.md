@@ -24,7 +24,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Style S4. Style de `?style` appliqué au match : 22,5 px/m, mise à l'échelle entière et plein écran (F), arène du terrain entier (deux paniers, public tout autour), sprites cuits du rig avec ballon tenu dans la main, tableau de score et carte du joueur, debug masqué (H)
 - ✅ S4b. Retours de Matheo sur S4 : appuis qui accrochent (freinage, virages, pas au rythme de la vitesse, rebond de course), saut en course ≤ ~2 m, ballon dribblé devant le corps, vue de dos en montant
 - ✅ 5. Tir avec jauge + layup (jauge verticale, annonce du lâcher, tir forcé à l'atterrissage, layup en attaquant le cercle, points au tableau de score)
-- ⬜ 6. Dunk simple
+- ✅ 6. Dunk simple (simple appui dans la moitié de la raquette, prioritaire sur le layup ; smash vérifié par la physique ; accroche au cercle ; DUNK et secousse)
 - ⬜ 7a. 1 contre 1 : IA attaque/défense + possession
 - ⬜ 7b. Contre, goaltending, fautes
 

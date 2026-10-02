@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGame, gaugeTime, type Player } from '../../engine';
+import { reach } from '../../engine/athletics';
+import { DUNK_TUNING, dunkScore } from '../../engine/shot';
 import { Rng } from '../../engine/rng';
-import { BALL_RADIUS, makeCourt } from '../physics/court';
+import { BALL_RADIUS, makeCourt, RIM_HEIGHT } from '../physics/court';
 import { MatchWorld, WORLD_DT, WORLD_TUNING } from './MatchWorld';
 import { PLAYER_TUNING, type MoveInput } from './player';
+import { SHOT_FLOW } from './shooting';
 
 const players = Object.values(createNewGame('bos', 31).players);
 const guard = players.filter((p) => p.pos === 'PG').sort((a, b) => b.attrs.speed - a.attrs.speed)[0];
@@ -270,5 +273,98 @@ describe('tir avec jauge', () => {
     const real = newWorld();
     real.setShotSettings({ mode: 'realPct', speed: 'normal' });
     expect(shootAt(real, late).lastShot!.probability!).toBeGreaterThan(timing);
+  });
+});
+
+describe('dunk', () => {
+  const rim = court.hoops.right.rim;
+  const standing = (p: Player) => dunkScore({ dunker: p, inDunkZone: true, moveSpeed: 0, defender: null });
+  /** Le meilleur dunkeur à l'arrêt, et un dunkeur tout juste au-dessus du seuil (rate plus souvent). */
+  const byScore = players.filter((p) => standing(p) >= DUNK_TUNING.threshold).sort((a, b) => standing(b) - standing(a));
+  const dunker = byScore[0];
+  const justAbove = byScore[byScore.length - 1];
+  /** Un petit joueur sans détente ni stat de dunk : il ne peut pas dunker. */
+  const weak: Player = { ...guard, heightCm: 178, attrs: { ...guard.attrs, standingDunk: 25, drivingDunk: 25, vertical: 30 } };
+  const at = (athlete: Player, x: number, seed = 1) =>
+    new MatchWorld(court, athlete, { x, y: rim.y, z: 0 }, { mode: 'timing', speed: 'normal' }, new Rng(seed));
+  /** Joue jusqu'à l'atterrissage du dunk ; renvoie la durée d'accroche (s) et la marge de la main au sommet (m). */
+  const playDunk = (world: MatchWorld) => {
+    let hang = 0;
+    let margin = -Infinity;
+    for (let t = 0; t < 3 && world.shot; t += WORLD_DT) {
+      const before = world.player.pos.z;
+      world.step(WORLD_DT, { ...IDLE, release: true });
+      margin = Math.max(margin, world.player.pos.z + reach(world.player.athlete) - RIM_HEIGHT);
+      if (world.player.airborne && world.player.pos.z === before && world.shot?.dunk?.slammed) hang += WORLD_DT;
+    }
+    return { hang, margin };
+  };
+
+  it('à l’arrêt dans la raquette : dunk sur un simple appui, résultat tiré tout de suite', () => {
+    expect(dunker).toBeDefined();
+    const world = at(dunker, rim.x - 0.9);
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    expect(world.shot?.kind).toBe('dunk');
+    expect(world.shot?.zone).toBe('rim');
+    expect(typeof world.shot?.dunk?.made).toBe('boolean');
+    // Relâcher Tir ne lâche rien : le ballon reste en main jusqu'au smash.
+    world.step(WORLD_DT, { ...IDLE, release: true });
+    expect(world.shot?.kind).toBe('dunk');
+    expect(world.holder).toBe(0);
+  });
+
+  it('smashe au sommet, la main au-dessus du cercle, et met en scène le résultat tiré', () => {
+    const outcomes = new Set<boolean>();
+    for (let seed = 1; seed <= 200 && outcomes.size < 2; seed++) {
+      const world = at(justAbove, rim.x - 0.9, seed);
+      world.step(WORLD_DT, { ...IDLE, jump: true });
+      const { hang, margin } = playDunk(world);
+      expect(margin).toBeGreaterThanOrEqual(SHOT_FLOW.dunkClearance - 0.02);
+      const shot = world.lastShot!;
+      expect(shot.kind).toBe('dunk');
+      // Accroché ~0,3 s au cercle après un dunk réussi, pas après un raté.
+      if (shot.wanted) expect(hang).toBeCloseTo(SHOT_FLOW.dunkHang, 1);
+      else expect(hang).toBeLessThanOrEqual(WORLD_DT); // le sommet lui-même peut durer un pas
+      run(world, 3, IDLE);
+      expect(shot.live).toBe(shot.wanted);
+      expect(world.points).toBe(shot.wanted ? 2 : 0);
+      outcomes.add(shot.wanted);
+    }
+    expect([...outcomes].sort()).toEqual([false, true]);
+  });
+
+  it('passe avant le layup : en attaquant le cercle dans la raquette, un bon dunkeur dunke', () => {
+    const world = at(dunker, rim.x - 4.5);
+    while (world.player.pos.x < rim.x - 1.2) world.step(WORLD_DT, RIGHT);
+    world.step(WORLD_DT, { ...RIGHT, jump: true });
+    expect(world.shot?.kind).toBe('dunk');
+    playDunk(world);
+    // Il finit devant le cercle, jamais sous la planche.
+    expect(world.player.pos.x).toBeLessThan(rim.x);
+  });
+
+  it('sous le seuil : layup en attaquant le cercle, tir en suspension à l’arrêt', () => {
+    const running = at(weak, rim.x - 4.5);
+    while (running.player.pos.x < rim.x - 1.2) running.step(WORLD_DT, RIGHT);
+    running.step(WORLD_DT, { ...RIGHT, jump: true });
+    expect(running.shot?.kind).toBe('layup');
+    const still = at(weak, rim.x - 0.9);
+    still.step(WORLD_DT, { ...IDLE, jump: true });
+    expect(still.shot?.kind).toBe('jump');
+  });
+
+  it('hors de la moitié de la raquette : jamais de dunk', () => {
+    const world = at(dunker, rim.x - 4);
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    expect(world.shot?.kind).toBe('jump');
+  });
+
+  it('retrouve son saut normal après un dunk', () => {
+    const world = at(dunker, rim.x - 0.9);
+    const gravity = world.player.jumpGravity;
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    playDunk(world);
+    expect(world.shot).toBeNull();
+    expect(world.player.jumpGravity).toBeCloseTo(gravity, 9);
   });
 });
