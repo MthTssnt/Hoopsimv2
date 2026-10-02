@@ -45,7 +45,8 @@
 
 ### Tir et layup côté `match/` (incrément 5, réglages dans `world/shooting.ts`, `SHOT_FLOW`)
 - **Départ** : appui sur Tir avec le ballon, au sol. Le joueur saute, se tourne vers le panier
-  visé (le plus proche en phase 1) et la jauge démarre au décollage.
+  visé (celui de droite en 1 contre 1, le plus proche pour un joueur seul) et la jauge démarre
+  au décollage.
 - **Lâcher** : au relâchement de Tir. Si Tir est encore enfoncé quand le joueur touche le sol,
   le tir part tout seul à ce moment-là, donc très en retard.
 - **Zone**, mesurée au décollage : près du cercle à ≤ 2,5 m du cercle ; 3 pts selon la ligne
@@ -55,7 +56,9 @@
   de mouvement. Le joueur file vers un point à ~0,7 m devant le cercle (jamais sous la
   planche). À l'arrêt près du cercle, c'est un petit tir en suspension.
 - **En mouvement** : `moveSpeed` est la vitesse au sol au décollage.
-- **Contestation** : `null` en attendant l'adversaire (7a).
+- **Contestation** (7a) : mesurée au lâcher sur le défenseur le plus proche (`contestFor`) :
+  distance horizontale tireur-défenseur et `facing` (convention ci-dessus). Elle est envoyée à
+  `resolveShot` pour toi comme pour l'IA, et notée dans le tir enregistré (`contest`).
 - **Trajectoire** : le ballon part de la main, au-dessus de la tête, ramenée devant le cercle
   si le tireur est dessous ou derrière la planche. Si aucune trajectoire n'existe (cas
   extrême), le ballon tombe de la main : raté.
@@ -64,8 +67,10 @@
 
 ### Dunk côté `match/` (incrément 6)
 - **Choix à l'appui sur Tir** (avec le ballon, au sol) : dunk si `canDunk` (moitié de la
-  raquette, `moveSpeed` = vitesse au décollage, défenseur `null` en phase 1) ; sinon layup si
-  le joueur attaque le cercle ; sinon tir en suspension.
+  raquette, `moveSpeed` = vitesse au décollage, `defender` = défenseur le plus proche avec sa
+  distance, son `facing` et ses attributs, depuis le 7a) ; sinon layup si le joueur attaque le
+  cercle ; sinon tir en suspension. Un défenseur collé et en face peut donc empêcher un dunk :
+  c'est alors un layup ou un tir.
 - **Résultat** : tiré par `resolveDunk` dès l'appui. Pas de jauge ; relâcher Tir ne fait rien.
 - **Mise en scène** :
   - le joueur atteint au sommet un point à ~0,35 m devant le cercle, jamais sous la planche ;
@@ -104,6 +109,26 @@ examinés dans cet ordre :
 4. **Résultat tiré au lâcher.** S'il n'y a ni contre ni goaltending, la physique produit une
    trajectoire qui aboutit exactement à ce résultat. Pour un raté, le rebond retombe de
    préférence près du cercle.
+
+## 1 contre 1 de test (incrément 7a, `world/oneOnOne.ts`, `ONE_ON_ONE`)
+Règles décidées par Matheo, appliquées par `match/world/` (pas par `engine/`) :
+- **Terrain** : un seul panier, celui de droite. Départ : toi juste derrière l'arc en haut de
+  la raquette avec le ballon, l'IA à 1,1 m entre toi et le cercle.
+- **Possession** : le ballon va à celui qui le ramasse (le plus proche à portée).
+- **Ressortie** : après un panier, ou un rebond pris par le défenseur, le nouveau porteur doit
+  ressortir le ballon, c'est-à-dire le tenir derrière la ligne à 3 pts (`isThreePoint`). Un
+  rebond offensif ne l'oblige pas.
+- **Panier non valable** : marqué sans avoir ressorti, il ne compte pas ; le ballon passe
+  directement à l'autre, qui doit à son tour ressortir.
+- **Score et fin** : paniers à 2 et 3 pts ; premier à 11 (`&cible=N` dans l'URL pour les
+  tests). Le monde se fige 3 s, puis reprise à 0-0, ballon à toi.
+- **Corps** : deux joueurs ne se chevauchent jamais (rayon 0,35 m, écartés à parts égales après
+  chaque pas) : le défenseur bouche le chemin.
+- **IA** (`ai/opponent.ts`) : elle ne fait que produire des entrées (direction, saut, lâcher)
+  comme un joueur au clavier ; le monde et `engine/` lui appliquent les mêmes règles. Son
+  erreur de lâcher suit `N(0, σ)`, σ diminuant avec la stat de tir de la zone ; son temps de
+  réaction en défense dépend de `perimeterDef` (et d'`interiorDef` près du cercle). En 7a, son
+  saut de contestation ne touche pas le ballon : le contre arrive au 7b.
 
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate

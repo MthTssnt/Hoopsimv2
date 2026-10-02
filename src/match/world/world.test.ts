@@ -223,7 +223,7 @@ describe('tir avec jauge', () => {
       const shot = world.lastShot!;
       expect(shot.zone).toBe('three');
       expect(shot.live).toBe(shot.wanted);
-      expect(world.points).toBe(shot.wanted ? 3 : 0);
+      expect(world.points[0]).toBe(shot.wanted ? 3 : 0);
       outcomes.add(shot.wanted);
     }
     expect([...outcomes].sort()).toEqual([false, true]);
@@ -244,7 +244,7 @@ describe('tir avec jauge', () => {
       expect(shot.start.x).toBeLessThan(rim.x);
       run(world, 3, IDLE);
       expect(shot.live).toBe(shot.wanted);
-      expect(world.points).toBe(shot.wanted ? 2 : 0);
+      expect(world.points[0]).toBe(shot.wanted ? 2 : 0);
       // Retombé devant le cercle, côté terrain.
       expect(world.player.pos.x).toBeLessThan(rim.x);
       expect(world.player.pos.x).toBeGreaterThan(rim.x - 1.6);
@@ -327,7 +327,7 @@ describe('dunk', () => {
       else expect(hang).toBeLessThanOrEqual(WORLD_DT); // le sommet lui-même peut durer un pas
       run(world, 3, IDLE);
       expect(shot.live).toBe(shot.wanted);
-      expect(world.points).toBe(shot.wanted ? 2 : 0);
+      expect(world.points[0]).toBe(shot.wanted ? 2 : 0);
       outcomes.add(shot.wanted);
     }
     expect([...outcomes].sort()).toEqual([false, true]);

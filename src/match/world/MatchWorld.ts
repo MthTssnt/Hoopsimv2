@@ -1,12 +1,13 @@
 import { reach } from '../../engine/athletics';
 import type { Rng } from '../../engine/rng';
-import { canDunk, gaugeTime, resolveDunk, resolveShot, type DunkContext, type ShotKind, type ShotMode, type ShotSpeed, type ShotZone, type TimingGrade } from '../../engine/shot';
+import { canDunk, gaugeTime, resolveDunk, resolveShot, type Contest, type DunkContext, type ShotKind, type ShotMode, type ShotSpeed, type ShotZone, type TimingGrade } from '../../engine/shot';
 import type { Player } from '../../engine/types';
 import { BALL_PHYSICS, stepBall, type BallState } from '../physics/ball';
 import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
 import { solveDunk } from '../physics/dunk';
 import { solveShot } from '../physics/shotSolver';
-import { createPlayerBody, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
+import { isCleared, mustClearAfterPickup, newOneOnOne, ONE_ON_ONE, startPositions, type OneOnOneState } from './oneOnOne';
+import { createPlayerBody, PLAYER_TUNING, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
 import { attacksRim, dunkFinish, dunkJumpHeight, layupFinish, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
 
 /** Valeurs provisoires, réglables à l'œil. */
@@ -26,6 +27,8 @@ export const WORLD_TUNING = {
    */
   handForward: 0.22,
   handDepth: 0.12,
+  /** Rayon d'un joueur au sol (m) : deux joueurs ne se chevauchent jamais. */
+  bodyRadius: 0.35,
 } as const;
 
 /** Geste de tir : tir en suspension, layup (avec la jauge) ou dunk (simple appui). */
@@ -35,6 +38,8 @@ export type PlayKind = ShotKind | 'dunk';
 export interface ShotRecord {
   /** Tir de démo (touches R/M, résultat imposé) ou vrai tir (résultat tiré par `engine/`). */
   demo: boolean;
+  /** Index du tireur. */
+  shooter: number;
   kind: PlayKind;
   zone: ShotZone;
   /** Point de lâcher du ballon. */
@@ -43,6 +48,10 @@ export interface ShotRecord {
   distance: number;
   three: boolean;
   hoop: HoopSide;
+  /** Défenseur le plus proche au lâcher (au décollage pour un dunk), ou null. */
+  contest: Contest | null;
+  /** Le tireur avait bien ressorti le ballon (1 contre 1) : sinon, le panier ne compte pas. */
+  cleared: boolean;
   /** Résultat tiré par `engine/` (ou imposé pour une démo). */
   wanted: boolean;
   probability: number | null;
@@ -53,6 +62,8 @@ export interface ShotRecord {
   forced: boolean;
   /** Panier marqué avant le premier contact avec le parquet. */
   scored: boolean;
+  /** Panier marqué mais non valable (ballon pas ressorti). */
+  invalid: boolean;
   /** Résultat observé en direct (null tant que le ballon n'a pas touché le sol). */
   live: boolean | null;
 }
@@ -70,12 +81,13 @@ export interface ActiveDunk {
 }
 
 /**
- * Tir en cours : le joueur est en l'air. Tir et layup : le ballon est au-dessus de la tête et la
+ * Tir en cours : le tireur est en l'air. Tir et layup : le ballon est au-dessus de la tête et la
  * jauge tourne jusqu'au lâcher. Dunk : jusqu'à l'atterrissage (smash, puis accroche).
  */
 export interface ActiveShot {
+  shooter: number;
   kind: PlayKind;
-  /** Zone mesurée au décollage (un layup est toujours « près du cercle »). */
+  /** Zone mesurée au décollage (layup et dunk : toujours « près du cercle »). */
   zone: ShotZone;
   hoop: Hoop;
   /** Temps passé en l'air depuis le décollage (s). */
@@ -83,6 +95,8 @@ export interface ActiveShot {
   /** Vitesse au sol au décollage (m/s) : pénalité du tir en mouvement. */
   takeoffSpeed: number;
   takeoff: Vec3;
+  /** Défenseur au décollage (pour un dunk, déjà pris en compte à l'appui). */
+  contest: Contest | null;
   dunk: ActiveDunk | null;
 }
 
@@ -92,11 +106,15 @@ export interface ShotSettings {
   speed: ShotSpeed;
 }
 
-/** Ce que le monde reçoit à chaque pas : direction, appui et relâche de Tir. */
+/** Ce que le monde reçoit à chaque pas pour un joueur : direction, appui et relâche de Tir. */
 export interface WorldInput extends MoveInput {
   /** Tir relâché à ce pas. */
   release?: boolean;
 }
+
+const IDLE_INPUT: WorldInput = { x: 0, y: 0, jump: false };
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export class MatchWorld {
   court: Court;
@@ -105,11 +123,13 @@ export class MatchWorld {
   ball: BallState;
   /** Index du joueur qui tient le ballon, ou null s'il est libre. */
   holder: number | null = null;
-  /** Tir en cours (en l'air, ballon pas encore lâché). */
+  /** Tir en cours (en l'air, ballon pas encore lâché, ou dunk jusqu'à l'atterrissage). */
   shot: ActiveShot | null = null;
   lastShot: ShotRecord | null = null;
-  /** Points marqués par les vrais tirs (pas les démos). */
-  points = 0;
+  /** Points marqués par chaque joueur (vrais tirs seulement). */
+  points: number[] = [0];
+  /** Règles du 1 contre 1, ou null pour un joueur seul (panier le plus proche, pas de règle). */
+  rules: OneOnOneState | null = null;
   shotSettings: ShotSettings;
   private readonly rng: Rng;
   private dribbleTime = 0;
@@ -128,14 +148,30 @@ export class MatchWorld {
     return this.players[this.controlled];
   }
 
-  /** Change le joueur contrôlé en gardant sa position, sa vitesse et son saut en cours. */
-  setAthlete(athlete: Player): void {
-    const old = this.player;
+  /**
+   * Passe en 1 contre 1 sur le panier de droite contre `opponent` : chacun à sa place de départ,
+   * ballon au joueur 0, score à 0-0.
+   */
+  startOneOnOne(opponent: Player, target: number = ONE_ON_ONE.target): void {
+    if (this.players.length < 2) this.players.push(createPlayerBody(opponent, { x: 0, y: 0, z: 0 }, this.player.timeToApex));
+    else this.setAthlete(opponent, 1);
+    this.rules = newOneOnOne(this.players.length, target);
+    this.resetGame();
+  }
+
+  /** Panier visé : celui de droite en 1 contre 1, sinon le plus proche. */
+  hoopFor(x: number): Hoop {
+    return this.rules ? this.court.hoops.right : targetHoop(this.court, x);
+  }
+
+  /** Change un joueur en gardant sa position, sa vitesse et son saut en cours. */
+  setAthlete(athlete: Player, index: number = this.controlled): void {
+    const old = this.players[index];
     const body = createPlayerBody(athlete, old.pos, old.timeToApex);
     body.facing = old.facing;
     body.vel = { ...old.vel };
     body.airborne = old.airborne;
-    this.players[this.controlled] = body;
+    this.players[index] = body;
   }
 
   /** Mode et vitesse de tir : la vitesse règle aussi la durée du saut (sommet = fin de la jauge). */
@@ -154,46 +190,83 @@ export class MatchWorld {
     return { x, y, z: BALL_RADIUS + (t.dribbleHandHeight - BALL_RADIUS) * phase };
   }
 
-  /** Contexte de dunk du joueur contrôlé, s'il appuyait sur Tir maintenant (mesures de `match/`). */
-  dunkContext(): DunkContext {
-    const body = this.player;
-    const hoop = targetHoop(this.court, body.pos.x);
+  /**
+   * Défenseur le plus proche du joueur `index` face au cercle `hoop` : distance horizontale et
+   * `facing`, cosinus de l'angle (tireur → défenseur, tireur → cercle) ramené à 0-1.
+   */
+  contestFor(index: number, hoop: Hoop): (Contest & { player: Player }) | null {
+    const shooter = this.players[index].pos;
+    let best: (Contest & { player: Player }) | null = null;
+    this.players.forEach((body, i) => {
+      if (i === index) return;
+      const dx = body.pos.x - shooter.x;
+      const dy = body.pos.y - shooter.y;
+      const distance = Math.hypot(dx, dy);
+      if (best && distance >= best.distance) return;
+      const rx = hoop.rim.x - shooter.x;
+      const ry = hoop.rim.y - shooter.y;
+      const rimDist = Math.hypot(rx, ry);
+      const facing = distance < 1e-6 || rimDist < 1e-6 ? 1 : clamp01((dx * rx + dy * ry) / (distance * rimDist));
+      best = { distance, facing, player: body.athlete };
+    });
+    return best;
+  }
+
+  /** Contexte de dunk d'un joueur, s'il appuyait sur Tir maintenant (mesures de `match/`). */
+  dunkContext(index: number = this.controlled): DunkContext {
+    const body = this.players[index];
+    const hoop = this.hoopFor(body.pos.x);
     return {
       dunker: body.athlete,
       inDunkZone: inPaintHalf(this.court, hoop, body.pos.x, body.pos.y),
       moveSpeed: Math.hypot(body.vel.x, body.vel.y),
-      defender: null,
+      defender: this.contestFor(index, hoop),
     };
   }
 
-  step(dt: number, input: WorldInput): void {
-    const body = this.player;
-    const holding = this.holder === this.controlled;
-    // Appui sur Tir avec le ballon, au sol : le tir commence avec le saut. Dunk d'abord (s'il est
-    // possible), sinon layup en attaquant le cercle, sinon tir en suspension.
-    const startsShot = input.jump && holding && !body.airborne && this.shot === null;
-    const takeoffSpeed = Math.hypot(body.vel.x, body.vel.y);
-    const takeoff = { ...body.pos };
-    let kind: PlayKind | null = null;
-    let dunkCtx: DunkContext | null = null;
-    if (startsShot) {
-      dunkCtx = this.dunkContext();
-      if (canDunk(dunkCtx)) kind = 'dunk';
-      else kind = attacksRim(body.pos, body.vel, targetHoop(this.court, body.pos.x)) ? 'layup' : 'jump';
+  /**
+   * Avance le monde d'un pas. Une entrée par joueur (une seule : celle du joueur 0). Pendant la
+   * pause de fin de partie, personne ne bouge, puis la partie reprend à 0-0.
+   */
+  step(dt: number, inputs: WorldInput | readonly WorldInput[]): void {
+    let list: readonly WorldInput[] = Array.isArray(inputs) ? inputs : [inputs as WorldInput];
+    if (this.rules && this.rules.winner !== null) {
+      this.rules.pause -= dt;
+      if (this.rules.pause <= 0) this.resetGame();
+      list = [];
     }
-    // Accroché au cercle : le joueur ne bouge plus jusqu'à la fin de l'accroche.
-    const hanging = this.shot?.dunk && this.shot.dunk.hang > 0;
-    if (hanging) this.shot!.dunk!.hang = Math.max(0, this.shot!.dunk!.hang - dt);
-    else stepPlayer(body, input, dt, this.court);
-    if (kind) this.startShot(kind, takeoffSpeed, takeoff, dunkCtx);
+
+    this.players.forEach((body, i) => {
+      const input = list[i] ?? IDLE_INPUT;
+      // Appui sur Tir avec le ballon, au sol : le tir commence avec le saut. Dunk d'abord (s'il
+      // est possible), sinon layup en attaquant le cercle, sinon tir en suspension.
+      const startsShot = input.jump && this.holder === i && !body.airborne && this.shot === null;
+      const takeoffSpeed = Math.hypot(body.vel.x, body.vel.y);
+      const takeoff = { ...body.pos };
+      let kind: PlayKind | null = null;
+      let dunkCtx: DunkContext | null = null;
+      if (startsShot) {
+        dunkCtx = this.dunkContext(i);
+        if (canDunk(dunkCtx)) kind = 'dunk';
+        else kind = attacksRim(body.pos, body.vel, this.hoopFor(body.pos.x)) ? 'layup' : 'jump';
+      }
+      // Accroché au cercle : le dunkeur ne bouge plus jusqu'à la fin de l'accroche.
+      const dunk = this.shot?.shooter === i ? this.shot.dunk : null;
+      if (dunk && dunk.hang > 0) dunk.hang = Math.max(0, dunk.hang - dt);
+      else stepPlayer(body, input, dt, this.court);
+      if (kind) this.startShot(i, kind, takeoffSpeed, takeoff, dunkCtx);
+    });
+    this.separateBodies();
     this.cooldown = Math.max(0, this.cooldown - dt);
 
     if (this.shot) {
+      const shooter = this.players[this.shot.shooter];
+      const input = list[this.shot.shooter] ?? IDLE_INPUT;
       this.shot.airTime += dt;
       if (this.shot.dunk) this.stepDunk();
       // Lâcher au relâchement de Tir ; Tir encore enfoncé à l'atterrissage : le tir part tout seul.
       else if (input.release) this.releaseShot(false);
-      else if (!body.airborne) this.releaseShot(true);
+      else if (!shooter.airborne) this.releaseShot(true);
     }
 
     if (this.holder !== null) {
@@ -201,28 +274,84 @@ export class MatchWorld {
       this.dribbleTime = holder.airborne ? 0 : this.dribbleTime + dt;
       this.ball.pos = this.handPosition(holder);
       this.ball.vel = { ...holder.vel };
+      // 1 contre 1 : tenir le ballon derrière l'arc le « ressort ».
+      if (this.rules?.mustClear[this.holder] && isCleared(this.court, this.court.hoops.right, holder.pos)) {
+        this.rules.mustClear[this.holder] = false;
+      }
       return;
     }
 
     for (const event of stepBall(this.ball, this.court, dt)) {
       const shot = this.lastShot;
       if (!shot || shot.live !== null) continue;
-      if (event.type === 'score' && event.hoop === shot.hoop && !shot.scored) {
-        shot.scored = true;
-        if (!shot.demo) this.points += shot.three ? 3 : 2;
-      }
+      if (event.type === 'score' && event.hoop === shot.hoop && !shot.scored) this.onBasket(shot);
       if (event.type === 'floor') shot.live = shot.scored;
     }
     this.tryPickup();
+  }
+
+  /** Panier marqué : points au tireur, ou panier non valable (pas ressorti) et ballon à l'autre. */
+  private onBasket(shot: ShotRecord): void {
+    shot.scored = true;
+    if (shot.demo) return;
+    const rules = this.rules;
+    if (rules && !shot.cleared) {
+      shot.invalid = true;
+      shot.live = true;
+      const other = (shot.shooter + 1) % this.players.length;
+      this.holder = other;
+      this.dribbleTime = 0;
+      rules.mustClear[other] = true;
+      rules.lastHolder = other;
+      return;
+    }
+    this.points[shot.shooter] += shot.three ? 3 : 2;
+    if (rules && rules.winner === null && this.points[shot.shooter] >= rules.target) {
+      rules.winner = shot.shooter;
+      rules.pause = ONE_ON_ONE.endPause;
+    }
+  }
+
+  /** Deux joueurs ne se chevauchent jamais : on les écarte à parts égales. */
+  private separateBodies(): void {
+    const min = 2 * WORLD_TUNING.bodyRadius;
+    const m = PLAYER_TUNING.boundsMargin;
+    for (let i = 0; i < this.players.length; i++) {
+      for (let j = i + 1; j < this.players.length; j++) {
+        const a = this.players[i].pos;
+        const b = this.players[j].pos;
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        if (d >= min) continue;
+        if (d < 1e-6) {
+          dx = 1;
+          dy = 0;
+          d = 1;
+          // Superposés exactement : on écarte le long du terrain.
+        }
+        const push = (min - Math.hypot(b.x - a.x, b.y - a.y)) / 2;
+        const ux = dx / d;
+        const uy = dy / d;
+        a.x -= ux * push;
+        a.y -= uy * push;
+        b.x += ux * push;
+        b.y += uy * push;
+        for (const p of [a, b]) {
+          p.x = Math.min(this.court.length + m, Math.max(-m, p.x));
+          p.y = Math.min(this.court.width + m, Math.max(-m, p.y));
+        }
+      }
+    }
   }
 
   /**
    * Début du tir : tourné vers le panier. Un layup file vers un point devant le cercle ; un dunk
    * (résultat tiré dès l'appui) file tout près du cercle et l'atteint au sommet, la main au-dessus.
    */
-  private startShot(kind: PlayKind, takeoffSpeed: number, takeoff: Vec3, dunkCtx: DunkContext | null): void {
-    const body = this.player;
-    const hoop = targetHoop(this.court, takeoff.x);
+  private startShot(shooter: number, kind: PlayKind, takeoffSpeed: number, takeoff: Vec3, dunkCtx: DunkContext | null): void {
+    const body = this.players[shooter];
+    const hoop = this.hoopFor(takeoff.x);
     body.facing = hoop.rim.x >= takeoff.x ? 1 : -1;
     let dunk: ActiveDunk | null = null;
     if (kind === 'dunk' && dunkCtx) {
@@ -253,14 +382,20 @@ export class MatchWorld {
       body.vel.y = vy * k;
     }
     const zone: ShotZone = kind === 'jump' ? shotZone(this.court, hoop, takeoff.x, takeoff.y) : 'rim';
-    this.shot = { kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, dunk };
+    const contest = dunkCtx?.defender ? { distance: dunkCtx.defender.distance, facing: dunkCtx.defender.facing } : null;
+    this.shot = { shooter, kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, contest, dunk };
+  }
+
+  /** Le tireur avait-il ressorti le ballon (toujours vrai hors 1 contre 1) ? */
+  private cleared(shooter: number): boolean {
+    return !this.rules?.mustClear[shooter];
   }
 
   /** Dunk : smash au sommet du saut, accroche au cercle s'il est réussi, fin à l'atterrissage. */
   private stepDunk(): void {
     const shot = this.shot!;
     const dunk = shot.dunk!;
-    const body = this.player;
+    const body = this.players[shot.shooter];
     if (!dunk.slammed && shot.airTime >= body.timeToApex) {
       dunk.slammed = true;
       const plan = solveDunk(dunk.made, shot.hoop, shot.takeoff, this.court, this.rng);
@@ -275,18 +410,22 @@ export class MatchWorld {
       }
       this.lastShot = {
         demo: false,
+        shooter: shot.shooter,
         kind: 'dunk',
         zone: 'rim',
         start: plan.start,
         distance: distanceToRim(shot.hoop, shot.takeoff.x, shot.takeoff.y),
         three: false,
         hoop: shot.hoop.side,
+        contest: shot.contest,
+        cleared: this.cleared(shot.shooter),
         wanted: dunk.made,
         probability: dunk.probability,
         grade: null,
         timingError: null,
         forced: false,
         scored: false,
+        invalid: false,
         live: null,
       };
     }
@@ -303,9 +442,11 @@ export class MatchWorld {
   private releaseShot(forced: boolean): void {
     const shot = this.shot!;
     this.endShot();
-    const body = this.player;
+    const body = this.players[shot.shooter];
     const { hoop, takeoff, zone } = shot;
     const timingError = shot.airTime - body.timeToApex;
+    const defender = this.contestFor(shot.shooter, hoop);
+    const contest = defender ? { distance: defender.distance, facing: defender.facing } : null;
     const result = resolveShot(
       {
         shooter: body.athlete,
@@ -314,7 +455,7 @@ export class MatchWorld {
         mode: this.shotSettings.mode,
         speed: this.shotSettings.speed,
         timingError,
-        contest: null,
+        contest,
         moveSpeed: shot.takeoffSpeed,
       },
       this.rng,
@@ -323,18 +464,22 @@ export class MatchWorld {
     this.launch(start, result.made, hoop);
     this.lastShot = {
       demo: false,
+      shooter: shot.shooter,
       kind: shot.kind,
       zone,
       start,
       distance: distanceToRim(hoop, takeoff.x, takeoff.y),
       three: zone === 'three',
       hoop: hoop.side,
+      contest,
+      cleared: this.cleared(shot.shooter),
       wanted: result.made,
       probability: result.probability,
       grade: result.grade,
       timingError,
       forced,
       scored: false,
+      invalid: false,
       live: null,
     };
   }
@@ -355,35 +500,70 @@ export class MatchWorld {
     this.cooldown = WORLD_TUNING.pickupCooldown;
   }
 
+  /** Ballon libre : ramassé par le joueur à portée le plus proche. */
   private tryPickup(): void {
     if (this.cooldown > 0) return;
     const { pos } = this.ball;
+    let picker: number | null = null;
+    let best = Infinity;
     this.players.forEach((body, index) => {
-      if (this.holder !== null) return;
-      const near = Math.hypot(pos.x - body.pos.x, pos.y - body.pos.y) <= WORLD_TUNING.pickupRadius;
+      const dist = Math.hypot(pos.x - body.pos.x, pos.y - body.pos.y);
       const reachable = pos.z <= body.pos.z + reach(body.athlete) + WORLD_TUNING.pickupReachMargin;
-      if (near && reachable) {
-        this.holder = index;
-        this.dribbleTime = 0;
-        // Rattrapé avant de toucher le parquet (rebond pris en l'air, ballon sous le filet) :
-        // le tir est jugé là.
-        const shot = this.lastShot;
-        if (shot && shot.live === null) shot.live = shot.scored;
+      if (dist <= WORLD_TUNING.pickupRadius && reachable && dist < best) {
+        best = dist;
+        picker = index;
       }
     });
+    if (picker === null) return;
+    this.holder = picker;
+    this.dribbleTime = 0;
+    const shot = this.lastShot;
+    // Rattrapé avant de toucher le parquet (rebond pris en l'air, ballon sous le filet) : le tir est
+    // jugé là.
+    if (shot && shot.live === null) shot.live = shot.scored;
+    if (this.rules) {
+      const afterBasket = !!shot && shot.scored && !shot.invalid;
+      this.rules.mustClear[picker] = mustClearAfterPickup(picker, this.rules.lastHolder, afterBasket);
+      this.rules.lastHolder = picker;
+    }
+  }
+
+  /** 1 contre 1 : 0-0, positions de départ, ballon au joueur 0 qui n'a rien à ressortir. */
+  private resetGame(): void {
+    const rules = this.rules!;
+    const { attacker, defender } = startPositions(this.court, this.court.hoops.right);
+    const places = [attacker, defender];
+    this.players.forEach((body, i) => {
+      body.pos = { ...(places[i] ?? defender) };
+      body.vel = { x: 0, y: 0, z: 0 };
+      body.airborne = false;
+      body.facing = i === 0 ? 1 : -1;
+    });
+    this.endShot();
+    this.points = this.players.map(() => 0);
+    rules.mustClear = this.players.map(() => false);
+    rules.lastHolder = 0;
+    rules.winner = null;
+    rules.pause = 0;
+    this.holder = 0;
+    this.dribbleTime = 0;
+    this.cooldown = 0;
+    this.lastShot = null;
+    this.ball = { pos: this.handPosition(this.players[0]), vel: { x: 0, y: 0, z: 0 } };
   }
 
   /**
-   * Tir de démonstration (debug, touches R/M) : depuis le joueur s'il tient le ballon, sinon
-   * depuis un point aléatoire autour du panier de droite. Le résultat est imposé, la physique
-   * suit ; il ne compte pas au score.
+   * Tir de démonstration (debug, touches R/M) : depuis le porteur s'il y en a un, sinon depuis un
+   * point aléatoire autour du panier de droite. Le résultat est imposé, la physique suit ; il ne
+   * compte pas au score.
    */
   demoShot(made: boolean): ShotRecord | null {
     let start: Vec3;
     let hoop: Hoop;
+    const shooter = this.holder ?? this.controlled;
     if (this.holder !== null) {
       const body = this.players[this.holder];
-      hoop = targetHoop(this.court, body.pos.x);
+      hoop = this.hoopFor(body.pos.x);
       start = releasePoint(body.pos, body.athlete.heightCm, hoop, WORLD_TUNING.handDepth);
     } else {
       hoop = this.court.hoops.right;
@@ -408,18 +588,22 @@ export class MatchWorld {
     const zone = shotZone(this.court, hoop, start.x, start.y);
     this.lastShot = {
       demo: true,
+      shooter,
       kind: 'jump',
       zone,
       start,
       distance: distanceToRim(hoop, start.x, start.y),
       three: zone === 'three',
       hoop: hoop.side,
+      contest: null,
+      cleared: true,
       wanted: made,
       probability: null,
       grade: null,
       timingError: null,
       forced: false,
       scored: false,
+      invalid: false,
       live: null,
     };
     return this.lastShot;

@@ -20,7 +20,11 @@ export const PLAYER_TUNING = {
 } as const;
 
 export interface MoveInput {
-  /** Direction voulue, chaque axe dans [-1, 1] (y > 0 : vers le spectateur). */
+  /**
+   * Direction voulue, chaque axe dans [-1, 1] (y > 0 : vers le spectateur). Une direction plus
+   * courte que 1 demande une vitesse réduite (IA qui arrive à sa place, manette analogique) ; le
+   * clavier donne toujours la pleine vitesse.
+   */
   x: number;
   y: number;
   /** Saut demandé à ce pas. */
@@ -81,6 +85,7 @@ function steer(body: PlayerBody, input: MoveInput, dt: number): void {
   }
   const ux = input.x / len;
   const uy = input.y / len;
+  const wanted = body.runSpeed * Math.min(1, len);
   let along = vel.x * ux + vel.y * uy;
   let px = vel.x - along * ux;
   let py = vel.y - along * uy;
@@ -91,8 +96,8 @@ function steer(body: PlayerBody, input: MoveInput, dt: number): void {
     py *= k;
   }
   if (along < 0) along = Math.min(0, along + t.brake * dt);
-  else if (along < body.runSpeed) along = Math.min(body.runSpeed, along + t.accel * dt);
-  else along = Math.max(body.runSpeed, along - t.brake * dt);
+  else if (along < wanted) along = Math.min(wanted, along + t.accel * dt);
+  else along = Math.max(wanted, along - t.brake * dt);
   vel.x = along * ux + px;
   vel.y = along * uy + py;
 }

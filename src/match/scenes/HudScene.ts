@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { PALETTE } from '../../assets/palette';
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../config';
-import { drawPlayerCard, drawScoreboard, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
+import { drawBanner, drawPlayerCard, drawScoreboard, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import { drawSmallText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 
 /** Lignes de debug (masquées par défaut, touche H). */
@@ -10,24 +10,40 @@ export interface HudDebug {
   bottom: string[];
 }
 
+/** Bandeau de fin de partie (null : aucun). */
+export interface HudBanner {
+  title: string;
+  subtitle: string;
+  won: boolean;
+}
+
 /**
  * Clés du registre lues par le HUD. Le match les écrit avant de lancer cette scène : Phaser
  * n'émet « changedata » qu'à partir de la deuxième écriture d'une clé.
  */
-export const HUD_KEYS = { score: 'hudScore', card: 'hudCard', debug: 'hudDebug', debugVisible: 'hudDebugVisible' } as const;
+export const HUD_KEYS = {
+  score: 'hudScore',
+  card: 'hudCard',
+  debug: 'hudDebug',
+  debugVisible: 'hudDebugVisible',
+  banner: 'hudBanner',
+} as const;
 
 const TEXT_STYLE = { fontFamily: 'monospace', fontSize: '8px', color: '#f6f2ea', backgroundColor: '#18203acc' };
 const SCOREBOARD_AT = { x: 4, y: 4 };
 const CARD_AT = { x: 4, y: VIEW_HEIGHT - 32 };
+/** Haut du bandeau de fin, au-dessus du centre de l'écran (le terrain reste visible dessous). */
+const BANNER_Y = 84;
 
 /**
  * HUD par-dessus le match, dans une scène à part : il ne suit ni le défilement ni le zoom de la
- * caméra. Tableau de score en haut à gauche, carte du joueur contrôlé en bas à gauche, texte de
- * debug sur demande. Le match publie le contenu dans le registre.
+ * caméra. Tableau de score en haut à gauche, carte du joueur contrôlé en bas à gauche, bandeau de
+ * fin de partie au centre, texte de debug sur demande. Le match publie le contenu dans le registre.
  */
 export class HudScene extends Phaser.Scene {
   private board!: Phaser.GameObjects.Graphics;
   private card!: Phaser.GameObjects.Graphics;
+  private banner!: Phaser.GameObjects.Graphics;
   private topText!: Phaser.GameObjects.Text;
   private bottomText!: Phaser.GameObjects.Text;
 
@@ -38,6 +54,7 @@ export class HudScene extends Phaser.Scene {
   create() {
     this.board = this.add.graphics();
     this.card = this.add.graphics();
+    this.banner = this.add.graphics();
     this.topText = this.add.text(SCOREBOARD_AT.x, SCOREBOARD_AT.y + 29, '', TEXT_STYLE).setVisible(false);
     this.bottomText = this.add.text(CARD_AT.x, 0, '', TEXT_STYLE).setVisible(false);
 
@@ -54,6 +71,7 @@ export class HudScene extends Phaser.Scene {
       [HUD_KEYS.card, (value: PlayerCardData) => this.showCard(value)],
       [HUD_KEYS.debug, (value: HudDebug) => this.showDebug(value)],
       [HUD_KEYS.debugVisible, (value: boolean) => this.setDebugVisible(value)],
+      [HUD_KEYS.banner, (value: HudBanner | null) => this.showBanner(value)],
     ];
     for (const [key, show] of handlers) {
       const onChange = (_parent: unknown, value: never) => show(value);
@@ -72,6 +90,11 @@ export class HudScene extends Phaser.Scene {
   private showCard(data: PlayerCardData) {
     this.card.clear();
     drawPlayerCard(this.card, CARD_AT.x, CARD_AT.y, data);
+  }
+
+  private showBanner(data: HudBanner | null) {
+    this.banner.clear();
+    if (data) drawBanner(this.banner, VIEW_WIDTH / 2, BANNER_Y, data.title, data.subtitle, data.won ? PALETTE.yellow : PALETTE.red);
   }
 
   private showDebug(content: HudDebug) {

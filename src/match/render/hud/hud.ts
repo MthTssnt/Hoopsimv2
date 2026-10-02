@@ -32,6 +32,8 @@ export interface ScoreboardData {
   period: number;
   clock: string;
   shotClock: number;
+  /** Ligne du bas à la place de la période et des horloges (ex. « PREMIER À 11 » en 1 contre 1). */
+  note?: string;
 }
 
 /** Tableau de score compact (haut à gauche) : pastilles + scores, puis période, chrono et horloge des tirs. */
@@ -45,6 +47,11 @@ export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: num
   cx = x + w / 2 + 2;
   cx += chip(g, d.away, cx, y + 3) + 3;
   drawText(g, String(d.awayScore), cx, y + 4);
+  if (d.note) {
+    g.fillStyle(PALETTE.yellow);
+    drawText(g, d.note, x + 4, y + 15);
+    return;
+  }
   drawText(g, `QT${d.period}`, x + 4, y + 15);
   g.fillStyle(PALETTE.yellow);
   drawText(g, d.clock, x + 30, y + 15);
@@ -115,6 +122,18 @@ export function createTag(scene: Phaser.Scene, key: string, text: string, color:
   drawSmallText(g, text, 2, 1);
   g.generateTexture(key, w, h);
   g.destroy();
+}
+
+/** Bandeau de fin de partie, centré en `cx` : titre en police 5×7 doublée, sous-titre en petite police. */
+export function drawBanner(g: Phaser.GameObjects.Graphics, cx: number, y: number, title: string, subtitle: string, color: number): void {
+  const w = Math.max(textWidth(title, 2), smallTextWidth(subtitle)) + 16;
+  const h = GLYPH_H * 2 + SMALL_H + 13;
+  const x = Math.round(cx - w / 2);
+  panel(g, x, y, w, h);
+  g.fillStyle(color).fillRect(x + 2, y + 2, w - 4, 1).fillRect(x + 2, y + h - 3, w - 4, 1);
+  drawText(g, title, Math.round(cx - textWidth(title, 2) / 2), y + 5, 2);
+  g.fillStyle(PALETTE.silver);
+  drawSmallText(g, subtitle, Math.round(cx - smallTextWidth(subtitle) / 2), y + 5 + GLYPH_H * 2 + 3);
 }
 
 /** Anneau jaune au sol sous le joueur contrôlé (ellipse d'un pixel d'épaisseur). */

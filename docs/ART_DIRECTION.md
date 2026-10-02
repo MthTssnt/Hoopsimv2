@@ -178,6 +178,9 @@ plus une variante d'identité : c'est un état.
 - **Chaussures** : `ink` avec semelle `chalk`.
 - **Équipe à l'extérieur** : rampes inversées (maillot clair) si les deux équipes sont trop
   proches.
+- **1 contre 1 de test (7a)** : tes trois joueurs (1-3) portent la tenue de l'équipe à
+  domicile, celle de l'arène ; leurs vis-à-vis portent celle de l'équipe adverse, choisie pour
+  trancher avec elle (`contrastingTeam`). Les six sprites sont cuits au démarrage.
 
 ### Animations minimales
 | Animation | Images | Durée | Notes |
@@ -254,7 +257,20 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
 - **Pose du tir** : ballon levé (tir en suspension) ou bras tendu vers le cercle (layup), visage
   concentré, toujours de profil tourné vers le panier.
 - **Dunk réussi** : annonce « DUNK » (`yellow`, même style que PARFAIT) et secousse de caméra de
-  ±2 px entiers pendant 0,15 s (le pixel-art reste net).
+  ±2 px entiers pendant 0,15 s (le pixel-art reste net), pour toi comme pour l'IA.
+- **1 contre 1 (7a)** :
+  - tableau de score : toi (pastille de l'équipe à domicile) contre l'IA (pastille adverse) ;
+    la ligne du bas devient « PREMIER À 11 » ;
+  - la jauge et les notes du lâcher ne s'affichent que pour tes tirs ;
+  - « RESSORS » (`orange`) au-dessus de ta tête tant que tu dois ressortir le ballon, empilé
+    au-dessus de l'annonce du tir si elle est encore là ;
+  - « NON VALABLE » (`red`) au-dessus du panier quand un panier ne compte pas ; il monte de
+    4 px et s'efface en 1,5 s ;
+  - fin de partie : bandeau au centre du HUD pendant la pause de 3 s, titre en police 5×7
+    doublée (« GAGNÉ 11-7 » en `yellow`, « PERDU 8-11 » en `red`), sous-titre « NOUVELLE
+    PARTIE À 0-0 » en petite police ;
+  - étiquettes : quand les deux joueurs sont côte à côte, les étiquettes s'écartent chacune de
+    son côté au lieu de se chevaucher ; seule la tienne est soulignée.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

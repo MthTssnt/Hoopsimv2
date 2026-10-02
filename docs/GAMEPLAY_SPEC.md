@@ -65,7 +65,9 @@
   - la taille : un grand contre mieux, finit mieux ses dunks et gagne plus souvent les duels
     au cercle ;
   - la fatigue : un joueur cramé perd en efficacité ;
-  - *(à mesurer)* : la distance du défenseur, le tir en mouvement contre le tir arrêté.
+  - la contestation (depuis le 7a) : distance du défenseur et position face au tireur ou sur
+    le côté ; un défenseur collé peut aussi empêcher un dunk ;
+  - *(à mesurer)* : le tir en mouvement contre le tir arrêté.
 - Même avec un bon timing, ça peut ressortir : la physique du cercle a le dernier mot
   (des tirs annoncés « bons » ont raté).
 - Retour visuel : zone verte sur la jauge ; le jeu annonce certains tirs « bons »
@@ -103,6 +105,24 @@
   - rebond du ballon au sol.
 
 ## 5. IA
+- **1 contre 1 de test (incrément 7a, décisions de Matheo)** :
+  - un seul panier (celui de droite) ; après un panier ou un rebond défensif, le nouveau
+    porteur doit ressortir le ballon derrière la ligne à 3 pts ; un panier marqué sans
+    ressortir ne compte pas et le ballon passe à l'autre ;
+  - l'adversaire est le meilleur joueur de l'équipe adverse au même poste que ton joueur, et
+    il change avec lui (1-3) ;
+  - premier à 11 (paniers à 2 et 3 pts) : on annonce le gagnant, puis reprise à 0-0 ;
+  - au départ, tu as le ballon en haut de la raquette et l'IA défend.
+- **Comportement de l'IA en 7a** (choix de HoopSim, réglages dans `AI_TUNING`) :
+  - en attaque, elle ressort d'abord si elle le doit, puis choisit un plan selon ses tendances
+    (cercle, mi-distance, 3 pts) ; elle dribble vers sa place, en change si elle reste bloquée
+    ~0,6 s, et tire une fois sur place ou au bout de ~3 s ; plan cercle : dunk dès que c'est
+    possible, sinon layup en attaquant le cercle ;
+  - elle lâche au sommet plus une erreur qui diminue avec sa stat de tir ;
+  - en défense, elle se place entre toi et le cercle à ~1,1 m, avec un temps de réaction de
+    0,12 à 0,3 s selon sa défense, et saute pour contester quand tu tires près d'elle (le contre
+    arrive au 7b) ;
+  - au rebond, elle court vers le ballon.
 - Comportement des coéquipiers en attaque (écrans, coupes, spacing) : ?
 - Rebond offensif : l'IA n'y va pas beaucoup.
 - Défense adverse (individuelle, aide, pression) : ? Observé :
