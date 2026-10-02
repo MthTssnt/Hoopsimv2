@@ -1,25 +1,26 @@
 import type { Rng } from './rng';
 
-const FIRST_NAMES = [
+/** Prénoms et noms inventés ou banals : aucun ne doit désigner un joueur réel (CLAUDE.md). */
+export const FIRST_NAMES = [
   'Marcus', 'Tyrese', 'Jalen', 'Devin', 'Kofi', 'Andre', 'Malik', 'Dante', 'Elias', 'Nikola',
-  'Luka', 'Dario', 'Sekou', 'Ibrahim', 'Rudy', 'Evan', 'Théo', 'Nando', 'Killian', 'Victor',
+  'Milan', 'Dario', 'Sekou', 'Ibrahim', 'Rudy', 'Evan', 'Théo', 'Bastien', 'Malo', 'Victor',
   'Jamal', 'Isaiah', 'Xavier', 'Trey', 'Damien', 'Cameron', 'Quentin', 'Bilal', 'Omar', 'Hugo',
-  'Jonas', 'Lars', 'Mateo', 'Santiago', 'Rafael', 'Pau', 'Sergio', 'Ricky', 'Willy', 'Alperen',
-  'Cedi', 'Furkan', 'Deni', 'Vasilije', 'Bogdan', 'Goran', 'Kristaps', 'Domantas', 'Jonas', 'Arvydas',
-  'Terrance', 'Darius', 'Julius', 'Anthony', 'Brandon', 'Zion', 'Ja', 'Shai', 'Tyler', 'Austin',
-  'Grant', 'Miles', 'Keon', 'Amari', 'Josiah', 'Solomon', 'Nasir', 'Rayan', 'Yanis', 'Adama',
-  'Moussa', 'Cheick', 'Ousmane', 'Amadou', 'Lucas', 'Mathis', 'Enzo', 'Noah', 'Gabriel', 'Léo',
+  'Jonas', 'Lars', 'Mateo', 'Santiago', 'Rafael', 'Oriol', 'Sergio', 'Ricky', 'Willy', 'Emre',
+  'Kerem', 'Baran', 'Ilan', 'Aleksa', 'Bogdan', 'Goran', 'Edgars', 'Tomas', 'Jonas', 'Vytautas',
+  'Terrance', 'Darius', 'Julius', 'Anthony', 'Brandon', 'Malcolm', 'Elijah', 'Caleb', 'Tyler', 'Austin',
+  'Grant', 'Miles', 'Desmond', 'Amari', 'Josiah', 'Solomon', 'Nasir', 'Rayan', 'Yanis', 'Adama',
+  'Moussa', 'Seydou', 'Ousmane', 'Amadou', 'Lucas', 'Mathis', 'Enzo', 'Noah', 'Gabriel', 'Léo',
 ];
 
-const LAST_NAMES = [
-  'Bennett', 'Carver', 'Holloway', 'Whitfield', 'Ramsey', 'Okafor', 'Diallo', 'Traoré', 'Ndiaye', 'Camara',
-  'Petrović', 'Jokić', 'Dončić', 'Šarić', 'Vučević', 'Bogdanović', 'Marković', 'Radić', 'Novak', 'Zeman',
-  'Gobert', 'Fournier', 'Wembanyama', 'Coulibaly', 'Ntilikina', 'Lessort', 'Yabusele', 'Poirier', 'Heurtel', 'Albicy',
-  'Antetokounmpo', 'Papagiannis', 'Sloukas', 'Calathes', 'Larentzakis', 'Mitoglou', 'Kalaitzakis', 'Dorsey', 'Baldwin', 'Hayes',
-  'Robinson', 'Hendricks', 'Sanders', 'Curry', 'Whitmore', 'Sheppard', 'Cissoko', 'Barlow', 'Prosper', 'Walker',
-  'Vasquez', 'Delgado', 'Herrera', 'Ibáñez', 'Rubio', 'Cortés', 'Navarro', 'Reyes', 'Mendoza', 'Salazar',
-  'Kowalski', 'Novotný', 'Lindqvist', 'Bergström', 'Halvorsen', 'Virtanen', 'Nurkić', 'Zubac', 'Hezonja', 'Musa',
-  'Adebayo', 'Ojeleye', 'Achiuwa', 'Bamba', 'Konaté', 'Sissoko', 'Faye', 'Gueye', 'Sy', 'Toure',
+export const LAST_NAMES = [
+  'Pemberton', 'Carver', 'Holloway', 'Whitfield', 'Ramsey', 'Nwosu', 'Diallo', 'Traoré', 'Ndiaye', 'Camara',
+  'Lazić', 'Ristić', 'Zupan', 'Babić', 'Ilić', 'Kostić', 'Marković', 'Radić', 'Novak', 'Zeman',
+  'Lemaire', 'Garnier', 'Essomba', 'Sangaré', 'Habimana', 'Morvan', 'Mukendi', 'Lefebvre', 'Duval', 'Rousseau',
+  'Adeyemi', 'Karalis', 'Vlachos', 'Doukas', 'Stavrou', 'Galanis', 'Manolakis', 'Ashford', 'Baldwin', 'Hayes',
+  'Robinson', 'Hendricks', 'Sanders', 'Langley', 'Hollis', 'Sheppard', 'Cissoko', 'Barlow', 'Calloway', 'Walker',
+  'Vasquez', 'Delgado', 'Herrera', 'Ibáñez', 'Ortega', 'Cortés', 'Navarro', 'Reyes', 'Mendoza', 'Salazar',
+  'Kowalski', 'Novotný', 'Lindqvist', 'Bergström', 'Halvorsen', 'Virtanen', 'Hodžić', 'Jurić', 'Perić', 'Mujić',
+  'Okonkwo', 'Afolabi', 'Chukwu', 'Kouadio', 'Konaté', 'Sissoko', 'Faye', 'Gueye', 'Sy', 'Toure',
   'Ellis', 'Vaughn', 'Marshall', 'Osborne', 'Kingsley', 'Pruitt', 'Rawlings', 'Sutton', 'Vance', 'Wheeler',
 ];
 

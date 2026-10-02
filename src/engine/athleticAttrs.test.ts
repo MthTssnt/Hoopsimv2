@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ensureAthleticAttrs } from './generate';
 import { createNewGame, migrateLeague } from './index';
+import { FIRST_NAMES, LAST_NAMES } from './names';
 import { computeOverall } from './ratings';
 import type { League, Player, Position } from './types';
 
@@ -61,5 +62,22 @@ describe('attributs athlétiques (détente, dunks)', () => {
     for (const p of players) {
       expect(migrated.players[p.id].attrs).toEqual(p.attrs);
     }
+  });
+});
+
+describe('noms originaux', () => {
+  it('ne contiennent aucun nom de joueur réel retiré, et gardent la taille des listes (même flux aléatoire)', () => {
+    const removed = ['Jokić', 'Dončić', 'Šarić', 'Vučević', 'Bogdanović', 'Petrović', 'Nurkić', 'Zubac', 'Hezonja', 'Gobert', 'Fournier', 'Wembanyama', 'Ntilikina', 'Yabusele', 'Antetokounmpo', 'Kalaitzakis', 'Adebayo', 'Curry', 'Rubio'];
+    const removedFirst = ['Luka', 'Zion', 'Ja', 'Shai', 'Alperen', 'Kristaps', 'Domantas', 'Killian'];
+    expect(LAST_NAMES.filter((n) => removed.includes(n))).toEqual([]);
+    expect(FIRST_NAMES.filter((n) => removedFirst.includes(n))).toEqual([]);
+    expect([FIRST_NAMES.length, LAST_NAMES.length]).toEqual([80, 90]);
+    expect(new Set(LAST_NAMES).size).toBe(LAST_NAMES.length);
+  });
+
+  it("renomme l'ancienne équipe de Détroit au chargement d'une sauvegarde", () => {
+    const old = JSON.parse(JSON.stringify(createNewGame('bos', 3))) as League;
+    old.teams.find((t) => t.id === 'det')!.name = 'Pistons Mécaniques';
+    expect(migrateLeague(old).teams.find((t) => t.id === 'det')!.name).toBe('Gears');
   });
 });
