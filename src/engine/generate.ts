@@ -249,6 +249,17 @@ export function generateLeague(rng: Rng, seed: number, userTeamId: string, seaso
 }
 
 /**
+ * Premier numéro libre pour les identifiants de rookies (`r…`) : au-delà de tous ceux déjà
+ * attribués, pour qu'un rookie ne reprenne jamais l'identifiant d'un joueur encore actif
+ * (le nombre de joueurs baisse avec les retraites, il ne peut pas servir de compteur).
+ */
+export function nextRookieId(players: Record<string, Player>): number {
+  let max = 0;
+  for (const id of Object.keys(players)) if (id.startsWith('r')) max = Math.max(max, parseInt(id.slice(1), 36) || 0);
+  return Math.max(Object.keys(players).length + 1, max + 1);
+}
+
+/**
  * Génère une classe de rookies pour la draft d'intersaison. `takenLastNames` : noms de famille
  * des joueurs actifs, que les rookies ne reprennent pas.
  */
