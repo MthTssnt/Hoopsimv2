@@ -6,7 +6,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Phaser 4 ajouté, monté dans React, chargé à la demande (`?court` pour tester)
 - ✅ CLAUDE.md, permissions Claude Code, .gitignore, docs de cadrage
 
-## Phase 1 — Fondations du match 🔄
+## Phase 1 — Fondations du match ✅
 - ✅ Notes Hoop Land rangées dans GAMEPLAY_SPEC.md (périmètre phase 1, décisions d'architecture, questions ouvertes)
 - ✅ 1. ENGINE_VIEW_CONTRACT.md (version phase 1) + attributs détente, dunk arrêté, dunk en mouvement
 - ✅ 2. Modèle de tir dans `engine/` (timing, contestation, mouvement, dunk, contre, faute)
@@ -26,7 +26,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ 5. Tir avec jauge + layup (jauge verticale, annonce du lâcher, tir forcé à l'atterrissage, layup en attaquant le cercle, points au tableau de score)
 - ✅ 6. Dunk simple (simple appui dans la moitié de la raquette, prioritaire sur le layup ; smash vérifié par la physique ; accroche au cercle ; DUNK et secousse)
 - ✅ 7a. 1 contre 1 contre l'IA (panier de droite, ressortie derrière l'arc, panier non valable, premier à 11) : contestation mesurée dans le tir et le dunk, IA qui attaque selon ses tendances, défend avec un temps de réaction et va au rebond, tableau de score, RESSORS / NON VALABLE, bandeau de fin
-- ⬜ 7b. Contre, goaltending, fautes
+- ✅ 7b. Contre (main en l'air sur le ballon en montée, le moteur tranche), faute sur tout contact pendant le tir (ballon au tireur si raté), goaltending ; pose « contre », messages CONTRE / FAUTE / GOALTENDING ; IA qui contre et ne rentre plus dans le tireur
 
 ## Phase 2 — Vrai match ⬜
 - ⬜ 5v5, passes, défense, IA de base, changement de joueur contrôlé

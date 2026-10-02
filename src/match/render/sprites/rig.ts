@@ -186,6 +186,8 @@ export const FRAMES: readonly FrameDef[] = [
   f('crouch', 'chest', 'chest', 2, 'chest', 'concentree'),
   f('dunkAir', 'reach', 'swingBack', 0, 'overhead', 'concentree'),
   f('dangle', 'reach', 'reach', 0, undefined, 'concentree'),
+  // 18 contre : deux bras tendus vers le haut, jambes du saut (contre, contestation, rebond)
+  f('air', 'reach', 'reach', 0, undefined, 'concentree'),
 ];
 
 /**

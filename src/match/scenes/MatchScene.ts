@@ -24,7 +24,7 @@ import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../rende
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
 import { loadSettings, type MatchSettings } from '../settings';
-import { MatchWorld, WORLD_DT, type ShotRecord } from '../world/MatchWorld';
+import { MatchWorld, WORLD_DT, type FoulCall, type ShotRecord } from '../world/MatchWorld';
 import { ONE_ON_ONE } from '../world/oneOnOne';
 import { HUD_KEYS, type HudBanner, type HudDebug } from './HudScene';
 
@@ -56,8 +56,8 @@ const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: '
 /** Annonce au-dessus d'une tête (note du lâcher, DUNK) : durée (ms) et montée (px). */
 const TAG_MS = 900;
 const TAG_RISE = 4;
-/** « NON VALABLE » au-dessus du panier, plus long à lire. */
-const RIM_TAG_MS = 1500;
+/** Messages de la défense et des règles (CONTRE, FAUTE, GOALTENDING, NON VALABLE), plus longs à lire. */
+const CALLOUT_MS = 1500;
 /** Dunk réussi : secousse de caméra en pixels entiers (le pixel-art reste net). */
 const SHAKE = { ms: 150, px: 2 } as const;
 /** Cadrage validé dans `?style` : ligne de touche du fond à 41 px du haut de l'écran (la ligne proche tombe vers 267). */
@@ -90,6 +90,13 @@ interface CastMember {
   label: string;
   /** Hauteur du sprite au-dessus des pieds (px), du sommet de la tête aux semelles. */
   height: number;
+}
+
+/** Message qui monte et s'efface au-dessus d'un joueur ou du panier ; empilé avec ses voisins. */
+interface Callout {
+  image: Phaser.GameObjects.Image;
+  owner: number | 'rim';
+  clock: number;
 }
 
 /** Ce qui dessine un corps du monde, et où il a été dessiné à cette image. */
@@ -156,9 +163,12 @@ export class MatchScene extends Phaser.Scene {
   private seenShot: ShotRecord | null = null;
   private tagOwner = ME;
   private tagClock = TAG_MS;
-  /** Dernier panier non valable déjà annoncé. */
+  /** Événements déjà annoncés : panier non valable, contre, faute, goaltending. */
   private seenInvalid: ShotRecord | null = null;
-  private rimTagClock = RIM_TAG_MS;
+  private seenBlock: ShotRecord | null = null;
+  private seenFoul: FoulCall | null = null;
+  private seenGoaltend: ShotRecord | null = null;
+  private callouts: Callout[] = [];
   private shakeMs = 0;
   private scoreKey = '';
   private bannerKey = '';
@@ -172,7 +182,6 @@ export class MatchScene extends Phaser.Scene {
   private gauge!: Phaser.GameObjects.Graphics;
   private tag!: Phaser.GameObjects.Image;
   private clearTag!: Phaser.GameObjects.Image;
-  private rimTag!: Phaser.GameObjects.Image;
 
   constructor() {
     super('Match');
@@ -206,7 +215,10 @@ export class MatchScene extends Phaser.Scene {
     this.tagOwner = ME;
     this.tagClock = TAG_MS;
     this.seenInvalid = null;
-    this.rimTagClock = RIM_TAG_MS;
+    this.seenBlock = null;
+    this.seenFoul = null;
+    this.seenGoaltend = null;
+    this.callouts = [];
     this.shakeMs = 0;
     this.scoreKey = '';
     this.bannerKey = '';
@@ -229,6 +241,9 @@ export class MatchScene extends Phaser.Scene {
     createTag(this, 'tag-dunk', 'DUNK', PALETTE.yellow);
     createTag(this, 'tag-clear', 'RESSORS', PALETTE.orange);
     createTag(this, 'tag-invalid', 'NON VALABLE', PALETTE.red);
+    createTag(this, 'tag-block', 'CONTRE', PALETTE.yellow);
+    createTag(this, 'tag-foul', 'FAUTE', PALETTE.red);
+    createTag(this, 'tag-goaltend', 'GOALTENDING', PALETTE.yellow);
     this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home, true));
     this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away, false));
 
@@ -247,7 +262,6 @@ export class MatchScene extends Phaser.Scene {
     this.gauge = this.add.graphics().setDepth(950);
     this.tag = this.add.image(0, 0, 'grade-perfect').setOrigin(0.5, 1).setDepth(960).setVisible(false);
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
-    this.rimTag = this.add.image(0, 0, 'tag-invalid').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
     // 1 contre 1 sur le panier de droite : le monde place chacun (toi derrière l'arc avec le
     // ballon, l'IA entre toi et le cercle).
@@ -490,6 +504,7 @@ export class MatchScene extends Phaser.Scene {
       facing: body.facing,
       heading: view.heading,
       shot: shot?.kind ?? null,
+      followThrough: this.world.followThrough[index] ?? false,
     });
     this.applySprite(view.sprite, view.member.baked, state);
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
@@ -574,10 +589,14 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  /** « RESSORS » au-dessus de toi tant que tu dois ressortir ; « NON VALABLE » au-dessus du panier. */
+  /**
+   * « RESSORS » au-dessus de toi tant que tu dois ressortir. Messages des règles : CONTRE au-dessus
+   * du contreur (avec la secousse du dunk), FAUTE au-dessus du défenseur, NON VALABLE et
+   * GOALTENDING au-dessus du panier.
+   */
   private updateCallouts(deltaMs: number) {
     const rules = this.world.rules;
-    const mustClear = !!rules && this.world.holder === ME && rules.mustClear[ME] && rules.winner === null;
+    const mustClear = !!rules && this.world.holder === ME && rules.mustClear[ME] && rules.winner === null && !rules.restart;
     this.clearTag.setVisible(mustClear);
     if (mustClear) {
       // Au-dessus de l'annonce du tir si elle est encore là.
@@ -589,17 +608,61 @@ export class MatchScene extends Phaser.Scene {
     const last = this.world.lastShot;
     if (last?.invalid && last !== this.seenInvalid) {
       this.seenInvalid = last;
-      this.rimTagClock = 0;
+      this.addCallout('tag-invalid', 'rim');
     }
-    this.rimTagClock += deltaMs;
-    const showRim = this.rimTagClock < RIM_TAG_MS;
-    this.rimTag.setVisible(showRim);
-    if (showRim) {
-      const rim = this.world.court.hoops.right.rim;
-      const rise = Math.round((TAG_RISE * this.rimTagClock) / RIM_TAG_MS);
-      const at = rounded(project(rim.x, rim.y, RIM_HEIGHT + 1.4));
-      this.rimTag.setPosition(at.x, at.y - rise).setAlpha(Math.min(1, (RIM_TAG_MS - this.rimTagClock) / 300));
+    if (last?.block?.success && last !== this.seenBlock) {
+      this.seenBlock = last;
+      this.addCallout('tag-block', last.block.blocker);
+      this.shakeMs = SHAKE.ms;
     }
+    if (last?.goaltend && last !== this.seenGoaltend) {
+      this.seenGoaltend = last;
+      this.addCallout('tag-goaltend', 'rim');
+    }
+    const foul = this.world.currentFoul;
+    if (foul?.called && foul !== this.seenFoul) {
+      this.seenFoul = foul;
+      this.addCallout('tag-foul', foul.defender);
+    }
+
+    // Chaque message monte de 4 px et s'efface ; ceux d'un même endroit s'empilent.
+    const stack = new Map<number | 'rim', number>();
+    for (const c of this.callouts) {
+      if (!c.image.visible) continue;
+      c.clock += deltaMs;
+      if (c.clock >= CALLOUT_MS) {
+        c.image.setVisible(false);
+        continue;
+      }
+      const below = stack.get(c.owner) ?? 0;
+      stack.set(c.owner, below + c.image.height + 1);
+      const rise = Math.round((TAG_RISE * c.clock) / CALLOUT_MS);
+      let at: Point;
+      if (c.owner === 'rim') {
+        const rim = this.world.court.hoops.right.rim;
+        at = rounded(project(rim.x, rim.y, RIM_HEIGHT + 1.4));
+        at = { x: at.x, y: at.y - below };
+      } else {
+        // Au-dessus de la tête, et de l'annonce du tir si elle est sur le même joueur.
+        const tag = this.tag.visible && this.tagOwner === c.owner ? this.tag.height + 1 : 0;
+        at = this.overHead(c.owner, 3 + tag + below);
+      }
+      c.image.setPosition(at.x, at.y - rise).setAlpha(Math.min(1, (CALLOUT_MS - c.clock) / 300));
+    }
+  }
+
+  /** Nouveau message (image réutilisée si une est libre). */
+  private addCallout(texture: string, owner: number | 'rim') {
+    let callout = this.callouts.find((c) => !c.image.visible);
+    if (!callout) {
+      callout = { image: this.add.image(0, 0, texture).setOrigin(0.5, 1).setDepth(960), owner, clock: 0 };
+      this.callouts.push(callout);
+    }
+    callout.image.setTexture(texture).setVisible(true).setAlpha(1);
+    callout.owner = owner;
+    callout.clock = 0;
+    // Le plus récent en bas de la pile : on le replace en tête de liste.
+    this.callouts = [callout, ...this.callouts.filter((c) => c !== callout)];
   }
 
   /** Tableau de score (toi contre l'IA) et bandeau de fin, publiés seulement quand ils changent. */
@@ -661,7 +724,14 @@ export class MatchScene extends Phaser.Scene {
     const result = (v: boolean) => (v ? 'RÉUSSI' : 'RATÉ');
     const who = shot.shooter === ME ? '' : 'IA : ';
     const contest = shot.contest ? ` · contesté à ${shot.contest.distance.toFixed(1)} m, en face ${shot.contest.facing.toFixed(2)}` : '';
-    const outcome = `voulu ${result(shot.wanted)} · obtenu ${shot.live === null ? '…' : result(shot.live)}${shot.invalid ? ' (NON VALABLE)' : ''}`;
+    const defense = [
+      shot.block ? `contre ${shot.block.success ? 'RÉUSSI' : 'raté'} (contact ${shot.block.contact.toFixed(2)}, proba ${Math.round(shot.block.probability * 100)} %)` : '',
+      shot.foul ? `contact : ${shot.foul.called ? 'FAUTE' : 'pas de faute'} (proba ${Math.round(shot.foul.probability * 100)} %)` : '',
+      shot.goaltend ? 'GOALTENDING' : '',
+    ].filter(Boolean);
+    const outcome =
+      `voulu ${result(shot.wanted)} · obtenu ${shot.live === null ? '…' : result(shot.live)}${shot.invalid ? ' (NON VALABLE)' : ''}` +
+      (defense.length ? ` · ${defense.join(' · ')}` : '');
     if (shot.kind === 'dunk') {
       const p = shot.probability === null ? '' : ` · proba ${Math.round(shot.probability * 100)} %`;
       return `${who}Dunk${contest}${p} · ${outcome}`;
@@ -699,7 +769,8 @@ export class MatchScene extends Phaser.Scene {
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · graine ${this.seed}`,
       `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · vue ${this.bodies[ME].heading === 'back' ? 'de dos' : 'de profil'}`,
       this.aiLine(),
-      `ballon ${holder}${owed.length ? ` · à ressortir : ${owed.join(', ')}` : ''} · premier à ${rules?.target ?? this.target}`,
+      `ballon ${holder}${owed.length ? ` · à ressortir : ${owed.join(', ')}` : ''} · premier à ${rules?.target ?? this.target}` +
+        (rules?.restart ? ` · ballon mort (faute), remise au ${rules.restart.shooter === ME ? 'joueur' : 'IA'} dans ${rules.restart.pause.toFixed(1)} s` : ''),
       `${s.level.toUpperCase()} · tir ${s.shotMode === 'timing' ? 'Timing' : 'Real Player %'} ${SPEED_LABELS[s.shotSpeed]}` +
         ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
     ];

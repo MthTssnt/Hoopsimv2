@@ -47,6 +47,7 @@ const POSE_GROUPS = [
   { label: 'DR.ARRET', from: 10, to: 11 },
   { label: 'TIR', from: 12, to: 14 },
   { label: 'DUNK', from: 15, to: 17 },
+  { label: 'CONTRE', from: 18, to: 18 },
 ];
 
 /** Vues de la scène : terrain, gros plan des gabarits, planches des poses de profil et de dos (touche V ou `?style&vue=`). */
@@ -257,13 +258,13 @@ export class StyleScene extends Phaser.Scene {
   }
 
   /**
-   * Planche des poses : les 18 images de chaque gabarit à l'échelle du jeu, plus l'ailier tourné
+   * Planche des poses : les 19 images de chaque gabarit à l'échelle du jeu, plus l'ailier tourné
    * vers la gauche ; de profil, ou de dos (le joueur monte).
    */
   private buildPoseSheet(heading: Heading) {
     const back = heading === 'back';
     const g = this.studyBackground(back ? 'PLANCHE DES POSES DE DOS (ECHELLE DU JEU)' : 'PLANCHE DES POSES (ECHELLE DU JEU)');
-    const cell = 26;
+    const cell = 24;
     const left = 6;
     POSE_GROUPS.forEach((group) => {
       g.fillStyle(PALETTE.silver);

@@ -6,7 +6,7 @@ import type { TeamRamp } from '../../../assets/palette';
 
 export interface BakedPlayer {
   /**
-   * Clé de la texture (feuille de sprites) : 4 blocs de 18 images (profil droite, profil gauche,
+   * Clé de la texture (feuille de sprites) : 4 blocs de 19 images (profil droite, profil gauche,
    * dos droite, dos gauche ; voir `sheetIndex`). Animations : voir `animationKey`.
    */
   key: string;

@@ -40,8 +40,15 @@
 - **Zone de dunk** (`inDunkZone`) : le joueur est dans la moitié de la raquette côté panier
   (entre la ligne de fond et le milieu de la raquette).
 - **Qualité du contact** d'un contre : 0 si la main effleure le ballon, 1 si elle le prend en
-  plein.
+  plein. Mesure (7b, `world/defense.ts`, `DEFENSE_FLOW`) : le bras levé va de l'épaule
+  (0,82 × taille au-dessus des pieds) à la main levée (`reach`), et peut viser le ballon dans un
+  cône au-dessus de l'épaule (au moins 20° au-dessus de l'horizontale). Le ballon est touché
+  s'il est à portée du bras (+ son rayon) ; qualité = marge dans la portée / 0,25 m, bornée
+  à 0-1.
 - **Contact des corps** : recouvrement en mètres, plus la vitesse du défenseur vers le tireur.
+  Mesure (7b) : les corps sont à ≤ 0,75 m l'un de l'autre (ils ne descendent jamais sous
+  0,7 m) ; recouvrement = 0,75 m − distance ; vitesse = composante de la vitesse du défenseur
+  vers le tireur (0 s'il s'éloigne).
 
 ### Tir et layup côté `match/` (incrément 5, réglages dans `world/shooting.ts`, `SHOT_FLOW`)
 - **Départ** : appui sur Tir avec le ballon, au sol. Le joueur saute, se tourne vers le panier
@@ -101,9 +108,9 @@ examinés dans cet ordre :
 
 1. **Contre.** Si `engine/` valide un contre, il **annule le résultat tiré** : pas de panier,
    ballon dévié par la physique.
-2. **Faute.** Un contact pendant le contre peut être sifflé. En phase 1, sans lancers francs :
-   un panier marqué compte, sinon la balle revient au joueur fautif en haut de la raquette.
-   Un contre jugé fautif ne compte pas comme contre.
+2. **Faute.** Un contact des corps pendant le tir peut être sifflé. En phase 1, sans lancers
+   francs : un panier marqué compte (puis la suite normale) ; sinon le ballon revient **au
+   tireur** en haut de la raquette. Un contre jugé fautif ne compte pas comme contre.
 3. **Goaltending.** Le ballon touché en redescente au-dessus du cercle : le panier compte,
    quel que soit le résultat tiré.
 4. **Résultat tiré au lâcher.** S'il n'y a ni contre ni goaltending, la physique produit une
@@ -127,8 +134,36 @@ Règles décidées par Matheo, appliquées par `match/world/` (pas par `engine/`
 - **IA** (`ai/opponent.ts`) : elle ne fait que produire des entrées (direction, saut, lâcher)
   comme un joueur au clavier ; le monde et `engine/` lui appliquent les mêmes règles. Son
   erreur de lâcher suit `N(0, σ)`, σ diminuant avec la stat de tir de la zone ; son temps de
-  réaction en défense dépend de `perimeterDef` (et d'`interiorDef` près du cercle). En 7a, son
-  saut de contestation ne touche pas le ballon : le contre arrive au 7b.
+  réaction en défense dépend de `perimeterDef` (et d'`interiorDef` près du cercle). Depuis le
+  7b, son saut de contestation est une vraie tentative de contre. Elle anticipe en partie la
+  course de l'attaquant (35 % de son temps de réaction), ne s'avance pas vers un attaquant déjà
+  sur elle, et reste plantée une fois le tireur en l'air.
+
+## Contre, faute et goaltending côté `match/` (incrément 7b, `world/defense.ts`)
+Décisions de Matheo, appliquées par `match/world/` ; `engine/` tranche avec `resolveBlock` et
+`foulOnContact` (inchangés) :
+- **Contre** : seulement par un défenseur **en l'air**, pendant la **montée** du ballon d'un
+  tir ou d'un layup, une seule tentative par tir (le premier contact). `engine/` reçoit le
+  contreur, le tireur et la qualité du contact.
+  - Réussi : le résultat tiré est annulé (aucun point, même si le ballon finit dans le
+    cercle), le ballon est frappé (4-7 m/s, loin de la main, angle seedé) et reste libre ;
+    celui qui le ramasse le garde, le défenseur doit ressortir (rebond défensif).
+  - Raté : la trajectoire ne change pas.
+  - Un **dunk** n'est pas contrable en 7b : le défenseur agit déjà à l'appui.
+- **Faute** : tout contact des corps pendant le tir, de l'appui (décollage) à l'atterrissage du
+  tireur, défenseur au sol ou en l'air, tir, layup ou dunk. Une seule évaluation par tir, au
+  premier contact. Une tentative de contre après le coup de sifflet est ignorée.
+  - Tir marqué et valable : le panier compte, puis la suite normale (ramassage, ressortie).
+  - Tir raté (cercle, planche ou sol sans entrer), contré, ou non valable : ballon mort 1 s,
+    personne ne joue, puis le tireur reprend le ballon en haut de la raquette (place de départ,
+    derrière l'arc, rien à ressortir), l'autre en défense.
+  - Pas de faute offensive en 7b : tout contact est jugé comme une faute possible du défenseur.
+- **Goaltending** : la main d'un défenseur en l'air touche le ballon qui redescend, au-dessus du
+  cercle (+ le rayon du ballon), à ≤ 1 m du centre du cercle à l'horizontale, avant que le
+  ballon ait touché le cercle ou la planche. Le panier compte (2 ou 3 pts, ou non valable si le
+  tireur n'avait pas ressorti), le ballon est frappé, puis comme après un panier.
+- **Mesures en partie IA contre IA** (10 min, 9 parties de contrôle) : contres réussis 5-11 %
+  des tirs (surtout des layups), fautes 6-11 %, goaltending ~0, réussite globale 43-49 %.
 
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate

@@ -120,9 +120,23 @@
     possible, sinon layup en attaquant le cercle ;
   - elle lâche au sommet plus une erreur qui diminue avec sa stat de tir ;
   - en défense, elle se place entre toi et le cercle à ~1,1 m, avec un temps de réaction de
-    0,12 à 0,3 s selon sa défense, et saute pour contester quand tu tires près d'elle (le contre
-    arrive au 7b) ;
+    0,12 à 0,3 s selon sa défense, et saute pour contester quand tu tires près d'elle ;
   - au rebond, elle court vers le ballon.
+- **Contre, fautes, goaltending (incrément 7b, décisions de Matheo)** :
+  - contre : un défenseur en l'air touche le ballon pendant sa montée ; le moteur tranche
+    (contre, détente, taille, qualité du contact). Réussi, il annule le panier et le ballon est
+    frappé. Un dunk n'est pas contrable en 7b ;
+  - faute : tout contact des corps pendant le tir (de l'appui à l'atterrissage du tireur),
+    défenseur au sol ou en l'air ; tir marqué → le panier compte et le ballon passe à l'autre ;
+    tir raté → le ballon revient au tireur en haut de la raquette, rien à ressortir ;
+  - goaltending : ballon touché en redescente au-dessus du cercle, avant le cercle ou la
+    planche → le panier compte ;
+  - pose « contre » (deux bras levés) pour tout saut sans le ballon ;
+  - l'IA (choix de HoopSim) : son saut de contestation peut contrer ; elle anticipe un peu la
+    course de l'attaquant, ne lui rentre pas dedans et reste plantée quand il est en l'air.
+  - Mesuré en IA contre IA : ~5-11 % des tirs contrés, ~6-11 % sifflés (environ 2 fautes par
+    partie à 11). Un réglage de la fréquence des fautes (comme « moyen » / « élevé » dans Hoop
+    Land) pourra venir avec les règles activables.
 - Comportement des coéquipiers en attaque (écrans, coupes, spacing) : ?
 - Rebond offensif : l'IA n'y va pas beaucoup.
 - Défense adverse (individuelle, aide, pression) : ? Observé :
@@ -253,3 +267,12 @@ Vu sur la capture de référence, pour plus tard :
 - **« J. Lawson 7% »** : que veut dire le % affiché sous le nom du porteur adverse quand on
   défend près de lui ? Chance d'interception, proba de son tir, autre chose ? Et la zone verte
   au sol entre le défenseur et le porteur ? 
+
+Apparu à la fin de la phase 1 (à trancher avant ou pendant la phase 2) :
+- **Fréquence des fautes** : faut-il un réglage (comme « moyen » / « élevé » dans Hoop Land) ?
+  Aujourd'hui ~6-11 % des tirs sont sifflés en 1 contre 1.
+- **Faute offensive** (passage en force) : à ajouter, et selon quoi (défenseur arrêté, placé
+  avant le contact) ?
+- **Contrer un dunk** : à quel moment, et avec quelle chance ?
+- **Hors-jeu** : le ballon peut partir dans le public et rester jouable ; quelle règle en
+  1 contre 1 et en match ?

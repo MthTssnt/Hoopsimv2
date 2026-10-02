@@ -37,6 +37,10 @@ export const AI_TUNING = {
   timingSd: { worst: 0.09, best: 0.035 },
   /** Ballon libre : vise sa position projetée de (s) en avant. */
   chaseLead: 0.25,
+  /** Vitesse de l'attaquant estimée sur cette fenêtre (s), pour anticiper sa course… */
+  velocityWindow: 0.05,
+  /** …prolongée de cette part du temps de réaction (0 : aucune anticipation, 1 : course droite parfaitement lue). */
+  anticipation: 0.35,
 } as const;
 
 export type AiPlan = 'rim' | 'mid' | 'three';
@@ -77,6 +81,18 @@ export function delayedPosition(history: readonly { t: number; p: Point }[], now
   const when = now - delay;
   for (let i = history.length - 1; i >= 0; i--) if (history[i].t <= when) return history[i].p;
   return history[0]?.p ?? { x: 0, y: 0 };
+}
+
+/**
+ * Ce que le défenseur croit voir : la position d'il y a `delay` secondes, prolongée de la vitesse
+ * qu'avait l'attaquant à ce moment-là. Une course droite est anticipée ; un changement de
+ * direction se paie du temps de réaction.
+ */
+export function anticipatedPosition(history: readonly { t: number; p: Point }[], now: number, delay: number): Point {
+  const seen = delayedPosition(history, now, delay);
+  const before = delayedPosition(history, now, delay + AI_TUNING.velocityWindow);
+  const k = (delay * AI_TUNING.anticipation) / AI_TUNING.velocityWindow;
+  return { x: seen.x + (seen.x - before.x) * k, y: seen.y + (seen.y - before.y) * k };
 }
 
 /** Tirage normal (Box-Muller) à partir du générateur seedé. */
@@ -138,7 +154,8 @@ export class OpponentAi {
     this.history.push({ t: this.clock, p: { x: op.x, y: op.y } });
     while (this.history.length > 2 && this.history[1].t < this.clock - 0.6) this.history.shift();
 
-    if (world.rules?.winner !== null && world.rules?.winner !== undefined) {
+    // Fin de partie, ou ballon mort après une faute : on ne bouge pas.
+    if ((world.rules?.winner !== null && world.rules?.winner !== undefined) || world.rules?.restart) {
       this.mode = 'pause';
       return { x: 0, y: 0, jump: false };
     }
@@ -239,10 +256,10 @@ export class OpponentAi {
     this.mode = 'défense';
     const other = this.other(world);
     const reaction = this.reaction(world);
-    const seen = delayedPosition(this.history, this.clock, reaction);
+    const body = world.players[this.index];
+    const seen = anticipatedPosition(this.history, this.clock, reaction);
     const hoop = world.hoopFor(seen.x);
     const shot = world.shot;
-    const body = world.players[this.index];
     // Le tireur décolle près de nous : on saute pour contester, après le temps de réaction.
     if (shot && shot.shooter === other && this.contested !== shot && shot.airTime >= reaction) {
       const shooter = world.players[other].pos;
@@ -251,7 +268,19 @@ export class OpponentAi {
         return { x: 0, y: 0, jump: true };
       }
     }
+    // Tireur en l'air (vu après le temps de réaction) : on reste planté, sans lui rentrer dedans.
+    if (shot && shot.shooter === other && shot.airTime >= reaction) {
+      this.target = { x: body.pos.x, y: body.pos.y };
+      return { x: 0, y: 0, jump: false };
+    }
     this.target = guardSpot(seen, hoop);
+    // Attaquant déjà sur nous : on tient notre place au lieu d'avancer vers lui (on ne lui rentre
+    // pas dedans parce qu'on le voit avec du retard).
+    const now = world.players[other].pos;
+    const gap = Math.hypot(now.x - body.pos.x, now.y - body.pos.y);
+    if (gap < AI_TUNING.guardGap && Math.hypot(now.x - this.target.x, now.y - this.target.y) < gap) {
+      this.target = { x: body.pos.x, y: body.pos.y };
+    }
     return this.moveTo(world, this.target);
   }
 

@@ -57,6 +57,9 @@ function dropInRim(world: MatchWorld, shooterIndex: number, cleared: boolean, th
     scored: false,
     invalid: false,
     live: null,
+    block: null,
+    foul: null,
+    goaltend: false,
   };
   world.rules!.lastHolder = shooterIndex;
 }

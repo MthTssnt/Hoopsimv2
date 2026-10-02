@@ -190,9 +190,10 @@ plus une variante d'identité : c'est un état.
 | Dribble | 4 | cale sur le dribble (0,5 s l'aller-retour) | Jambes de course ou d'arrêt, bras + ballon |
 | Saut / tir | 3 | flexion 80 ms, montée jusqu'au sommet, lâcher jusqu'à la réception | Ballon à la poitrine, puis au-dessus de la main levée à côté de la tête ; visage concentré |
 | Dunk | 3 | élan, bras tendu vers le cercle, accroché ~0,3 s au cercle (deux bras) | Visage concentré ; en match, sprite monté pour que les mains touchent le cercle |
+| Contre (image 18) | 1 | tout le saut sans le ballon | Deux bras tendus vers le haut, jambes du saut, visage concentré ; contre, contestation, rebond. Après son lâcher, le tireur garde l'image 14 (bras du lâcher) jusqu'au sol |
 
-Planche complète : vue « poses » de `?style` (touche V), pour les trois gabarits et vers la
-gauche ; vue « dos » pour les mêmes images vues de dos.
+Planche complète : vue « poses » de `?style` (touche V), les 19 images des trois gabarits et
+vers la gauche ; vue « dos » pour les mêmes images vues de dos.
 
 ## 6. Panier et terrain
 - **Panier massif** :
@@ -271,6 +272,11 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     PARTIE À 0-0 » en petite police ;
   - étiquettes : quand les deux joueurs sont côte à côte, les étiquettes s'écartent chacune de
     son côté au lieu de se chevaucher ; seule la tienne est soulignée.
+- **Défense (7b)** : « CONTRE » (`yellow`) au-dessus du contreur, avec la même secousse que le
+  dunk ; « FAUTE » (`red`) au-dessus du défenseur, dès le contact ; « GOALTENDING » (`yellow`)
+  au-dessus du panier. Comme NON VALABLE, ils montent de 4 px et s'effacent en 1,5 s, et
+  s'empilent quand plusieurs visent le même joueur ou le panier (au-dessus de l'annonce du
+  tir).
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

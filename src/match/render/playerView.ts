@@ -22,9 +22,10 @@ export const PLAYER_VIEW_TUNING = {
 
 /**
  * Images fixes en l'air : ballon levé au-dessus de la tête (tir), bras tendu vers le cercle
- * (layup et montée du dunk), bras après le lâcher, accroché au cercle (après le smash).
+ * (layup et montée du dunk), bras après le lâcher, accroché au cercle (après le smash), deux bras
+ * levés (saut sans le ballon : contre, contestation, rebond).
  */
-export const AIR_FRAMES = { withBall: 13, layup: 16, empty: 14, dunkHang: 17 } as const;
+export const AIR_FRAMES = { withBall: 13, layup: 16, empty: 14, dunkHang: 17, block: 18 } as const;
 
 /** Ce que le monde dit du joueur, réduit à ce qui choisit l'image. */
 export interface BodyView {
@@ -38,6 +39,8 @@ export interface BodyView {
   heading: Heading;
   /** Geste en cours (tir, layup ou dunk), ou null. */
   shot?: PlayKind | null;
+  /** Il a lâché le ballon pendant ce saut : retombée du tir, bras après le lâcher. */
+  followThrough?: boolean;
 }
 
 /** Animation en boucle, ou image fixe de la feuille (indice dans un bloc, avant orientation). */
@@ -58,13 +61,13 @@ export function nextHeading(previous: Heading, vel: { x: number; y: number }, ai
 /**
  * Choix de l'image du joueur : au sol, arrêt ou course (dribble avec le ballon) ; en l'air,
  * ballon levé (tir en suspension), bras tendu vers le cercle (layup, montée du dunk), deux bras
- * au cercle après le smash, ou bras après le lâcher.
+ * au cercle après le smash, bras après le lâcher, ou deux bras levés (saut sans le ballon).
  */
 export function spriteStateFor(body: BodyView): SpriteState {
   const facing: Facing = body.facing < 0 ? 'left' : 'right';
   const { heading } = body;
   if (body.airborne) {
-    let frame: number = AIR_FRAMES.empty;
+    let frame: number = body.followThrough ? AIR_FRAMES.empty : AIR_FRAMES.block;
     if (body.holding) frame = body.shot === 'layup' || body.shot === 'dunk' ? AIR_FRAMES.layup : AIR_FRAMES.withBall;
     else if (body.shot === 'dunk') frame = AIR_FRAMES.dunkHang;
     return { kind: 'frame', frame, facing, heading };

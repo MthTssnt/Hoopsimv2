@@ -3,7 +3,7 @@ import { createNewGame } from '../../engine';
 import { Rng } from '../../engine/rng';
 import { makeCourt, type Vec3 } from '../physics/court';
 import { MatchWorld, WORLD_DT, type ShotRecord, type WorldInput } from '../world/MatchWorld';
-import { AI_TUNING, choosePlan, delayedPosition, guardSpot, OpponentAi, reactionTime, timingSd } from './opponent';
+import { AI_TUNING, anticipatedPosition, choosePlan, delayedPosition, guardSpot, OpponentAi, reactionTime, timingSd } from './opponent';
 
 const players = Object.values(createNewGame('bos', 31).players);
 const byOverall = [...players].sort((a, b) => b.overall - a.overall);
@@ -52,6 +52,14 @@ describe('IA : réglages', () => {
     ];
     expect(delayedPosition(history, 0.2, 0.1)).toEqual({ x: 1, y: 0 });
     expect(delayedPosition(history, 0.2, 0.5)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('anticipe une partie de la course de l’attaquant', () => {
+    const history = Array.from({ length: 41 }, (_, i) => ({ t: i * 0.01, p: { x: i * 0.05, y: 0 } }));
+    // 5 m/s : vu 0,2 s en retard à x = 1, prolongé de 0,35 × 0,2 s à 5 m/s.
+    const seen = anticipatedPosition(history, 0.4, 0.2);
+    expect(seen.x).toBeCloseTo(1 + 5 * 0.2 * AI_TUNING.anticipation, 6);
+    expect(seen.x).toBeLessThan(2);
   });
 
   it('choisit ses plans selon ses tendances', () => {
@@ -104,6 +112,22 @@ describe('IA en défense', () => {
     far.step(WORLD_DT, [{ ...IDLE, jump: true }, ai2.think(far, WORLD_DT)]);
     play(far, ai2, 0.6, IDLE, () => (farJump ||= far.players[1].airborne, false));
     expect(farJump).toBe(false);
+  });
+});
+
+describe('IA en défense : tireur en l’air', () => {
+  it('reste plantée au lieu de rentrer dans le tireur', () => {
+    const world = oneOnOne();
+    const ai = new OpponentAi(1, new Rng(1));
+    place(world, 0, { x: rim.x - 6, y: rim.y });
+    place(world, 1, { x: rim.x - 4, y: rim.y });
+    play(world, ai, 0.5);
+    // Tu files vers le cercle et tu sautes : une fois le saut vu, elle ne bouge plus vers toi.
+    world.step(WORLD_DT, [{ x: 1, y: 0, jump: true }, ai.think(world, WORLD_DT)]);
+    play(world, ai, ai.reaction(world) + 0.05, IDLE);
+    const v = world.players[1].vel;
+    const u = world.players[0].pos.x - world.players[1].pos.x;
+    expect(Math.sign(u) * v.x).toBeLessThanOrEqual(1e-6);
   });
 });
 
@@ -178,6 +202,12 @@ describe('partie de contrôle : IA contre IA', () => {
     }
     const all = [...shots];
     const made = all.filter((s) => s.scored && !s.invalid);
+    // 7b : il y a des contres et des fautes, sans que la défense écrase l'attaque.
+    const blocks = all.filter((s) => s.block?.success).length;
+    const fouls = all.filter((s) => s.foul?.called).length;
+    expect(blocks).toBeGreaterThan(0);
+    expect(blocks / all.length).toBeLessThan(0.2);
+    expect(fouls / all.length).toBeLessThan(0.2);
     const byShooter = [0, 1].map((i) => made.filter((s) => s.shooter === i).length);
     expect(all.length).toBeGreaterThan(20);
     expect(byShooter[0]).toBeGreaterThan(0);

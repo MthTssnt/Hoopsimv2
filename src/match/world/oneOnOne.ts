@@ -21,10 +21,12 @@ export interface OneOnOneState {
   winner: number | null;
   /** Temps de pause restant après une victoire (s). */
   pause: number;
+  /** Faute puis tir raté : ballon mort, puis remise en jeu au tireur en haut de la raquette. */
+  restart: { shooter: number; pause: number } | null;
 }
 
 export function newOneOnOne(players: number, target: number = ONE_ON_ONE.target): OneOnOneState {
-  return { target, mustClear: Array.from({ length: players }, () => false), lastHolder: 0, winner: null, pause: 0 };
+  return { target, mustClear: Array.from({ length: players }, () => false), lastHolder: 0, winner: null, pause: 0, restart: null };
 }
 
 /** Le ballon est-il ressorti (tenu derrière la ligne à 3 pts) ? */

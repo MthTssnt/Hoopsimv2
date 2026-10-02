@@ -1,10 +1,27 @@
 import { reach } from '../../engine/athletics';
 import type { Rng } from '../../engine/rng';
-import { canDunk, gaugeTime, resolveDunk, resolveShot, type Contest, type DunkContext, type ShotKind, type ShotMode, type ShotSpeed, type ShotZone, type TimingGrade } from '../../engine/shot';
+import {
+  blockProbability,
+  canDunk,
+  foulOnContact,
+  foulProbability,
+  gaugeTime,
+  resolveBlock,
+  resolveDunk,
+  resolveShot,
+  type Contest,
+  type DunkContext,
+  type ShotKind,
+  type ShotMode,
+  type ShotSpeed,
+  type ShotZone,
+  type TimingGrade,
+} from '../../engine/shot';
 import type { Player } from '../../engine/types';
 import { BALL_PHYSICS, stepBall, type BallState } from '../physics/ball';
 import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
 import { solveDunk } from '../physics/dunk';
+import { armContact, bodyContact, DEFENSE_FLOW, inGoaltendZone, swatVelocity } from './defense';
 import { solveShot } from '../physics/shotSolver';
 import { isCleared, mustClearAfterPickup, newOneOnOne, ONE_ON_ONE, startPositions, type OneOnOneState } from './oneOnOne';
 import { createPlayerBody, PLAYER_TUNING, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
@@ -66,6 +83,40 @@ export interface ShotRecord {
   invalid: boolean;
   /** Résultat observé en direct (null tant que le ballon n'a pas touché le sol). */
   live: boolean | null;
+  /** Contre tenté (une fois, ballon en montée) ; réussi, il annule le résultat tiré. */
+  block: BlockAttempt | null;
+  /** Faute évaluée au premier contact des corps pendant le tir (de l'appui à l'atterrissage). */
+  foul: FoulCall | null;
+  /** Panier accordé : ballon touché en redescente au-dessus du cercle. */
+  goaltend: boolean;
+}
+
+/** Main d'un défenseur sur le ballon pendant sa montée : `engine/` tranche. */
+export interface BlockAttempt {
+  blocker: number;
+  /** Qualité du contact mesurée (0 = effleure, 1 = en plein). */
+  contact: number;
+  probability: number;
+  success: boolean;
+}
+
+/** Contact des corps pendant un tir : faute sifflée ou non. */
+export interface FoulCall {
+  defender: number;
+  probability: number;
+  called: boolean;
+}
+
+/** Un vrai tir, de l'appui à son issue : fenêtre de faute et ballon mort après une faute. */
+interface Play {
+  shooter: number;
+  /** Tir enregistré dès le lâcher (au smash pour un dunk). */
+  record: ShotRecord | null;
+  foul: FoulCall | null;
+  /** Fenêtre de faute ouverte : de l'appui jusqu'à l'atterrissage du tireur. */
+  watching: boolean;
+  /** Le tir est raté (ou contré, ou non valable) : avec une faute, le ballon revient au tireur. */
+  missed: boolean;
 }
 
 /** Dunk en cours : résultat déjà tiré à l'appui, smash au sommet, puis accroche si réussi. */
@@ -131,9 +182,14 @@ export class MatchWorld {
   /** Règles du 1 contre 1, ou null pour un joueur seul (panier le plus proche, pas de règle). */
   rules: OneOnOneState | null = null;
   shotSettings: ShotSettings;
+  /** Le joueur a lâché le ballon pendant son saut en cours (pose de la retombée du tir). */
+  readonly followThrough: boolean[] = [];
   private readonly rng: Rng;
   private dribbleTime = 0;
   private cooldown = 0;
+  private play: Play | null = null;
+  /** Le tir en vol a déjà touché le cercle ou la planche (plus de goaltending possible). */
+  private rimTouched = false;
 
   constructor(court: Court, athlete: Player, start: Vec3, shotSettings: ShotSettings, rng: Rng) {
     this.court = court;
@@ -146,6 +202,11 @@ export class MatchWorld {
 
   get player(): PlayerBody {
     return this.players[this.controlled];
+  }
+
+  /** Faute évaluée sur le tir en cours ou le dernier tir (dès le contact, avant même le lâcher). */
+  get currentFoul(): FoulCall | null {
+    return this.play?.foul ?? null;
   }
 
   /**
@@ -235,6 +296,13 @@ export class MatchWorld {
       if (this.rules.pause <= 0) this.resetGame();
       list = [];
     }
+    // Faute puis tir raté : ballon mort, personne ne joue, puis remise en jeu au tireur.
+    const restart = this.rules?.restart ?? null;
+    if (restart) {
+      restart.pause -= dt;
+      list = [];
+      if (restart.pause <= 0) this.restartPlay(restart.shooter);
+    }
 
     this.players.forEach((body, i) => {
       const input = list[i] ?? IDLE_INPUT;
@@ -254,9 +322,11 @@ export class MatchWorld {
       const dunk = this.shot?.shooter === i ? this.shot.dunk : null;
       if (dunk && dunk.hang > 0) dunk.hang = Math.max(0, dunk.hang - dt);
       else stepPlayer(body, input, dt, this.court);
+      if (!body.airborne) this.followThrough[i] = false;
       if (kind) this.startShot(i, kind, takeoffSpeed, takeoff, dunkCtx);
     });
     this.separateBodies();
+    this.checkFoul();
     this.cooldown = Math.max(0, this.cooldown - dt);
 
     if (this.shot) {
@@ -284,10 +354,16 @@ export class MatchWorld {
     for (const event of stepBall(this.ball, this.court, dt)) {
       const shot = this.lastShot;
       if (!shot || shot.live !== null) continue;
+      if (event.type === 'rim' || event.type === 'board') this.rimTouched = true;
       if (event.type === 'score' && event.hoop === shot.hoop && !shot.scored) this.onBasket(shot);
       if (event.type === 'floor') shot.live = shot.scored;
+      // Raté : au sol, ou dès le cercle ou la planche quand le résultat tiré est un raté.
+      if (!shot.scored && (event.type === 'floor' || ((event.type === 'rim' || event.type === 'board') && !shot.wanted))) this.markMissed(shot);
     }
-    this.tryPickup();
+    if (!this.rules?.restart) {
+      this.checkTouch();
+      this.tryPickup();
+    }
   }
 
   /** Panier marqué : points au tireur, ou panier non valable (pas ressorti) et ballon à l'autre. */
@@ -298,6 +374,11 @@ export class MatchWorld {
     if (rules && !shot.cleared) {
       shot.invalid = true;
       shot.live = true;
+      // Faute sur ce tir : un panier non valable compte comme un raté (ballon au tireur).
+      if (this.play?.record === shot && this.play.foul?.called) {
+        this.markMissed(shot);
+        return;
+      }
       const other = (shot.shooter + 1) % this.players.length;
       this.holder = other;
       this.dribbleTime = 0;
@@ -310,6 +391,119 @@ export class MatchWorld {
       rules.winner = shot.shooter;
       rules.pause = ONE_ON_ONE.endPause;
     }
+  }
+
+  /**
+   * Faute : au premier contact des corps pendant le tir (de l'appui à l'atterrissage du tireur),
+   * au sol ou en l'air, `engine/` dit si elle est sifflée. Une seule évaluation par tir.
+   */
+  private checkFoul(): void {
+    const play = this.play;
+    if (!play || !play.watching || play.foul || !this.rules) return;
+    const shooter = this.players[play.shooter];
+    if (this.shot?.shooter !== play.shooter && !shooter.airborne) {
+      play.watching = false;
+      return;
+    }
+    for (let i = 0; i < this.players.length; i++) {
+      if (i === play.shooter) continue;
+      const defender = this.players[i];
+      const contact = bodyContact(defender, shooter);
+      if (!contact) continue;
+      const ctx = { defender: defender.athlete, shooter: shooter.athlete, ...contact };
+      const foul: FoulCall = { defender: i, probability: foulProbability(ctx), called: foulOnContact(ctx, this.rng) };
+      play.foul = foul;
+      if (play.record) play.record.foul = foul;
+      if (foul.called && play.missed) this.startRestart(play.shooter);
+      return;
+    }
+  }
+
+  /**
+   * Main d'un défenseur en l'air sur le ballon d'un vrai tir. En montée : contre tenté (une fois),
+   * `engine/` tranche ; réussi, il annule le résultat tiré et le ballon est frappé. En redescente
+   * au-dessus du cercle, avant le cercle et la planche : goaltending, le panier compte.
+   */
+  private checkTouch(): void {
+    const play = this.play;
+    const shot = this.lastShot;
+    if (!play || !shot || play.record !== shot || shot.kind === 'dunk' || shot.live !== null || shot.scored) return;
+    const hoop = shot.hoop === 'left' ? this.court.hoops.left : this.court.hoops.right;
+    const rising = this.ball.vel.z > 0;
+    const goaltend = !rising && !this.rimTouched && inGoaltendZone(hoop, this.ball);
+    const blockable = rising && shot.block === null && !play.foul?.called;
+    if (!goaltend && !blockable) return;
+    for (let i = 0; i < this.players.length; i++) {
+      if (i === shot.shooter) continue;
+      const body = this.players[i];
+      if (!body.airborne) continue;
+      const contact = armContact(body.pos, body.athlete.heightCm, reach(body.athlete), this.ball.pos);
+      if (!contact) continue;
+      const shooter = this.players[shot.shooter];
+      if (goaltend) {
+        shot.goaltend = true;
+        this.swat(body, shooter);
+        this.onBasket(shot);
+        return;
+      }
+      const ctx = { blocker: body.athlete, shooter: shooter.athlete, contact: contact.quality };
+      const probability = blockProbability(ctx);
+      const success = resolveBlock(ctx, this.rng);
+      shot.block = { blocker: i, contact: contact.quality, probability, success };
+      if (success) {
+        this.swat(body, shooter);
+        shot.live = false;
+        this.markMissed(shot);
+      }
+      return;
+    }
+  }
+
+  /** Ballon frappé par la main de `by` : il part loin de lui, libre. */
+  private swat(by: PlayerBody, shooter: PlayerBody): void {
+    this.ball.vel = swatVelocity(by.pos, this.ball.pos, shooter.pos, this.rng);
+    // Le temps que le ballon s'éloigne : la main qui l'a frappé ne le rattrape pas aussitôt.
+    this.cooldown = DEFENSE_FLOW.swatCooldown;
+  }
+
+  /** Tir raté (ou contré, ou non valable) : avec une faute sifflée, ballon mort puis au tireur. */
+  private markMissed(shot: ShotRecord): void {
+    const play = this.play;
+    if (!play || play.record !== shot || play.missed) return;
+    play.missed = true;
+    if (play.foul?.called) this.startRestart(play.shooter);
+  }
+
+  private startRestart(shooter: number): void {
+    if (!this.rules || this.rules.restart || this.rules.winner !== null) return;
+    this.rules.restart = { shooter, pause: DEFENSE_FLOW.foulPause };
+  }
+
+  /** Remise en jeu après une faute : le tireur en haut de la raquette avec le ballon, l'autre en défense. */
+  private restartPlay(shooter: number): void {
+    const rules = this.rules!;
+    const { attacker, defender } = startPositions(this.court, this.court.hoops.right);
+    this.placeForRestart(shooter, attacker, defender);
+    rules.mustClear = this.players.map(() => false);
+    rules.lastHolder = shooter;
+    rules.restart = null;
+    this.holder = shooter;
+    this.ball = { pos: this.handPosition(this.players[shooter]), vel: { x: 0, y: 0, z: 0 } };
+  }
+
+  /** Place l'attaquant `holder` et les autres en défense, immobiles, sans tir en cours. */
+  private placeForRestart(holder: number, attacker: Vec3, defender: Vec3): void {
+    this.players.forEach((body, i) => {
+      body.pos = { ...(i === holder ? attacker : defender) };
+      body.vel = { x: 0, y: 0, z: 0 };
+      body.airborne = false;
+      body.facing = i === holder ? 1 : -1;
+      this.followThrough[i] = false;
+    });
+    this.endShot();
+    this.play = null;
+    this.dribbleTime = 0;
+    this.cooldown = 0;
   }
 
   /** Deux joueurs ne se chevauchent jamais : on les écarte à parts égales. */
@@ -384,6 +578,7 @@ export class MatchWorld {
     const zone: ShotZone = kind === 'jump' ? shotZone(this.court, hoop, takeoff.x, takeoff.y) : 'rim';
     const contest = dunkCtx?.defender ? { distance: dunkCtx.defender.distance, facing: dunkCtx.defender.facing } : null;
     this.shot = { shooter, kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, contest, dunk };
+    this.play = { shooter, record: null, foul: null, watching: true, missed: false };
   }
 
   /** Le tireur avait-il ressorti le ballon (toujours vrai hors 1 contre 1) ? */
@@ -427,7 +622,12 @@ export class MatchWorld {
         scored: false,
         invalid: false,
         live: null,
+        block: null,
+        foul: this.play?.foul ?? null,
+        goaltend: false,
       };
+      if (this.play) this.play.record = this.lastShot;
+      this.rimTouched = false;
     }
     if (!body.airborne) this.endShot();
   }
@@ -481,7 +681,12 @@ export class MatchWorld {
       scored: false,
       invalid: false,
       live: null,
+      block: null,
+      foul: this.play?.foul ?? null,
+      goaltend: false,
     };
+    if (this.play) this.play.record = this.lastShot;
+    if (body.airborne) this.followThrough[shot.shooter] = true;
   }
 
   /**
@@ -498,6 +703,7 @@ export class MatchWorld {
     this.ball = { pos: { ...start }, vel: velocity };
     this.holder = null;
     this.cooldown = WORLD_TUNING.pickupCooldown;
+    this.rimTouched = false;
   }
 
   /** Ballon libre : ramassé par le joueur à portée le plus proche. */
@@ -520,7 +726,11 @@ export class MatchWorld {
     const shot = this.lastShot;
     // Rattrapé avant de toucher le parquet (rebond pris en l'air, ballon sous le filet) : le tir est
     // jugé là.
-    if (shot && shot.live === null) shot.live = shot.scored;
+    if (shot && shot.live === null) {
+      shot.live = shot.scored;
+      if (!shot.scored) this.markMissed(shot);
+    }
+    if (this.rules?.restart) return;
     if (this.rules) {
       const afterBasket = !!shot && shot.scored && !shot.invalid;
       this.rules.mustClear[picker] = mustClearAfterPickup(picker, this.rules.lastHolder, afterBasket);
@@ -532,22 +742,14 @@ export class MatchWorld {
   private resetGame(): void {
     const rules = this.rules!;
     const { attacker, defender } = startPositions(this.court, this.court.hoops.right);
-    const places = [attacker, defender];
-    this.players.forEach((body, i) => {
-      body.pos = { ...(places[i] ?? defender) };
-      body.vel = { x: 0, y: 0, z: 0 };
-      body.airborne = false;
-      body.facing = i === 0 ? 1 : -1;
-    });
-    this.endShot();
+    this.placeForRestart(0, attacker, defender);
     this.points = this.players.map(() => 0);
     rules.mustClear = this.players.map(() => false);
     rules.lastHolder = 0;
     rules.winner = null;
     rules.pause = 0;
+    rules.restart = null;
     this.holder = 0;
-    this.dribbleTime = 0;
-    this.cooldown = 0;
     this.lastShot = null;
     this.ball = { pos: this.handPosition(this.players[0]), vel: { x: 0, y: 0, z: 0 } };
   }
@@ -582,9 +784,11 @@ export class MatchWorld {
       return null; // position impossible (sous ou derrière la planche)
     }
     this.endShot();
+    this.play = null;
     this.ball = { pos: { ...start }, vel: velocity };
     this.holder = null;
     this.cooldown = WORLD_TUNING.pickupCooldown;
+    this.rimTouched = false;
     const zone = shotZone(this.court, hoop, start.x, start.y);
     this.lastShot = {
       demo: true,
@@ -605,6 +809,9 @@ export class MatchWorld {
       scored: false,
       invalid: false,
       live: null,
+      block: null,
+      foul: null,
+      goaltend: false,
     };
     return this.lastShot;
   }
