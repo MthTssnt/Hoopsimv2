@@ -84,6 +84,11 @@
   - un petit pivot se fait bouger par tout le monde.
 - Jauge d'endurance / fatigue : les joueurs qui jouent beaucoup baissent en efficacité.
 - Rebonds : la balle retombe presque toujours juste autour du cercle, rarement loin.
+- Saut en course (décision de Matheo) : le joueur garde environ 1/4 de sa vitesse au
+  décollage, et un saut porte au plus ~2 m, quelle que soit la vitesse de tir. Sur place,
+  il reste sur place ; aucun contrôle en l'air. Les layups et dunks auront leur propre élan.
+- Appuis (provisoire) : freinage net (arrêt en ~0,1 s), virages et demi-tours qui effacent
+  vite l'ancienne vitesse, pour que le joueur ne glisse pas.
 - *(à mesurer)* :
   - vitesse de course (temps pour traverser le terrain) ;
   - hauteur et durée d'un saut ;

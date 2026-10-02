@@ -13,10 +13,11 @@ import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { createControlRing, createNameLabel, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
 import { normalizeText } from '../render/pixelFont';
-import { blendBall, frameIndex, heldBallPoint, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
+import { animTimeScale, blendBall, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
+import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT } from '../world/MatchWorld';
@@ -96,6 +97,8 @@ export class MatchScene extends Phaser.Scene {
   private ballDrawn: Point = { x: 0, y: 0 };
   private blendFrom: Point | null = null;
   private blendClock = 0;
+  /** Vue du joueur : de dos quand il monte, de profil sinon ; gardée à l'arrêt. */
+  private heading: Heading = 'side';
 
   private arena!: Phaser.GameObjects.Image;
   private playerSprite!: Phaser.GameObjects.Sprite;
@@ -126,6 +129,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballHeld = true;
     this.blendFrom = null;
     this.blendClock = 0;
+    this.heading = 'side';
   }
 
   create() {
@@ -303,10 +307,10 @@ export class MatchScene extends Phaser.Scene {
   private applySprite(baked: BakedPlayer, state: SpriteState) {
     const sprite = this.playerSprite;
     if (state.kind === 'anim') {
-      sprite.play(animationKey(baked.key, state.name, state.facing), true);
+      sprite.play(animationKey(baked.key, state.name, state.facing, state.heading), true);
       return;
     }
-    const index = frameIndex(state.frame, state.facing);
+    const index = frameIndex(state);
     if (sprite.anims.isPlaying) sprite.anims.stop();
     if (sprite.texture.key !== baked.key || Number(sprite.frame.name) !== index) sprite.setTexture(baked.key, index);
   }
@@ -318,8 +322,12 @@ export class MatchScene extends Phaser.Scene {
     const feet = rounded(project(pos.x, pos.y, pos.z));
     const ground = rounded(project(pos.x, pos.y));
     const holding = this.world.holder !== null && this.world.holder === this.world.controlled;
-    const state = spriteStateFor({ airborne: body.airborne, speed: Math.hypot(body.vel.x, body.vel.y), holding, facing: body.facing });
+    const speed = Math.hypot(body.vel.x, body.vel.y);
+    this.heading = nextHeading(this.heading, body.vel, body.airborne);
+    const state = spriteStateFor({ airborne: body.airborne, speed, holding, facing: body.facing, heading: this.heading });
     this.applySprite(member.baked, state);
+    // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
+    this.playerSprite.anims.timeScale = animTimeScale(state, speed);
     this.playerSprite.setPosition(feet.x, feet.y + 1).setDepth(depthOf(pos.y));
     this.playerShadow.setPosition(ground.x, ground.y - 1).setAlpha(Math.max(0.4, 1 - pos.z));
     this.ring.setPosition(ground.x, ground.y - 1);
@@ -342,7 +350,9 @@ export class MatchScene extends Phaser.Scene {
       if (this.blendClock >= PLAYER_VIEW_TUNING.ballBlendMs) this.blendFrom = null;
     }
     this.ballDrawn = drawn;
-    this.ballImage.setPosition(Math.round(drawn.x), Math.round(drawn.y)).setDepth(holding ? depthOf(pos.y) + 0.05 : depthOf(ball.y));
+    // De dos, le ballon tenu passe derrière le joueur (ballon levé derrière la tête).
+    const heldDepth = depthOf(pos.y) + (this.heading === 'back' ? -0.05 : 0.05);
+    this.ballImage.setPosition(Math.round(drawn.x), Math.round(drawn.y)).setDepth(holding ? heldDepth : depthOf(ball.y));
     const shadow = rounded(project(ball.x, ball.y));
     this.ballShadow.setPosition(shadow.x, shadow.y + 1).setAlpha(Phaser.Math.Clamp(1 - (ball.z - BALL_RADIUS) / 6, 0.35, 1));
 
@@ -371,7 +381,7 @@ export class MatchScene extends Phaser.Scene {
     const k = s.bindings;
     const top = [
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · graine ${this.seed}`,
-      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical}`,
+      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · vue ${this.heading === 'back' ? 'de dos' : 'de profil'}`,
       `${s.level.toUpperCase()} · tir ${s.shotMode === 'timing' ? 'Timing' : 'Real Player %'} ${SPEED_LABELS[s.shotSpeed]}` +
         ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
     ];

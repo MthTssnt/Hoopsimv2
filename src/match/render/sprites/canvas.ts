@@ -124,6 +124,13 @@ export class SlotCanvas {
     return out;
   }
 
+  /** Copie décalée de (dx, dy) ; ce qui sort du tampon est perdu. */
+  shifted(dx: number, dy: number): SlotCanvas {
+    const out = new SlotCanvas(this.width, this.height);
+    this.forEach((x, y, slot) => out.set(x + dx, y + dy, slot));
+    return out;
+  }
+
   /** Boîte englobante des pixels peints, ou null si le tampon est vide. */
   bounds(): { left: number; right: number; top: number; bottom: number } | null {
     let left = Infinity;

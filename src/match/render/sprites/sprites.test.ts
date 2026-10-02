@@ -6,8 +6,10 @@ import { createNewGame, TEAM_SEEDS } from '../../../engine';
 import { colorDistance, teamLook } from '../arena/draw';
 import { appearanceFor, appearanceSignature, type Appearance } from './appearance';
 import type { Slot } from './canvas';
-import { colorsFor, composeFrame, NUMBER_MIN_TORSO, NUMBER_TOP, numberZone, slotColor } from './compose';
-import { BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, HEAD_SIZE, NECK_ROWS, SHOE_ROWS, SHORTS_ROWS } from './rig';
+import { colorsFor, composeFrame, NUMBER_MIN_TORSO, NUMBER_TOP, numberZone, SHEET_VIEWS, slotColor, type Heading } from './compose';
+import { BACK_FRAMES, BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, HEAD_SIZE, NECK_ROWS, SHOE_ROWS, SHORTS_ROWS } from './rig';
+import { WORLD_TUNING } from '../../world/MatchWorld';
+import { ART_PPM } from '../artConfig';
 
 const players = Object.values(createNewGame('bos', 11).players);
 const looks = players.map((p) => appearanceFor(p));
@@ -21,6 +23,7 @@ const SKIN = new Set<Slot>(['1', '2', '3']);
 const SPECIMENS = { meneur: 186, ailier: 200, pivot: 212 } as const;
 const specimen = (heightCm: number, heavy = false, number = 23): Appearance => ({ ...looks[0], heightCm, heavy, number, hair: 1, head: 0 });
 const idle = (heightCm: number, heavy = false) => composeFrame(specimen(heightCm, heavy), FRAMES[0], bodyDims(heightCm, heavy)).canvas;
+const framesOf = (heading: Heading) => (heading === 'back' ? BACK_FRAMES : FRAMES);
 
 /** Un échantillon varié : toutes les coiffures, les deux corpulences, les trois gabarits. */
 function sample(): Appearance[] {
@@ -39,21 +42,26 @@ function sample(): Appearance[] {
 
 describe('sprites des joueurs : règles générales', () => {
   it('n’emploient que la palette maîtresse et les rampes de l’équipe', () => {
+    const outside = new Set<number>();
     for (const look of sample()) {
       const colors = colorsFor(look, primary, secondary);
-      for (const frame of FRAMES) {
-        composeFrame(look, frame, bodyDims(look.heightCm, look.heavy)).canvas.forEach((_x, _y, slot) => {
-          expect(allowed.has(slotColor(slot, colors))).toBe(true);
-        });
+      for (const heading of ['side', 'back'] as const) {
+        for (const frame of framesOf(heading)) {
+          composeFrame(look, frame, bodyDims(look.heightCm, look.heavy), 'team', 'right', heading).canvas.forEach((_x, _y, slot) => {
+            const color = slotColor(slot, colors);
+            if (!allowed.has(color)) outside.add(color);
+          });
+        }
       }
     }
+    expect([...outside]).toEqual([]);
   });
 
-  it('tiennent dans leur cadre, contour compris, dans les deux orientations', () => {
+  it('tiennent dans leur cadre, contour compris, dans les quatre vues', () => {
     for (const look of sample()) {
-      for (const frame of FRAMES) {
-        for (const facing of ['right', 'left'] as const) {
-          const b = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy), 'team', facing).canvas.bounds()!;
+      for (const { facing, heading } of SHEET_VIEWS) {
+        for (const frame of framesOf(heading)) {
+          const b = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy), 'team', facing, heading).canvas.bounds()!;
           expect(b.left).toBeGreaterThanOrEqual(0);
           expect(b.right).toBeLessThan(FRAME.width);
           expect(b.top).toBeGreaterThan(0);
@@ -63,16 +71,33 @@ describe('sprites des joueurs : règles générales', () => {
     }
   });
 
-  it('posent les pieds au sol dans les images au sol', () => {
-    for (const i of [0, 1, 2, 4, 10, 12, 15]) {
-      expect(composeFrame(looks[0], FRAMES[i], bodyDims(200, false)).canvas.bounds()!.bottom).toBe(FRAME.groundY);
+  it('posent les pieds au sol dans les images au sol, de profil comme de dos', () => {
+    for (const heading of ['side', 'back'] as const) {
+      for (const i of [0, 1, 3, 5, 7, 9, 10, 11, 12, 15]) {
+        expect(composeFrame(looks[0], framesOf(heading)[i], bodyDims(200, false), 'team', 'right', heading).canvas.bounds()!.bottom).toBe(FRAME.groundY);
+      }
+    }
+  });
+
+  it('font rebondir la course : les foulées montent d’un pixel, sans rien allonger', () => {
+    const dims = bodyDims(200, false);
+    for (const heading of ['side', 'back'] as const) {
+      for (const i of [2, 4, 6, 8]) {
+        const frame = framesOf(heading)[i];
+        expect(frame.rise).toBe(1);
+        const up = composeFrame(looks[0], frame, dims, 'team', 'right', heading).canvas;
+        const flat = composeFrame(looks[0], { ...frame, rise: 0 }, dims, 'team', 'right', heading).canvas;
+        expect(up.bounds()!.bottom).toBe(FRAME.groundY - 1);
+        // Même dessin, décalé d'une rangée.
+        flat.forEach((x, y, slot) => expect(up.get(x, y - 1)).toBe(slot));
+      }
     }
   });
 
   it('ont un contour fermé : aucun pixel coloré ne touche le vide', () => {
     for (const look of sample().slice(0, 6)) {
-      for (const frame of FRAMES) {
-        const c = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy)).canvas;
+      for (const [heading, frame] of [...FRAMES.map((fr) => ['side', fr] as const), ...BACK_FRAMES.map((fr) => ['back', fr] as const)]) {
+        const c = composeFrame(look, frame, bodyDims(look.heightCm, look.heavy), 'team', 'right', heading).canvas;
         c.forEach((x, y, slot) => {
           if (slot === 'o') return;
           for (const [dx, dy] of [
@@ -94,6 +119,68 @@ describe('sprites des joueurs : règles générales', () => {
     expect(anchors[8]!.y).toBeGreaterThan(anchors[6]!.y);
     expect(anchors[13]!.y).toBeLessThan(anchors[12]!.y);
     expect(anchors[14]).toBeNull();
+  });
+
+  it('dribblent de profil devant le corps, un peu en avant, et le ballon touche le sol au rebond', () => {
+    for (const heightCm of Object.values(SPECIMENS)) {
+      const dims = bodyDims(heightCm, false);
+      const L = bodyLayout(dims);
+      // Axe du corps : le sprite tourné vers la gauche est le miroir de celui tourné vers la droite.
+      const axis = (FRAME.width - 1) / 2;
+      for (const facing of ['right', 'left'] as const) {
+        const ahead = facing === 'right' ? 1 : -1;
+        for (const i of [6, 7, 8, 9, 10, 11]) {
+          const ball = composeFrame(looks[0], FRAMES[i], dims, 'team', facing).ball!;
+          const dx = (ball.x - axis) * ahead;
+          // Devant les jambes : du côté de la course, mais à l'intérieur de la largeur du torse.
+          expect(dx).toBeGreaterThanOrEqual(2);
+          expect(dx).toBeLessThanOrEqual(L.torsoRight - axis + 1);
+        }
+        for (const i of [8, 11]) expect(composeFrame(looks[0], FRAMES[i], dims, 'team', facing).ball!.y).toBe(FRAME.groundY - 3);
+      }
+    }
+  });
+
+  it('placent l’ombre du ballon du monde sous le ballon dessiné (écart ≤ 1,5 px)', () => {
+    for (const heightCm of Object.values(SPECIMENS)) {
+      const ball = composeFrame(looks[0], FRAMES[11], bodyDims(heightCm, false)).ball!;
+      expect(Math.abs(WORLD_TUNING.handForward * ART_PPM - (ball.x - FRAME.centerX))).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it('dribblent de dos sur le côté de la hanche, du côté de l’orientation', () => {
+    const dims = bodyDims(200, false);
+    const L = bodyLayout(dims);
+    for (const facing of ['right', 'left'] as const) {
+      const ahead = facing === 'right' ? 1 : -1;
+      for (const i of [6, 7, 8, 9, 10, 11]) {
+        const ball = composeFrame(looks[0], BACK_FRAMES[i], dims, 'team', facing, 'back').ball!;
+        expect((ball.x - FRAME.centerX) * ahead).toBeGreaterThan(L.torsoRight - FRAME.centerX + 1);
+      }
+    }
+  });
+});
+
+describe('vue de dos', () => {
+  const dims = bodyDims(200, false);
+  const L = bodyLayout(dims);
+
+  it('n’a pas de visage : ni blanc des yeux ni trait sombre dans la tête, pour toutes les coiffures', () => {
+    for (let hair = 0; hair < HAIRS.length; hair++) {
+      const c = composeFrame({ ...specimen(200), hair }, BACK_FRAMES[0], dims, 'team', 'right', 'back').canvas;
+      for (let y = L.headTop; y < L.neckY; y++) {
+        for (let x = 0; x < FRAME.width; x++) expect(['w', 'n']).not.toContain(c.get(x, y));
+      }
+      expect(HAIRS[hair].back).toHaveLength(12);
+      for (const row of HAIRS[hair].back) expect(row).toHaveLength(12);
+    }
+  });
+
+  it('garde les proportions de face : même hauteur et même tête', () => {
+    const back = composeFrame(specimen(200), BACK_FRAMES[0], dims, 'team', 'right', 'back').canvas.bounds()!;
+    const front = idle(200).bounds()!;
+    expect(back.top).toBe(front.top);
+    expect(back.bottom).toBe(front.bottom);
   });
 });
 
@@ -239,11 +326,11 @@ describe('numéros de maillot', () => {
     expect(JERSEY_DIGITS[1][0]).toHaveLength(2);
   });
 
-  it('se lisent à l’endroit dans les deux orientations (jamais en miroir)', () => {
+  it('se lisent à l’endroit dans les quatre vues (jamais en miroir), dans le dos aussi', () => {
     const expected: string[] = [];
     drawJerseyNumber(12, 0, 0, (x, y) => void expected.push(`${x},${y}`));
-    for (const facing of ['right', 'left'] as const) {
-      const { canvas, numberAt } = composeFrame(specimen(186, false, 12), FRAMES[0], bodyDims(186, false), 'team', facing);
+    for (const { facing, heading } of SHEET_VIEWS) {
+      const { canvas, numberAt } = composeFrame(specimen(186, false, 12), framesOf(heading)[0], bodyDims(186, false), 'team', facing, heading);
       const drawn: string[] = [];
       for (let y = 0; y < 5; y++) {
         for (let x = 0; x < jerseyNumberWidth(12); x++) if (canvas.get(numberAt!.x + x, numberAt!.y + y) === 'S') drawn.push(`${x},${y}`);

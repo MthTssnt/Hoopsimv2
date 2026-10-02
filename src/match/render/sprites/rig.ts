@@ -101,14 +101,20 @@ const ARMS = {
   hang: { elbow: [0, 3], hand: [0, 7] },
   swingFwd: { elbow: [1, 3], hand: [-2, 5] },
   swingBack: { elbow: [1, 3], hand: [2, 6] },
-  dribbleHigh: { elbow: [2, 3], hand: [4, 5] },
-  dribbleLow: { elbow: [2, 4], hand: [4, 7] },
+  // Dribble de profil : la main revient devant le corps, le ballon rebondit devant les jambes.
+  dribbleHigh: { elbow: [1, 3], hand: [-2, 6] },
+  dribbleLow: { elbow: [1, 4], hand: [-2, 8] },
   guard: { elbow: [2, 2], hand: [3, -1] },
   chest: { elbow: [0, 3], hand: [-4, 3] },
   raise: { elbow: [1, -3], hand: [0, -7] },
   guide: { elbow: [2, -2], hand: [1, -6] },
   release: { elbow: [1, -4], hand: [1, -8] },
   reach: { elbow: [0, -4], hand: [0, -8] },
+  // Vue de dos : bras qui pompent (vers l'avant, la main remonte), dribble sur le côté.
+  pumpFwd: { elbow: [1, 3], hand: [0, 5] },
+  pumpBack: { elbow: [0, 3], hand: [1, 7] },
+  dribbleSide: { elbow: [1, 3], hand: [2, 6] },
+  dribbleSideLow: { elbow: [1, 4], hand: [2, 8] },
 } satisfies Record<string, ArmPose>;
 
 const LEGS = {
@@ -121,6 +127,9 @@ const LEGS = {
   air: { back: { knee: 1, foot: 0, lift: 2 }, front: { knee: 2, foot: 1, lift: 3 } },
   dunkAir: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 2, foot: 1, lift: 4 } },
   dangle: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 0, foot: 1, lift: 1 } },
+  // Course vue de dos : jambes côte à côte, un pied levé à chaque foulée.
+  stepLeft: { back: { knee: 1, foot: 0, lift: 2 }, front: { knee: 1, foot: 0, lift: 0 } },
+  stepRight: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 2 } },
 } satisfies Record<string, { back: LegPose; front: LegPose }>;
 
 /** Où dessiner le ballon tenu : main de dribble, au rebond, à la poitrine ou au-dessus de la main. */
@@ -132,6 +141,8 @@ export interface FrameDef {
   back: ArmPose;
   /** Décalage vertical du haut du corps (px, vers le bas : jambes fléchies). */
   bob: number;
+  /** Tout le corps monte d'autant (px), pieds compris : phase de suspension d'une foulée. */
+  rise: number;
   ball?: BallSpot;
   expression: Expression;
 }
@@ -141,24 +152,28 @@ const f = (legs: keyof typeof LEGS, front: keyof typeof ARMS, back: keyof typeof
   front: ARMS[front] as ArmPose,
   back: ARMS[back] as ArmPose,
   bob,
+  rise: 0,
   ball,
   expression,
 });
+
+/** Foulée en suspension : le corps entier monte d'un pixel (aucun membre allongé). */
+const airborne = (def: FrameDef): FrameDef => ({ ...def, rise: 1 });
 
 /** Toutes les images d'un joueur, dans l'ordre de la feuille de sprites. */
 export const FRAMES: readonly FrameDef[] = [
   // 0-1 arrêt (respiration)
   f('stand', 'hang', 'hang'),
   f('stand', 'hang', 'hang', 1),
-  // 2-5 course : bras opposés aux jambes
-  f('strideA', 'swingBack', 'swingFwd'),
+  // 2-5 course : bras opposés aux jambes, foulées en suspension
+  airborne(f('strideA', 'swingBack', 'swingFwd')),
   f('passA', 'hang', 'hang'),
-  f('strideB', 'swingFwd', 'swingBack'),
+  airborne(f('strideB', 'swingFwd', 'swingBack')),
   f('passB', 'hang', 'hang'),
-  // 6-9 dribble en courant
-  f('strideA', 'dribbleHigh', 'guard', 0, 'hand'),
+  // 6-9 dribble en courant : main devant le corps, ballon devant les jambes
+  airborne(f('strideA', 'dribbleHigh', 'guard', 0, 'hand')),
   f('passA', 'dribbleLow', 'guard', 0, 'dribbleMid'),
-  f('strideB', 'dribbleHigh', 'guard', 0, 'dribbleLow'),
+  airborne(f('strideB', 'dribbleHigh', 'guard', 0, 'dribbleLow')),
   f('passB', 'dribbleLow', 'guard', 0, 'dribbleMid'),
   // 10-11 dribble à l'arrêt
   f('stand', 'dribbleHigh', 'guard', 0, 'hand'),
@@ -171,6 +186,26 @@ export const FRAMES: readonly FrameDef[] = [
   f('crouch', 'chest', 'chest', 2, 'chest', 'concentree'),
   f('dunkAir', 'reach', 'swingBack', 0, 'overhead', 'concentree'),
   f('dangle', 'reach', 'reach', 0, undefined, 'concentree'),
+];
+
+/**
+ * Les mêmes images vues de dos (mêmes indices, mêmes animations) : course jambes côte à côte et
+ * bras qui pompent, dribble sur le côté de la hanche. Le tir et le dunk gardent leurs poses.
+ */
+export const BACK_FRAMES: readonly FrameDef[] = [
+  f('stand', 'hang', 'hang'),
+  f('stand', 'hang', 'hang', 1),
+  airborne(f('stepLeft', 'pumpFwd', 'pumpBack')),
+  f('stand', 'hang', 'hang'),
+  airborne(f('stepRight', 'pumpBack', 'pumpFwd')),
+  f('stand', 'hang', 'hang'),
+  airborne(f('stepLeft', 'dribbleSide', 'pumpBack', 0, 'hand')),
+  f('stand', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
+  airborne(f('stepRight', 'dribbleSide', 'pumpFwd', 0, 'dribbleLow')),
+  f('stand', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
+  f('stand', 'dribbleSide', 'hang', 0, 'hand'),
+  f('stand', 'dribbleSideLow', 'hang', 1, 'dribbleLow'),
+  ...FRAMES.slice(12),
 ];
 
 export type AnimationName = 'idle' | 'run' | 'dribble' | 'dribbleIdle' | 'shoot' | 'dunk';

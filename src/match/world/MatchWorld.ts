@@ -17,8 +17,11 @@ export const WORLD_TUNING = {
   /** Dribble : durée d'un aller-retour main → sol → main (s), hauteur de la main (m). */
   dribblePeriod: 0.5,
   dribbleHandHeight: 0.85,
-  /** Main qui tient le ballon : écart devant le joueur et vers le spectateur (m). */
-  handForward: 0.32,
+  /**
+   * Main qui tient le ballon : écart devant le joueur et vers le spectateur (m). Le ballon est
+   * dribblé devant le corps, un peu en avant : l'écart suit le dessin (voir le rig).
+   */
+  handForward: 0.22,
   handDepth: 0.12,
 } as const;
 
