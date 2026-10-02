@@ -1,7 +1,7 @@
 /** Actions du joueur contrôlé et touches associées (codes clavier, comme Phaser). */
-export type Action = 'up' | 'down' | 'left' | 'right' | 'shoot';
+export type Action = 'up' | 'down' | 'left' | 'right' | 'shoot' | 'pass' | 'steal';
 
-export const ACTIONS: Action[] = ['up', 'left', 'down', 'right', 'shoot'];
+export const ACTIONS: Action[] = ['up', 'left', 'down', 'right', 'shoot', 'pass', 'steal'];
 
 export const ACTION_LABELS: Record<Action, string> = {
   up: 'Monter (vers le fond)',
@@ -9,6 +9,8 @@ export const ACTION_LABELS: Record<Action, string> = {
   left: 'Gauche',
   right: 'Droite',
   shoot: 'Tir / Saut',
+  pass: 'Passe (défense : changer de joueur)',
+  steal: 'Interception (incrément 9)',
 };
 
 export interface KeyBinding {
@@ -20,13 +22,15 @@ export interface KeyBinding {
 
 export type Bindings = Record<Action, KeyBinding>;
 
-/** Touches classiques d'un clavier AZERTY : ZQSD + Espace. */
+/** Touches classiques d'un clavier AZERTY : ZQSD + Espace, E passe, A interception (choix de Matheo). */
 export const DEFAULT_BINDINGS: Bindings = {
   up: { code: 90, label: 'Z' },
   left: { code: 81, label: 'Q' },
   down: { code: 83, label: 'S' },
   right: { code: 68, label: 'D' },
   shoot: { code: 32, label: 'Espace' },
+  pass: { code: 69, label: 'E' },
+  steal: { code: 65, label: 'A' },
 };
 
 const NAMED_KEYS: Record<string, string> = {

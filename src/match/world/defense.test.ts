@@ -5,7 +5,7 @@ import { Rng } from '../../engine/rng';
 import { makeCourt, RIM_HEIGHT, type Vec3 } from '../physics/court';
 import { armContact, bodyContact, DEFENSE_FLOW, inGoaltendZone, swatVelocity } from './defense';
 import { MatchWorld, WORLD_DT, type ShotRecord, type WorldInput } from './MatchWorld';
-import { startPositions } from './oneOnOne';
+import { startPositions } from './halfCourt';
 
 const players = Object.values(createNewGame('bos', 31).players);
 const byOverall = [...players].sort((a, b) => b.overall - a.overall);
@@ -221,7 +221,7 @@ describe('faute', () => {
   it('faute puis tir raté : ballon mort, puis le tireur en haut de la raquette avec le ballon', () => {
     const cases = fouled.filter(({ shot }) => shot.foul!.called && !shot.wanted);
     expect(cases.length).toBeGreaterThan(0);
-    const { attacker, defender } = startPositions(court, hoop);
+    const { attackers: [attacker], defenders: [defender] } = startPositions(court, hoop, 1);
     for (const { world } of cases) {
       run(world, 3, () => world.rules!.restart !== null);
       expect(world.rules!.restart).not.toBeNull();

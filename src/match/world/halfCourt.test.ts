@@ -4,7 +4,7 @@ import { Rng } from '../../engine/rng';
 import { canDunk, DUNK_TUNING, dunkScore } from '../../engine/shot';
 import { isThreePoint, makeCourt, RIM_HEIGHT, type Vec3 } from '../physics/court';
 import { MatchWorld, WORLD_DT, WORLD_TUNING, type ShotRecord, type WorldInput } from './MatchWorld';
-import { isCleared, mustClearAfterPickup, ONE_ON_ONE, startPositions } from './oneOnOne';
+import { HALF_COURT, isCleared, mustClearAfterPickup, startPositions } from './halfCourt';
 
 const players = Object.values(createNewGame('bos', 31).players);
 const byOverall = [...players].sort((a, b) => b.overall - a.overall);
@@ -61,12 +61,12 @@ function dropInRim(world: MatchWorld, shooterIndex: number, cleared: boolean, th
     foul: null,
     goaltend: false,
   };
-  world.rules!.lastHolder = shooterIndex;
+  world.rules!.lastTeam = shooterIndex;
 }
 
 describe('1 contre 1 : départ', () => {
   it('place l’attaquant derrière l’arc et le défenseur entre lui et le cercle', () => {
-    const { attacker, defender: d } = startPositions(court, hoop);
+    const { attackers: [attacker], defenders: [d] } = startPositions(court, hoop, 1);
     expect(isThreePoint(court, hoop, attacker.x, attacker.y)).toBe(true);
     expect(Math.abs(d.x - rim.x)).toBeLessThan(Math.abs(attacker.x - rim.x));
     const world = oneOnOne();
@@ -127,7 +127,7 @@ describe('possession et ressortie', () => {
 
     const world = oneOnOne();
     world.holder = null;
-    world.rules!.lastHolder = 0;
+    world.rules!.lastTeam = 0;
     place(world, 1, { x: rim.x - 3, y: rim.y + 3 });
     world.ball = { pos: { ...world.players[1].pos, z: 0.5 }, vel: { x: 0, y: 0, z: 0 } };
     world.step(WORLD_DT, [IDLE, IDLE]);
@@ -136,7 +136,7 @@ describe('possession et ressortie', () => {
 
     const own = oneOnOne();
     own.holder = null;
-    own.rules!.lastHolder = 0;
+    own.rules!.lastTeam = 0;
     place(own, 0, { x: rim.x - 3, y: rim.y - 3 });
     own.ball = { pos: { ...own.players[0].pos, z: 0.5 }, vel: { x: 0, y: 0, z: 0 } };
     own.step(WORLD_DT, [IDLE, IDLE]);
@@ -191,7 +191,7 @@ describe('fin de partie', () => {
     expect(world.points[0]).toBe(12);
     expect(world.rules!.winner).toBe(0);
     const frozen = { ...world.players[0].pos };
-    for (let t = 0; t < ONE_ON_ONE.endPause - 0.2; t += WORLD_DT) world.step(WORLD_DT, [{ x: 1, y: 0, jump: false }, IDLE]);
+    for (let t = 0; t < HALF_COURT.endPause - 0.2; t += WORLD_DT) world.step(WORLD_DT, [{ x: 1, y: 0, jump: false }, IDLE]);
     expect(world.players[0].pos.x).toBeCloseTo(frozen.x, 9);
     for (let t = 0; t < 0.5; t += WORLD_DT) world.step(WORLD_DT, [IDLE, IDLE]);
     expect(world.rules!.winner).toBeNull();

@@ -24,11 +24,15 @@ describe('paramètres du match', () => {
     expect(s.camera).toBe('steps');
     expect(s.bindings.shoot).toEqual({ code: 74, label: 'J' });
     expect(s.bindings.up).toEqual(DEFAULT_BINDINGS.up);
+    // Réglages sauvegardés avant la passe : les nouvelles touches prennent leur valeur par défaut.
+    expect(s.bindings.pass).toEqual(DEFAULT_BINDINGS.pass);
+    expect(s.bindings.steal).toEqual(DEFAULT_BINDINGS.steal);
   });
 
-  it('ZQSD + Espace par défaut', () => {
+  it('ZQSD + Espace par défaut, E passe, A interception', () => {
     const b = DEFAULT_SETTINGS.bindings;
     expect([b.up.label, b.left.label, b.down.label, b.right.label, b.shoot.label]).toEqual(['Z', 'Q', 'S', 'D', 'Espace']);
+    expect([b.pass.label, b.steal.label]).toEqual(['E', 'A']);
   });
 
   it('échange deux actions quand on réutilise une touche déjà prise', () => {

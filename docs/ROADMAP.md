@@ -28,10 +28,14 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ 7a. 1 contre 1 contre l'IA (panier de droite, ressortie derrière l'arc, panier non valable, premier à 11) : contestation mesurée dans le tir et le dunk, IA qui attaque selon ses tendances, défend avec un temps de réaction et va au rebond, tableau de score, RESSORS / NON VALABLE, bandeau de fin
 - ✅ 7b. Contre (main en l'air sur le ballon en montée, le moteur tranche), faute sur tout contact pendant le tir (ballon au tireur si raté), goaltending ; pose « contre », messages CONTRE / FAUTE / GOALTENDING ; IA qui contre et ne rentre plus dans le tireur
 
-## Phase 2 — Vrai match ⬜
-- ⬜ 5v5, passes, défense, IA de base, changement de joueur contrôlé
-- ⬜ Règles : chrono, shot clock, fautes, lancers francs
-- ⬜ Box score enregistré comme un match simulé
+## Phase 2 — Vrai match 🔄
+- ✅ Décisions de Matheo (contrôle, durée 4 × 3 min, fatigue + coach auto, lancers à la jauge, règles, touches E/A, Live Sim)
+- ✅ 8. 3 contre 3 sur un panier : passes, coéquipiers IA (écartement, coupes, passes), défense d'équipe (duels, aide), changement de joueur contrôlé (`?court`, `&format=1|2|3`)
+- ⬜ 9. Interception (touche A, lignes de passe) et pertes de balle
+- ⬜ 10. 5 contre 5 sur terrain entier : chrono, shot clock, 8 s, retour en zone, hors-jeu, remises en jeu, entre-deux, mi-temps
+- ⬜ 11. Fautes d'équipe, bonus, 6 fautes, lancers francs à la jauge
+- ⬜ 12. Fatigue, remplacements automatiques, box score en direct, menu pause
+- ⬜ 13. Match joué dans le GM (« Jouer », « Regarder », « Simuler »), enregistré par `simSeason`
 
 ## Phase 3 — DA et ressenti ⬜
 - ✅ Direction artistique et sprites de base (chantier style S1–S4, voir phase 1)

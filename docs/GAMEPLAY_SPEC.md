@@ -44,12 +44,12 @@
 | Déplacement | ? | vitesse liée au gabarit : les petits sont plus rapides (voir §4) |
 | Sprint | ? | ? |
 | Tir | Tir | maintenir : le joueur saute ; relâcher vers le sommet du saut (voir §3) |
-| Passe | Passe | appuyer en étant orienté vers le coéquipier visé |
+| Passe | Passe (E par défaut) | appuyer en étant orienté vers le coéquipier visé. HoopSim : le coéquipier le plus aligné avec la direction tenue (cône de ~60°), passe tendue en avance sur sa course ; tu prends le receveur dès le lâcher |
 | Dribble / crossover | ? | ? (dribbles avancés : voir « Phases suivantes ») |
 | Dunk / layup | Tir | dunk : attaquer le cercle et appuyer sur Tir ; pas automatique, peut rater. Layup (décision de Matheo) : seulement en attaquant le cercle (en course vers lui, à moins de ~3 m), avec la jauge ; à l'arrêt près du cercle, c'est un petit tir en suspension |
-| Défense : vol | Interception | difficile. Trop près, on pousse le joueur : faute. Le bras doit être à la bonne distance du ballon. Le plus efficace : se placer dans la ligne de passe. On peut aussi sauter pour dévier une passe, puis ramasser le ballon |
+| Défense : vol | Interception (A par défaut, incrément 9) | difficile. Trop près, on pousse le joueur : faute. Le bras doit être à la bonne distance du ballon. Le plus efficace : se placer dans la ligne de passe. On peut aussi sauter pour dévier une passe, puis ramasser le ballon |
 | Défense : contre / saut | Tir (devient Saut/Contre) | sauter au bon moment face au tireur. J'ai fait plus de contres que d'interceptions |
-| Changer de joueur contrôlé | ? | ? |
+| Changer de joueur contrôlé | Passe (E), en défense | décision de Matheo : en attaque, le contrôle suit le ballon (receveur d'une passe, joueur qui ramasse) ; en défense, tu prends le défenseur le plus proche du ballon, et E te fait changer pour lui à tout moment (le suivant si c'est déjà toi) |
 
 ## 3. Tir
 - Deux styles de tir (option) :
@@ -145,6 +145,28 @@
   - la règle des 8 secondes est facile à provoquer en bloquant le meneur adverse dans son camp.
 - Lancers francs : l'IA est mauvaise.
 - Niveau de difficulté : réglable, avec des sliders.
+
+## Phase 2 — décisions de Matheo
+- **Contrôle** : le porteur en attaque ; le défenseur le plus proche du ballon en défense, et la
+  touche Passe change de défenseur.
+- **Durée d'un match joué** : 4 × 3 min de chrono réel par défaut (réglable), shot clock de
+  24 s. Le box score est brut : un match joué compte moins de points qu'un match simulé, mais il
+  est enregistré par les mêmes fonctions.
+- **Rotation** : la fatigue baisse en jouant ; le coach automatique fait entrer les remplaçants
+  aux arrêts de jeu (même logique que la simulation).
+- **Lancers francs** : la jauge du tir, sans saut ; la stat de lancer franc élargit la zone verte
+  en Real Player %.
+- **Ordre** : 3 contre 3 sur un panier d'abord (incrément 8), puis le 5 contre 5 sur terrain
+  entier.
+- **Règles** en plus du chrono, du shot clock, des 8 s, des remises en jeu, du hors-jeu, des
+  fautes, des lancers et du goaltending : retour en zone, entre-deux au début, élimination à
+  6 fautes.
+- **Live Sim** : « Regarder » un match CPU contre CPU, à la fin de la phase.
+- **Touches par défaut** : ZQSD, Espace tir/saut, E passe (en défense : changer de joueur),
+  A interception ; toutes remappables.
+- **Demi-terrain en équipes (incrément 8)** : les règles du 1 contre 1 s'appliquent par équipe
+  (ressortie de l'équipe, une passe reçue derrière l'arc compte ; panier non valable → ballon à
+  l'adversaire le plus proche) ; 1 contre 1 à 11, 2 contre 2 et 3 contre 3 à 21.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques
