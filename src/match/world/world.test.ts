@@ -5,7 +5,7 @@ import { DUNK_TUNING, dunkScore } from '../../engine/shot';
 import { Rng } from '../../engine/rng';
 import { BALL_RADIUS, makeCourt, RIM_HEIGHT } from '../physics/court';
 import { MatchWorld, WORLD_DT, WORLD_TUNING } from './MatchWorld';
-import { PLAYER_TUNING, type MoveInput } from './player';
+import { freeTimeToApex, PLAYER_TUNING, type MoveInput } from './player';
 import { SHOT_FLOW } from './shooting';
 
 const players = Object.values(createNewGame('bos', 31).players);
@@ -258,13 +258,25 @@ describe('tir avec jauge', () => {
     expect(world.lastShot!.zone).toBe('rim');
   });
 
-  it('sans ballon, Tir reste un simple saut', () => {
+  it('sans ballon, Tir reste un simple saut, vif : même hauteur, sommet à la gravité réelle', () => {
     const world = newWorld();
     world.holder = null;
     world.ball = { pos: { x: START.x + 5, y: START.y, z: BALL_RADIUS }, vel: { x: 0, y: 0, z: 0 } };
     world.step(WORLD_DT, { ...IDLE, jump: true });
     expect(world.player.airborne).toBe(true);
     expect(world.shot).toBeNull();
+    let apex = 0;
+    let apexTime = 0;
+    for (let t = WORLD_DT; t < 2 && world.player.airborne; t += WORLD_DT) {
+      world.step(WORLD_DT, IDLE);
+      if (world.player.pos.z > apex) {
+        apex = world.player.pos.z;
+        apexTime = t;
+      }
+    }
+    expect(apex).toBeCloseTo(world.player.jumpHeight, 1);
+    expect(apexTime).toBeCloseTo(freeTimeToApex(world.player), 1);
+    expect(freeTimeToApex(world.player)).toBeLessThan(gaugeTime('fast'));
   });
 
   it('transmet le mode de tir : un lâcher raté coûte moins en Real Player % qu’en Timing', () => {
@@ -361,10 +373,16 @@ describe('dunk', () => {
 
   it('retrouve son saut normal après un dunk', () => {
     const world = at(dunker, rim.x - 0.9);
-    const gravity = world.player.jumpGravity;
+    const gravity = world.player.shotGravity;
     world.step(WORLD_DT, { ...IDLE, jump: true });
     playDunk(world);
     expect(world.shot).toBeNull();
-    expect(world.player.jumpGravity).toBeCloseTo(gravity, 9);
+    expect(world.player.shotGravity).toBeCloseTo(gravity, 9);
+    // Le saut suivant sans le ballon est un saut vif.
+    world.holder = null;
+    world.ball = { pos: { x: 2, y: 2, z: BALL_RADIUS }, vel: { x: 0, y: 0, z: 0 } };
+    run(world, 0.5, IDLE);
+    world.step(WORLD_DT, { ...IDLE, jump: true });
+    expect(world.player.jumpGravity).toBe(PLAYER_TUNING.freeJumpGravity);
   });
 });

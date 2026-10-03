@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { makeCourt } from '../physics/court';
+import { isThreePoint, makeCourt } from '../physics/court';
 import {
   attackHoop,
   attacksRight,
@@ -7,6 +7,8 @@ import {
   clockStopsAfterBasket,
   defendHoop,
   formatClock,
+  freeThrowPositions,
+  freeThrowSpot,
   FULL_COURT,
   inFrontcourt,
   isOut,
@@ -134,5 +136,28 @@ describe('placements', () => {
     expect(pos.get(8)).toEqual(spot);
     for (const i of [5, 6, 7, 9]) expect(inFrontcourt(court, 1, 2, pos.get(i)!.x)).toBe(false);
     for (const i of order[0]) expect(inFrontcourt(court, 1, 2, pos.get(i)!.x)).toBe(true);
+  });
+});
+
+describe('lancers francs : placements', () => {
+  it('tireur derrière la ligne ; le long de la raquette, défense près du cercle et attaque derrière ; les autres en haut', () => {
+    const hoop = court.hoops.right;
+    const order = [
+      [0, 1, 2, 3, 4],
+      [5, 6, 7, 8, 9],
+    ];
+    const pos = freeThrowPositions(court, hoop, 1, 0, order);
+    expect(pos.size).toBe(10);
+    expect(pos.get(1)).toEqual(freeThrowSpot(court, hoop));
+    const fromBase = (i: number) => Math.abs(pos.get(i)!.x - hoop.baselineX);
+    const inLane = (i: number) => Math.abs(pos.get(i)!.y - court.width / 2) > court.paintWidth / 2 && fromBase(i) < court.paintLength;
+    // Défense : pivot et ailier fort au plus près du cercle, un troisième plus haut.
+    expect(inLane(9) && inLane(8) && inLane(7)).toBe(true);
+    expect(fromBase(9)).toBeLessThan(fromBase(4));
+    // Attaque : pivot et ailier fort derrière eux.
+    expect(inLane(4) && inLane(3)).toBe(true);
+    // Les autres derrière la ligne à 3 pts.
+    for (const i of [0, 2, 5, 6]) expect(isThreePoint(court, hoop, pos.get(i)!.x, pos.get(i)!.y)).toBe(true);
+    for (const p of pos.values()) expect(isOut(court, p)).toBe(false);
   });
 });

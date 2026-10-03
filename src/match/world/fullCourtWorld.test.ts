@@ -7,6 +7,7 @@ import { makeCourt, type Vec3 } from '../physics/court';
 import { fullCourtRoster } from '../roster';
 import { attackHoop, FULL_COURT, inFrontcourt, isOut } from './fullCourt';
 import { MatchWorld, WORLD_DT, type WorldInput } from './MatchWorld';
+import { freeTimeToApex } from './player';
 
 const league = createNewGame('bos', 31);
 const home = fullCourtRoster(league.players, league.teams[0]);
@@ -87,7 +88,7 @@ describe('entre-deux', () => {
     const apex = w.ball.pos.z + (vz * vz) / (2 * BALL_PHYSICS.gravity);
     const hand = body.jumpHeight + reach(body.athlete);
     const fall = Math.sqrt((2 * Math.max(0, apex - hand)) / BALL_PHYSICS.gravity);
-    return apexTime + fall - body.timeToApex;
+    return apexTime + fall - freeTimeToApex(body);
   }
 
   it('saut bien calé : ton pivot le tape vers son équipe ; le chrono part au toucher', () => {
@@ -417,5 +418,119 @@ describe('déterminisme', () => {
       return JSON.stringify({ players: w.players.map((p) => p.pos), ball: w.ball, points: w.points, full: w.full });
     };
     expect(replay()).toBe(replay());
+  });
+});
+
+describe('lancers francs (faute sur un tir)', () => {
+  /** Tir de l'équipe 0 depuis `dx` m du cercle, défenseur collé côté cercle ; renvoie le monde après le lâcher au sommet. */
+  function shotWithContact(seed: number, dx: number): MatchWorld {
+    const w = match(seed);
+    const rim = attackHoop(court, 0, 1).rim;
+    live(w, 0, { x: rim.x - dx, y: rim.y });
+    w.full!.frontcourt = true;
+    place(w, 5, { x: rim.x - dx + 0.72, y: rim.y });
+    stepWith(w, 0, { ...IDLE, jump: true });
+    for (let t = 0; t < 2 && w.shot; t += WORLD_DT) stepWith(w, 0, { ...IDLE, release: w.shot.airTime + WORLD_DT >= w.players[0].timeToApex });
+    return w;
+  }
+
+  /** Graines où la faute est sifflée, avec un tir voulu raté (`missed`) ou réussi. */
+  function fouled(dx: number, missed: boolean, count = 2): MatchWorld[] {
+    const found: MatchWorld[] = [];
+    for (let seed = 1; seed <= 80 && found.length < count; seed++) {
+      const w = shotWithContact(seed, dx);
+      if (w.lastShot?.foul?.called && w.lastShot.wanted !== missed) found.push(w);
+    }
+    return found;
+  }
+
+  it('tir à 2 pts raté : 2 lancers ; tir à 3 pts raté : 3 lancers ; panier marqué : 1 lancer en plus des points', () => {
+    for (const [dx, missed, total, points] of [
+      [5, true, 2, 0],
+      [7.8, true, 3, 0],
+      [5, false, 1, 2],
+    ] as const) {
+      const cases = fouled(dx, missed);
+      expect(cases.length).toBeGreaterThan(0);
+      for (const w of cases) {
+        run(w, 4, () => w.full!.phase === 'lancers');
+        expect(w.full!.phase).toBe('lancers');
+        expect(w.full!.freeThrows).toMatchObject({ shooter: 0, total, taken: 0 });
+        expect(w.points[0]).toBe(points);
+        expect(w.holder).toBe(0);
+      }
+    }
+  });
+
+  it('série de lancers : placements, personne ne bouge, jauge sans saut ; chrono arrêté ; le dernier décide de la suite', () => {
+    let lastMade = 0;
+    let lastMissed = 0;
+    for (const w of fouled(5, true, 6)) {
+      const full = w.full!;
+      run(w, 4, () => full.phase === 'lancers');
+      const clock = full.clock;
+      const shooter = w.players[0];
+      const spot = { ...shooter.pos };
+      expect(Math.abs(spot.x - (attackHoop(court, 0, 1).baselineX - court.paintLength))).toBeLessThan(0.6);
+      // Les autres tentent de bouger : rien ne bouge.
+      const frozen = w.players.map((p) => ({ ...p.pos }));
+      w.step(WORLD_DT, Array.from({ length: 10 }, () => ({ x: 1, y: 1, jump: false })));
+      w.players.forEach((p, i) => expect(p.pos).toEqual(frozen[i]));
+      for (let n = 0; n < 2; n++) {
+        run(w, 2, () => w.holder === 0 && full.freeThrows?.aim === null && full.freeThrows?.pause === 0 && !full.freeThrows.flying);
+        stepWith(w, 0, { ...IDLE, jump: true });
+        expect(shooter.airborne).toBe(false);
+        for (let t = 0; t < 2 && full.freeThrows?.aim !== null && w.holder === 0; t += WORLD_DT) {
+          stepWith(w, 0, { ...IDLE, release: (full.freeThrows?.aim ?? 0) + WORLD_DT >= shooter.timeToApex });
+        }
+        expect(w.lastShot?.kind).toBe('lancer');
+        expect(w.lastShot?.grade).toBe('perfect');
+      }
+      expect(full.clock).toBe(clock);
+      run(w, 3, () => full.phase === 'remise' || w.holder !== null);
+      if (w.lastShot!.wanted) {
+        lastMade++;
+        expect(full.phase).toBe('remise');
+        expect(full.inbound?.team).toBe(1);
+        expect(full.clock).toBe(clock);
+      } else {
+        lastMissed++;
+        expect(full.phase).toBe('jeu');
+      }
+    }
+    expect(lastMade).toBeGreaterThan(0);
+    expect(lastMade + lastMissed).toBeGreaterThan(2);
+  });
+
+  it('Tir tenu trop longtemps : le lancer part tout seul, très en retard', () => {
+    const [w] = fouled(5, true, 1);
+    run(w, 4, () => w.full!.phase === 'lancers');
+    stepWith(w, 0, { ...IDLE, jump: true });
+    run(w, 3, () => w.lastShot?.kind === 'lancer');
+    expect(w.lastShot).toMatchObject({ kind: 'lancer', forced: true, grade: 'late' });
+  });
+
+  it('dernier lancer raté : le chrono attend que quelqu’un touche le ballon', () => {
+    for (const w of fouled(5, true, 10)) {
+      const full = w.full!;
+      run(w, 4, () => full.phase === 'lancers');
+      // Deux lancers lâchés très tard : souvent ratés.
+      for (let n = 0; n < 2; n++) {
+        run(w, 2, () => w.holder === 0 && full.freeThrows?.aim === null && !full.freeThrows?.flying && full.freeThrows?.pause === 0);
+        stepWith(w, 0, { ...IDLE, jump: true });
+        run(w, 0.8, () => w.lastShot?.kind === 'lancer' && w.holder !== 0);
+        stepWith(w, 0, { ...IDLE, release: true });
+      }
+      if (full.phase !== 'jeu' || w.lastShot!.wanted) continue;
+      expect(full.waitTouch).toBe(true);
+      const clock = full.clock;
+      run(w, 3, () => w.holder !== null || full.phase !== 'jeu');
+      if (w.holder === null) continue;
+      expect(full.waitTouch).toBe(false);
+      run(w, 0.5);
+      expect(full.clock).toBeLessThan(clock);
+      return;
+    }
+    throw new Error('aucun dernier lancer raté repris');
   });
 });

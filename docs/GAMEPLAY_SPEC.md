@@ -192,9 +192,20 @@
     - prolongation : 5/12 d'un quart-temps ;
     - remise de la ligne de fond au début des QT2-QT4 (le perdant de l'entre-deux aux QT2 et QT3) ;
     - changement de panier à la mi-temps ;
-    - fautes : remise de côté en attendant les lancers francs (11) ;
+    - fautes hors tir : remise de côté ;
     - fin de match : bandeau, puis nouveau match ;
     - durée d'un quart-temps réglable dans les paramètres (1 à 12 min, 3 par défaut).
+- **Retours sur le 5 contre 5 (incrément 11)** :
+  - **lancers francs** : faute sur un tir raté → 2 lancers, 3 si le tir était derrière l'arc ;
+    tir marqué avec faute → le panier compte, plus 1 lancer ; faute hors tir → remise en jeu.
+    En 5 contre 5 seulement. Fautes d'équipe, bonus et 6 fautes : plus tard (avec le box score) ;
+  - **jauge** : elle s'affiche à côté du tireur dès l'appui, même juste après un rebond ; un appui
+    sur Tir en retombant, ballon en main, part à l'atterrissage s'il est tenu ;
+  - **sauts sans ballon** : à la vitesse réelle (plus de « slow motion ») ; le saut de tir garde la
+    jauge ;
+  - **défense automatique** : en défense, tant que tu ne touches à rien, ton joueur suit son
+    joueur comme l'IA (déplacement seulement : sauter et A restent à toi). Dès qu'une touche est
+    appuyée, tu reprends la main.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

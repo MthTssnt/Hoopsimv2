@@ -6,6 +6,7 @@ import { hashSeed, randomSeed, Rng } from '../../engine/rng';
 import type { TeamSeed } from '../../engine/teamsData';
 import { PlayerAi } from '../ai/playerAi';
 import { ARENA_APRON, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
+import { controlledInput, ShotButton } from '../input/control';
 import { KeyboardInput, NO_INPUT } from '../input/keyboard';
 import { BALL_RADIUS, makeCourt, RIM_HEIGHT, type CourtLevel } from '../physics/court';
 import { createArena } from '../render/arena/arena';
@@ -94,8 +95,9 @@ const FAR_LINE_ON_SCREEN = 41;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 /** Ton équipe dans le monde (l'autre est l'IA). */
 const USER_TEAM = 0;
-/** Pose de passe (bras du lâcher) tenue après une passe (ms). */
+/** Pose de passe (bras du lâcher) tenue après une passe (ms), et après un lancer franc. */
 const PASS_POSE_MS = 150;
+const FREE_THROW_POSE_MS = 400;
 /**
  * Messages des événements, au-dessus du joueur concerné : vols et passes coupées (au-dessus du
  * défenseur ; la faute de main reprend FAUTE), violations (au-dessus du fautif).
@@ -223,6 +225,8 @@ export class MatchScene extends Phaser.Scene {
   private blocked = false;
   private pendingJump = false;
   private pendingRelease = false;
+  /** Bouton Tir : appui gardé tant qu'il est tenu, si le joueur était en l'air. */
+  private shotButton = new ShotButton();
   private pendingPass = false;
   private pendingSteal = false;
   /** Joueur contrôlé à l'image précédente (carte, anneau qui clignote au changement). */
@@ -231,6 +235,9 @@ export class MatchScene extends Phaser.Scene {
   /** Pose de passe restante (ms) par joueur, et dernière passe déjà vue. */
   private passPose: number[] = [];
   private seenPass: object | null = null;
+  /** Pose du lâcher d'un lancer franc restante (ms) par joueur ; dernier lancer annoncé (série, numéro). */
+  private freeThrowPose: number[] = [];
+  private seenFreeThrow: { series: object; taken: number } | null = null;
   private accumulator = 0;
   private cam = { x: 0, y: 0, zoom: 1 };
   private debugKey = '';
@@ -244,7 +251,7 @@ export class MatchScene extends Phaser.Scene {
   private blendFrom: Point | null = null;
   private blendClock = 0;
   /** Jauge de ton tir en cours ou de ton dernier tir (affichée encore un instant après le lâcher). */
-  private gaugeShot: { window: number; timeToApex: number; release: number | null; side: number; linger: number } | null = null;
+  private gaugeShot: { shooter: number; window: number; timeToApex: number; release: number | null; side: number; linger: number } | null = null;
   /** Dernier tir déjà annoncé ; annonce en cours au-dessus de la tête de `tagOwner`. */
   private seenShot: ShotRecord | null = null;
   private tagOwner = 0;
@@ -310,12 +317,15 @@ export class MatchScene extends Phaser.Scene {
     this.ringBlink = 0;
     this.passPose = [];
     this.seenPass = null;
+    this.freeThrowPose = [];
+    this.seenFreeThrow = null;
     this.homeCast = [];
     this.awayCast = [];
     this.bodies = [];
     this.blocked = false;
     this.pendingJump = false;
     this.pendingRelease = false;
+    this.shotButton = new ShotButton();
     this.accumulator = 0;
     this.debugKey = '';
     this.debugVisible = false;
@@ -363,6 +373,9 @@ export class MatchScene extends Phaser.Scene {
     createTag(this, 'tag-deflect', 'DÉVIÉE', PALETTE.silver);
     for (const [key, text] of VIOLATION_TAGS) createTag(this, key, text, PALETTE.orange);
     createTag(this, 'tag-tipoff', 'ENTRE-DEUX', PALETTE.chalk);
+    for (let total = 1; total <= 3; total++) {
+      for (let n = 1; n <= total; n++) createTag(this, `tag-ft-${n}-${total}`, `LANCER ${n}/${total}`, PALETTE.chalk);
+    }
     this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home));
     this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away));
 
@@ -393,6 +406,7 @@ export class MatchScene extends Phaser.Scene {
     else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     this.ais = this.world.players.map((_, i) => new PlayerAi(i, new Rng(hashSeed(`ia-${this.seed}-${i}`))));
     this.passPose = this.world.players.map(() => 0);
+    this.freeThrowPose = this.world.players.map(() => 0);
 
     const keyboard = this.input.keyboard!;
     this.controls = new KeyboardInput(keyboard, this.settings.bindings);
@@ -438,18 +452,30 @@ export class MatchScene extends Phaser.Scene {
     this.accumulator += Math.min(deltaMs, 100) / 1000;
     while (this.accumulator >= WORLD_DT) {
       this.accumulator -= WORLD_DT;
+      const controlled = this.world.controlled;
+      const body = this.world.players[controlled];
+      // Un appui sur Tir en l'air (retombée d'un rebond) part à l'atterrissage si Tir est tenu.
+      const jump = this.shotButton.step(this.pendingJump, input.shootHeld, {
+        airborne: body.airborne,
+        holding: this.world.holder === controlled,
+        shooting: this.world.shot?.shooter === controlled,
+      });
       const mine: WorldInput = {
         x: input.moveX,
         y: input.moveY,
-        jump: this.pendingJump,
+        jump,
         release: this.pendingRelease,
         pass: this.pendingPass,
         steal: this.pendingSteal,
       };
-      // Toutes les IA réfléchissent (leurs souvenirs restent à jour) ; le joueur contrôlé suit tes touches.
+      const untouched =
+        input.moveX === 0 && input.moveY === 0 && !input.shootHeld && !this.pendingJump && !this.pendingRelease && !this.pendingPass && !this.pendingSteal;
+      const defending = this.world.userDefending;
+      // Toutes les IA réfléchissent (leurs souvenirs restent à jour) ; le joueur contrôlé suit tes
+      // touches, ou son IA en défense quand tu ne touches à rien (déplacement seulement).
       const inputs = this.ais.map((ai, i) => {
         const thought = ai.think(this.world, WORLD_DT);
-        return i === this.world.controlled ? mine : thought;
+        return i === controlled ? controlledInput(mine, thought, defending, untouched) : thought;
       });
       this.world.step(WORLD_DT, inputs);
       this.pendingJump = false;
@@ -521,7 +547,10 @@ export class MatchScene extends Phaser.Scene {
     this.blocked = blocked;
     // Panneau ouvert : Phaser ne lit plus le clavier (ni n'empêche la frappe dans le panneau).
     this.game.input.keyboard!.enabled = !blocked;
-    if (!blocked) this.controls.reset();
+    if (!blocked) {
+      this.controls.reset();
+      this.shotButton.reset();
+    }
   }
 
   /** Touches de test : ignorées si elles servent déjà à une action du joueur. */
@@ -591,6 +620,7 @@ export class MatchScene extends Phaser.Scene {
       this.passPose[pass.passer] = PASS_POSE_MS;
     }
     this.passPose = this.passPose.map((ms) => Math.max(0, ms - deltaMs));
+    this.freeThrowPose = this.freeThrowPose.map((ms) => Math.max(0, ms - deltaMs));
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
     const boxes = this.bodies.map((b) => ({ x: b.ground.x, y: b.ground.y + 3, width: b.label.width, height: b.label.height }));
@@ -657,6 +687,16 @@ export class MatchScene extends Phaser.Scene {
       shot: shot?.kind ?? null,
       followThrough: this.world.followThrough[index] ?? false,
     });
+    // Lancer franc (poses provisoires) : ballon levé pendant la visée, puis le bras du lâcher.
+    const ft = this.world.full?.phase === 'lancers' ? this.world.full.freeThrows : null;
+    const facing = body.facing < 0 ? 'left' : 'right';
+    if (ft && ft.shooter === index && ft.aim !== null && this.world.holder === index) {
+      view.heading = 'side';
+      state = { kind: 'frame', frame: AIR_FRAMES.withBall, facing, heading: 'side' };
+    } else if (this.freeThrowPose[index] > 0 && !body.airborne && this.world.holder !== index) {
+      view.heading = 'side';
+      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing, heading: 'side' };
+    }
     // Passe et geste de vol (poses provisoires) : le bras du lâcher, de profil, au sol ; le vol
     // tend le bras vers le ballon.
     const reaching = this.world.clock < (this.world.reachUntil[index] ?? 0);
@@ -709,15 +749,28 @@ export class MatchScene extends Phaser.Scene {
     // Pas de jauge pour un dunk (simple appui) ni pour les tirs de l'IA.
     const controlled = this.world.controlled;
     const mine = shot && shot.shooter === controlled && shot.kind !== 'dunk' ? shot : null;
-    if (mine) {
+    // Lancer franc : la même jauge, sans saut (temps depuis l'appui sur Tir).
+    const full = this.world.full;
+    const ft = full?.phase === 'lancers' ? full.freeThrows : null;
+    const aim = ft && ft.shooter === controlled && ft.aim !== null && this.world.holder === controlled ? ft.aim : null;
+    if (mine || aim !== null) {
       const body = this.world.players[controlled];
       const { mode, speed } = this.world.shotSettings;
-      const window = greenWindow(mode, shotSkill({ shooter: body.athlete, zone: mine.zone }), speed);
-      this.gaugeShot = { window, timeToApex: body.timeToApex, release: null, side: -body.facing, linger: 0 };
+      const skill = mine ? shotSkill({ shooter: body.athlete, zone: mine.zone }) : body.athlete.attrs.freeThrow;
+      const window = greenWindow(mode, skill, speed);
+      this.gaugeShot = { shooter: controlled, window, timeToApex: body.timeToApex, release: null, side: -body.facing, linger: 0 };
+    }
+    // « LANCER 1/2 » au-dessus du tireur, à chaque lancer.
+    if (ft && this.world.holder === ft.shooter && !ft.flying && ft.pause <= 0) {
+      if (this.seenFreeThrow?.series !== ft || this.seenFreeThrow.taken !== ft.taken) {
+        this.seenFreeThrow = { series: ft, taken: ft.taken };
+        this.addCallout(`tag-ft-${ft.taken + 1}-${ft.total}`, ft.shooter);
+      }
     }
     const last = this.world.lastShot;
     if (last && last !== this.seenShot) {
       this.seenShot = last;
+      if (last.kind === 'lancer') this.freeThrowPose[last.shooter] = FREE_THROW_POSE_MS;
       if (!last.demo && last.grade && last.shooter === controlled) {
         this.tag.setTexture(`grade-${last.grade}`);
         this.tagOwner = controlled;
@@ -736,12 +789,13 @@ export class MatchScene extends Phaser.Scene {
     this.gauge.clear();
     const g = this.gaugeShot;
     if (g) {
-      if (!mine) g.linger += deltaMs;
+      if (!mine && aim === null) g.linger += deltaMs;
       if (g.linger > GAUGE.lingerMs) {
         this.gaugeShot = null;
       } else {
-        const ground = this.bodies[this.tagOwner].ground;
-        const elapsed = mine ? mine.airTime : (g.release ?? 0);
+        // À côté du tireur (pas du dernier joueur annoncé : le contrôle a pu changer depuis).
+        const ground = this.bodies[g.shooter].ground;
+        const elapsed = mine ? mine.airTime : aim !== null ? aim : (g.release ?? 0);
         const view = gaugeView(elapsed, g.timeToApex, g.window);
         const release = g.release === null ? null : gaugeView(g.release, g.timeToApex, g.window).fill;
         const left = g.side > 0 ? ground.x + 10 : ground.x - 10 - (GAUGE.width + 2);
@@ -950,8 +1004,8 @@ export class MatchScene extends Phaser.Scene {
       const p = shot.probability === null ? '' : ` · proba ${Math.round(shot.probability * 100)} %`;
       return `${who}Dunk${contest}${p} · ${outcome}`;
     }
-    const head = shot.demo ? 'Tir démo' : shot.kind === 'layup' ? 'Layup' : 'Tir';
-    let line = `${who}${head} ${shot.distance.toFixed(1)} m (${ZONE_LABELS[shot.zone]})`;
+    const head = shot.demo ? 'Tir démo' : shot.kind === 'layup' ? 'Layup' : shot.kind === 'lancer' ? 'Lancer franc' : 'Tir';
+    let line = shot.kind === 'lancer' ? `${who}${head}` : `${who}${head} ${shot.distance.toFixed(1)} m (${ZONE_LABELS[shot.zone]})`;
     if (!shot.demo && shot.timingError !== null && shot.grade && shot.probability !== null) {
       const error = `${shot.timingError >= 0 ? '+' : ''}${shot.timingError.toFixed(2)} s`;
       line += ` · écart ${error} (${GRADE_LABELS[shot.grade]}${shot.forced ? ', forcé' : ''})${contest} · proba ${Math.round(shot.probability * 100)} %`;
@@ -1027,6 +1081,9 @@ export class MatchScene extends Phaser.Scene {
     const inbound = full.inbound;
     if (inbound) parts.push(`remise ${team(inbound.team)}${inbound.thrower !== null ? ` par ${name(inbound.thrower)} (${inbound.timer.toFixed(1)} s)` : ''}`);
     if (full.lastTouch) parts.push(`dernier toucher ${name(full.lastTouch.player)}`);
+    const ft = full.freeThrows;
+    if (ft) parts.push(`lancers ${name(ft.shooter)} ${ft.taken}/${ft.total} (${ft.made} réussis)${ft.aim !== null ? ` · visée ${ft.aim.toFixed(2)} s` : ''}`);
+    if (full.waitTouch) parts.push('chrono en attente du toucher');
     parts.push(`ton équipe attaque à ${attacksRight(USER_TEAM, full.period) ? 'droite' : 'gauche'}`);
     return parts.join(' · ');
   }

@@ -3,11 +3,13 @@ import type { Rng } from '../../engine/rng';
 import {
   blockProbability,
   canDunk,
+  FREE_THROW_TUNING,
   foulOnContact,
   foulProbability,
   gaugeTime,
   resolveBlock,
   resolveDunk,
+  resolveFreeThrow,
   resolveShot,
   type Contest,
   type DunkContext,
@@ -38,6 +40,7 @@ import {
   baselineSpot,
   clockStopsAfterBasket,
   defendHoop,
+  freeThrowPositions,
   FULL_COURT,
   inFrontcourt,
   isOut,
@@ -78,7 +81,7 @@ export const WORLD_TUNING = {
 } as const;
 
 /** Geste de tir : tir en suspension, layup (avec la jauge) ou dunk (simple appui). */
-export type PlayKind = ShotKind | 'dunk';
+export type PlayKind = ShotKind | 'dunk' | 'lancer';
 
 /** Un tir dans le monde : vrai tir (jauge), dunk, ou tir de démo (R/M). */
 export interface ShotRecord {
@@ -146,6 +149,8 @@ interface Play {
   watching: boolean;
   /** Le tir est raté (ou contré, ou non valable) : avec une faute, le ballon revient au tireur. */
   missed: boolean;
+  /** Lancers francs déjà accordés pour la faute sur ce tir (terrain entier). */
+  freeThrows: boolean;
 }
 
 /** Dunk en cours : résultat déjà tiré à l'appui, smash au sommet, puis accroche si réussi. */
@@ -510,6 +515,11 @@ export class MatchWorld {
     }
     // Terrain entier : pauses (ballon mort, fin de période), mise en place des remises.
     if (this.full && this.stepPauses(dt)) list = [];
+    // Lancers francs : seul le tireur joue (appui, relâche) ; les autres attendent le dernier lâcher.
+    if (this.full?.phase === 'lancers' && this.full.freeThrows) {
+      this.stepFreeThrow(dt, list[this.full.freeThrows.shooter] ?? IDLE_INPUT);
+      list = [];
+    }
     const full = this.full;
     const thrower = full?.phase === 'remise' && this.holder === full.inbound?.thrower ? this.holder : null;
 
@@ -535,7 +545,7 @@ export class MatchWorld {
       // Accroché au cercle : le dunkeur ne bouge plus jusqu'à la fin de l'accroche.
       const dunk = this.shot?.shooter === i ? this.shot.dunk : null;
       if (dunk && dunk.hang > 0) dunk.hang = Math.max(0, dunk.hang - dt);
-      else stepPlayer(body, input, dt, this.court);
+      else stepPlayer(body, startsShot ? { ...input, shotJump: true } : input, dt, this.court);
       if (!body.airborne) this.followThrough[i] = false;
       if (kind) this.startShot(i, kind, takeoffSpeed, takeoff, dunkCtx);
     });
@@ -606,6 +616,18 @@ export class MatchWorld {
     if (this.full) this.referee(dt, wall);
   }
 
+  /**
+   * Ton équipe défend-elle ? L'adversaire a le ballon, ou sa passe est en l'air, ou c'est sa remise
+   * (ballon mort compris), ou il a eu le ballon en dernier (ballon libre).
+   */
+  get userDefending(): boolean {
+    if (this.holder !== null) return this.team[this.holder] !== this.userTeam;
+    if (this.pass) return this.pass.team !== this.userTeam;
+    const full = this.full;
+    if (full?.inbound && (full.phase === 'mort' || full.phase === 'remise')) return full.inbound.team !== this.userTeam;
+    return this.possession !== null && this.possession.team !== this.userTeam;
+  }
+
   /** Le ballon peut-il être ramassé ou touché ? (Pas pendant un ballon mort, une fin de période ou l'entre-deux.) */
   get ballLive(): boolean {
     const phase = this.full?.phase;
@@ -623,7 +645,10 @@ export class MatchWorld {
     if (full.phase === 'mort') {
       if (full.inbound?.clockRuns && this.runClock(dt)) return true;
       full.pause -= dt;
-      if (full.pause <= 0) this.setupInbound();
+      if (full.pause <= 0) {
+        if (full.freeThrows) this.setupFreeThrows(true);
+        else this.setupInbound();
+      }
       return false;
     }
     if (full.phase === 'fin-periode' || full.phase === 'fin-match') {
@@ -643,7 +668,7 @@ export class MatchWorld {
    */
   private runClock(dt: number): boolean {
     const full = this.full!;
-    if (full.buzzerPending) return false;
+    if (full.buzzerPending || full.waitTouch) return false;
     full.clock = Math.max(0, full.clock - dt);
     if (full.clock > 0) return false;
     const shot = this.lastShot;
@@ -719,7 +744,7 @@ export class MatchWorld {
   private stepShotClock(dt: number): boolean {
     const full = this.full!;
     const team = this.possession?.team ?? null;
-    if (team === null) return false;
+    if (team === null || full.waitTouch) return false;
     // Plus de shot clock quand il reste moins de temps au chrono de jeu.
     if (full.clock < full.shotClock) return false;
     if (full.shotClockPending) {
@@ -874,6 +899,8 @@ export class MatchWorld {
     full.buzzerPending = false;
     full.shotClockPending = false;
     full.inbound = null;
+    full.freeThrows = null;
+    full.waitTouch = false;
     full.clock = 0;
     if (full.period >= FULL_COURT.periods && this.points[0] !== this.points[1]) {
       full.phase = 'fin-match';
@@ -990,6 +1017,7 @@ export class MatchWorld {
     const full = this.full;
     if (!full) return;
     const team = this.team[i];
+    full.waitTouch = false;
     if (full.phase === 'remise' && i !== full.inbound?.thrower) {
       full.phase = 'jeu';
       full.inbound = null;
@@ -1189,7 +1217,7 @@ export class MatchWorld {
       return;
     }
     const team = this.team[shot.shooter];
-    this.points[team] += shot.three ? 3 : 2;
+    this.points[team] += shot.kind === 'lancer' ? 1 : shot.three ? 3 : 2;
     if (rules && rules.winner === null && this.points[team] >= rules.target) {
       rules.winner = team;
       rules.pause = HALF_COURT.endPause;
@@ -1197,9 +1225,21 @@ export class MatchWorld {
     // Terrain entier : l'autre équipe remet derrière la ligne de fond, sous ce panier (le chrono
     // continue, sauf dans la dernière minute du QT4 et des prolongations).
     const full = this.full;
-    if (full && !full.buzzerPending && (full.phase === 'jeu' || full.phase === 'remise')) {
+    if (!full) return;
+    // Lancer franc réussi : la série continue, ou c'était le dernier (remise adverse, chrono arrêté).
+    if (shot.kind === 'lancer' && full.phase === 'lancers') {
+      if (full.freeThrows) full.freeThrows.made++;
+      return;
+    }
+    // Panier avec faute : il compte, plus un lancer.
+    const play = this.play;
+    if (shot.kind !== 'lancer' && play?.record === shot && play.foul?.called && !play.freeThrows) {
+      this.awardFreeThrows(play, 1);
+      return;
+    }
+    if (!full.buzzerPending && (full.phase === 'jeu' || full.phase === 'remise')) {
       const hoop = shot.hoop === 'left' ? this.court.hoops.left : this.court.hoops.right;
-      const clockRuns = !clockStopsAfterBasket(full.period, full.clock);
+      const clockRuns = shot.kind !== 'lancer' && !clockStopsAfterBasket(full.period, full.clock);
       this.basketPending = false;
       this.deadBall(
         { team: 1 - team, thrower: null, spot: baselineSpot(this.court, hoop), timer: 0, shotClock: FULL_COURT.shotClock, clockRuns, afterBasket: true },
@@ -1229,7 +1269,9 @@ export class MatchWorld {
       const foul: FoulCall = { defender: i, probability: foulProbability(ctx), called: foulOnContact(ctx, this.rng) };
       play.foul = foul;
       if (play.record) play.record.foul = foul;
-      if (foul.called && play.missed) this.startRestart(play.shooter);
+      if (foul.called && play.missed) this.foulOnMiss(play);
+      // Contact après que le ballon est entré (dunk) : panier et un lancer.
+      else if (foul.called && this.full && play.record?.scored && !play.record.invalid) this.awardFreeThrows(play, 1);
       return;
     }
   }
@@ -1242,7 +1284,7 @@ export class MatchWorld {
   private checkTouch(): void {
     const play = this.play;
     const shot = this.lastShot;
-    if (!play || !shot || play.record !== shot || shot.kind === 'dunk' || shot.live !== null || shot.scored) return;
+    if (!play || !shot || play.record !== shot || shot.kind === 'dunk' || shot.kind === 'lancer' || shot.live !== null || shot.scored) return;
     const hoop = shot.hoop === 'left' ? this.court.hoops.left : this.court.hoops.right;
     const rising = this.ball.vel.z > 0;
     const goaltend = !rising && !this.rimTouched && inGoaltendZone(hoop, this.ball);
@@ -1288,7 +1330,141 @@ export class MatchWorld {
     const play = this.play;
     if (!play || play.record !== shot || play.missed) return;
     play.missed = true;
-    if (play.foul?.called) this.startRestart(play.shooter);
+    if (play.foul?.called) this.foulOnMiss(play);
+  }
+
+  /** Faute sur un tir raté : lancers francs sur terrain entier (3 sur un tir à 3 pts, sinon 2), ballon au tireur au demi-terrain. */
+  private foulOnMiss(play: Play): void {
+    if (this.full) this.awardFreeThrows(play, play.record?.three ? 3 : 2);
+    else this.startRestart(play.shooter);
+  }
+
+  /** Lancers francs pour le tireur fautif : ballon mort, puis la série (chrono arrêté). */
+  private awardFreeThrows(play: Play, total: number): void {
+    const full = this.full;
+    // Contact sifflé juste après un panier (dunk) : le lancer remplace la remise prévue.
+    const afterBasket = full?.phase === 'mort' && full.inbound?.afterBasket === true;
+    if (!full || play.freeThrows || (full.phase !== 'jeu' && full.phase !== 'remise' && !afterBasket)) return;
+    play.freeThrows = true;
+    const shooter = play.shooter;
+    if (this.shot) this.endShot();
+    this.play = null;
+    this.pass = null;
+    this.loose = null;
+    this.holder = null;
+    full.phase = 'mort';
+    full.pause = FULL_COURT.deadPause;
+    full.inbound = null;
+    full.shotUp = false;
+    full.shotClockPending = false;
+    full.freeThrows = { shooter, team: this.team[shooter], total, taken: 0, made: 0, aim: null, flying: false, pause: 0 };
+  }
+
+  /**
+   * Mise en place des lancers : le tireur derrière la ligne avec le ballon, les autres le long de
+   * la raquette ou en haut, immobiles. Pour les lancers suivants, seul le ballon revient au tireur.
+   */
+  private setupFreeThrows(first: boolean): void {
+    const full = this.full!;
+    const ft = full.freeThrows!;
+    const hoop = this.attackHoop(ft.team);
+    if (first) this.placeAll(freeThrowPositions(this.court, hoop, ft.shooter, ft.team, this.lineup));
+    for (const body of this.players) body.facing = hoop.rim.x >= body.pos.x ? 1 : -1;
+    full.phase = 'lancers';
+    ft.aim = null;
+    ft.flying = false;
+    ft.pause = 0;
+    this.play = null;
+    this.pass = null;
+    this.holder = ft.shooter;
+    this.dribbleTime = 0;
+    this.cooldown = 0;
+    this.ball = { pos: this.handPosition(this.players[ft.shooter]), vel: { x: 0, y: 0, z: 0 } };
+    full.lastTouch = { player: ft.shooter, team: ft.team };
+    if (this.possession?.team !== ft.team) this.possession = { team: ft.team, since: this.clock };
+    this.followPossession(ft.shooter);
+  }
+
+  /**
+   * Lancers francs : appui sur Tir (sans saut), la jauge se remplit ; relâche au sommet. Tenu trop
+   * longtemps, le lancer part tout seul. Entre deux lancers, une courte pause, puis le ballon revient.
+   */
+  private stepFreeThrow(dt: number, input: WorldInput): void {
+    const full = this.full!;
+    const ft = full.freeThrows!;
+    if (ft.flying) {
+      const shot = this.lastShot;
+      // Issue connue : réussi, ou raté (au sol, ou dès le cercle quand le résultat tiré est un raté).
+      if (shot && (shot.scored || shot.live !== null || (this.rimTouched && !shot.wanted))) {
+        ft.flying = false;
+        ft.pause = FULL_COURT.freeThrowPause;
+      }
+      return;
+    }
+    if (ft.pause > 0) {
+      ft.pause -= dt;
+      if (ft.pause <= 0) this.setupFreeThrows(false);
+      return;
+    }
+    if (this.holder !== ft.shooter) return;
+    if (ft.aim === null) {
+      if (!input.jump) return;
+      ft.aim = 0;
+    } else {
+      ft.aim += dt;
+    }
+    const gauge = this.players[ft.shooter].timeToApex;
+    if (input.release || ft.aim >= FULL_COURT.freeThrowForce * gauge) this.releaseFreeThrow(!input.release);
+  }
+
+  /** Lâcher d'un lancer : `engine/` tire le résultat, la physique le met en scène depuis la main. */
+  private releaseFreeThrow(forced: boolean): void {
+    const full = this.full!;
+    const ft = full.freeThrows!;
+    const body = this.players[ft.shooter];
+    const hoop = this.attackHoop(ft.team);
+    const timingError = (ft.aim ?? 0) - body.timeToApex;
+    const result = resolveFreeThrow({ shooter: body.athlete, mode: this.shotSettings.mode, speed: this.shotSettings.speed, timingError }, this.rng);
+    const start = releasePoint(body.pos, body.athlete.heightCm, hoop, WORLD_TUNING.handDepth);
+    this.launch(start, result.made, hoop);
+    ft.taken++;
+    ft.aim = null;
+    this.lastShot = {
+      demo: false,
+      shooter: ft.shooter,
+      kind: 'lancer',
+      zone: 'mid',
+      start,
+      distance: distanceToRim(hoop, body.pos.x, body.pos.y),
+      three: false,
+      hoop: hoop.side,
+      contest: null,
+      cleared: true,
+      wanted: result.made,
+      probability: Math.min(result.probability, FREE_THROW_TUNING.max),
+      grade: result.grade,
+      timingError,
+      forced,
+      scored: false,
+      invalid: false,
+      live: null,
+      block: null,
+      foul: null,
+      goaltend: false,
+    };
+    full.lastTouch = { player: ft.shooter, team: ft.team };
+    if (ft.taken < ft.total) {
+      ft.flying = true;
+      return;
+    }
+    // Dernier lancer : tout le monde peut bouger ; s'il est raté, le rebond se joue et le chrono
+    // (comme le shot clock) attend le premier toucher.
+    full.freeThrows = null;
+    full.phase = 'jeu';
+    full.shotUp = true;
+    full.waitTouch = true;
+    full.frontcourt = false;
+    full.backcourtTime = 0;
   }
 
   private startRestart(shooter: number): void {
@@ -1468,7 +1644,7 @@ export class MatchWorld {
     const zone: ShotZone = kind === 'jump' ? shotZone(this.court, hoop, takeoff.x, takeoff.y) : 'rim';
     const contest = dunkCtx?.defender ? { distance: dunkCtx.defender.distance, facing: dunkCtx.defender.facing } : null;
     this.shot = { shooter, kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, contest, dunk };
-    this.play = { shooter, record: null, foul: null, watching: true, missed: false };
+    this.play = { shooter, record: null, foul: null, watching: true, missed: false, freeThrows: false };
   }
 
   /** L'équipe du tireur avait-elle ressorti le ballon (toujours vrai hors demi-terrain) ? */

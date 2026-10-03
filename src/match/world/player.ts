@@ -15,8 +15,13 @@ export const PLAYER_TUNING = {
   jumpCarry: 0.25,
   /** Distance horizontale maximale parcourue pendant un saut (m), quelle que soit sa durée. */
   jumpMaxDrift: 2,
-  /** Le joueur peut sortir des lignes d'autant (m) : le hors-jeu arrive avec les règles. */
+  /** Le joueur peut sortir des lignes d'autant (m) : au-delà des lignes, c'est une sortie. */
   boundsMargin: 1.5,
+  /**
+   * Gravité d'un saut sans le ballon (contre, contestation, rebond, entre-deux, m/s²) : la vraie,
+   * pour un saut vif. Un saut de tir garde son sommet à la fin de la jauge.
+   */
+  freeJumpGravity: 9.81,
 } as const;
 
 export interface MoveInput {
@@ -29,6 +34,8 @@ export interface MoveInput {
   y: number;
   /** Saut demandé à ce pas. */
   jump: boolean;
+  /** Ce saut lance un tir : son sommet tombe à la fin de la jauge (sinon, saut vif sans ballon). */
+  shotJump?: boolean;
 }
 
 export interface PlayerBody {
@@ -40,9 +47,11 @@ export interface PlayerBody {
   facing: 1 | -1;
   runSpeed: number;
   jumpHeight: number;
-  /** Gravité du saut, calée pour que le sommet arrive à `timeToApex`. */
-  jumpGravity: number;
+  /** Saut de tir : sommet à `timeToApex` (fin de la jauge), avec cette gravité. */
+  shotGravity: number;
   timeToApex: number;
+  /** Gravité du saut en cours, fixée au décollage (tir ou saut sans ballon ; relevée pour un dunk). */
+  jumpGravity: number;
   airborne: boolean;
 }
 
@@ -54,18 +63,24 @@ export function createPlayerBody(athlete: Player, pos: Vec3, timeToApex: number)
     facing: 1,
     runSpeed: runSpeed(athlete),
     jumpHeight: jumpHeight(athlete),
-    jumpGravity: 0,
+    shotGravity: 0,
     timeToApex,
+    jumpGravity: PLAYER_TUNING.freeJumpGravity,
     airborne: false,
   };
   setJumpTiming(body, timeToApex);
   return body;
 }
 
-/** Le sommet du saut coïncide avec la jauge de tir : sa durée dépend de la vitesse de tir. */
+/** Le sommet d'un saut de tir coïncide avec la jauge : sa durée dépend de la vitesse de tir. */
 export function setJumpTiming(body: PlayerBody, timeToApex: number): void {
   body.timeToApex = timeToApex;
-  body.jumpGravity = (2 * body.jumpHeight) / (timeToApex * timeToApex);
+  body.shotGravity = (2 * body.jumpHeight) / (timeToApex * timeToApex);
+}
+
+/** Durée de la montée d'un saut sans le ballon (s) : même hauteur, gravité réelle. */
+export function freeTimeToApex(body: Pick<PlayerBody, 'jumpHeight'>): number {
+  return Math.sqrt((2 * body.jumpHeight) / PLAYER_TUNING.freeJumpGravity);
 }
 
 /**
@@ -109,11 +124,14 @@ export function stepPlayer(body: PlayerBody, input: MoveInput, dt: number, court
     if (input.x !== 0) body.facing = input.x > 0 ? 1 : -1;
     if (input.jump) {
       body.airborne = true;
-      vel.z = body.jumpGravity * body.timeToApex;
+      // Saut de tir : sommet à la fin de la jauge ; sans ballon : saut vif, à la gravité réelle.
+      body.jumpGravity = input.shotJump ? body.shotGravity : PLAYER_TUNING.freeJumpGravity;
+      vel.z = Math.sqrt(2 * body.jumpGravity * body.jumpHeight);
+      const apex = vel.z / body.jumpGravity;
       // Élan réduit : une part de la vitesse au sol, sans dépasser la dérive maximale sur le saut.
       const speed = Math.hypot(vel.x, vel.y);
       if (speed > 0) {
-        const carried = Math.min(speed * PLAYER_TUNING.jumpCarry, PLAYER_TUNING.jumpMaxDrift / (2 * body.timeToApex));
+        const carried = Math.min(speed * PLAYER_TUNING.jumpCarry, PLAYER_TUNING.jumpMaxDrift / (2 * apex));
         vel.x *= carried / speed;
         vel.y *= carried / speed;
       }

@@ -39,10 +39,17 @@ export const FULL_COURT = {
   tossAbove: 0.45,
   /** Les autres joueurs se tiennent à (m) du centre, hors du rond. */
   tipRing: CIRCLE_RADIUS + 0.6,
+  /** Lancers francs : pause entre deux lancers (s) ; lancer parti tout seul si Tir est tenu plus de (× la jauge). */
+  freeThrowPause: 0.8,
+  freeThrowForce: 2,
+  /** Tireur à (m) derrière la ligne de lancer franc ; joueurs de la raquette à (m) de ses côtés, à (m) de la ligne de fond. */
+  freeThrowBehind: 0.3,
+  laneOut: 0.45,
+  laneSpots: [2.1, 3.0, 3.9],
 } as const;
 
-/** Phase du match : entre-deux, jeu, ballon mort (pause avant une remise), remise, fin de période, fin de match. */
-export type GamePhase = 'entre-deux' | 'jeu' | 'mort' | 'remise' | 'fin-periode' | 'fin-match';
+/** Phase du match : entre-deux, jeu, ballon mort (pause avant une remise ou des lancers), remise, lancers francs, fin de période, fin de match. */
+export type GamePhase = 'entre-deux' | 'jeu' | 'mort' | 'remise' | 'lancers' | 'fin-periode' | 'fin-match';
 export type ViolationKind = 'sortie' | '8 secondes' | 'retour en zone' | '24 secondes' | '5 secondes' | 'entre-deux';
 
 /** Remise en jeu : prévue pendant le ballon mort, active pendant la remise. */
@@ -60,6 +67,22 @@ export interface Inbound {
   clockRuns: boolean;
   /** Remise après un panier (sous ce panier). */
   afterBasket: boolean;
+}
+
+/** Série de lancers francs (faute sur un tir : 2 ou 3, 1 après un panier). */
+export interface FreeThrows {
+  shooter: number;
+  team: number;
+  total: number;
+  /** Lancers déjà tirés, et réussis. */
+  taken: number;
+  made: number;
+  /** Visée en cours : temps depuis l'appui sur Tir (s), ou null avant l'appui. */
+  aim: number | null;
+  /** Lancer en l'air, issue pas encore connue. */
+  flying: boolean;
+  /** Pause restante avant le lancer suivant (s). */
+  pause: number;
 }
 
 export interface FullCourtState {
@@ -90,6 +113,10 @@ export interface FullCourtState {
   shotClockPending: boolean;
   /** Chrono à 0 avec un tir en l'air : la période finit à son issue. */
   buzzerPending: boolean;
+  /** Lancers francs en cours (phase `lancers`, ou prévus pendant le ballon mort). */
+  freeThrows: FreeThrows | null;
+  /** Dernier lancer raté : chrono et shot clock attendent que quelqu'un touche le ballon. */
+  waitTouch: boolean;
   lastViolation: { kind: ViolationKind; team: number; player: number; time: number } | null;
 }
 
@@ -111,6 +138,8 @@ export function newFullCourt(quarterMinutes: number = FULL_COURT.quarterMinutes)
     shotUp: false,
     shotClockPending: false,
     buzzerPending: false,
+    freeThrows: null,
+    waitTouch: false,
     lastViolation: null,
   };
 }
@@ -253,5 +282,40 @@ export function periodPositions(
   result.set(thrower, { ...spot });
   order[offense].filter((i) => i !== thrower).forEach((i, k) => result.set(i, { ...att[k % att.length], z: 0 }));
   order[1 - offense].forEach((i, k) => result.set(i, { ...def[k % def.length], z: 0 }));
+  return result;
+}
+
+/** Ligne de lancer franc d'un panier : à la longueur de la raquette de la ligne de fond. */
+export function freeThrowSpot(court: Court, hoop: Hoop): Vec3 {
+  return { x: hoop.baselineX + hoop.toCourt * (court.paintLength + FULL_COURT.freeThrowBehind), y: court.width / 2, z: 0 };
+}
+
+/**
+ * Places pendant les lancers francs : le tireur derrière la ligne ; le long de la raquette, deux
+ * défenseurs près du cercle, deux attaquants derrière eux, un troisième défenseur plus haut ; les
+ * autres en haut, derrière la ligne à 3 pts. `order` : joueurs de chaque équipe par poste (les
+ * intérieurs en dernier, ils prennent la raquette).
+ */
+export function freeThrowPositions(court: Court, hoop: Hoop, shooter: number, team: number, order: readonly (readonly number[])[]): Map<number, Vec3> {
+  const t = FULL_COURT;
+  const cy = court.width / 2;
+  const side = court.paintWidth / 2 + t.laneOut;
+  const lane = (k: number, s: number): Vec3 => ({ x: hoop.baselineX + hoop.toCourt * t.laneSpots[k], y: cy + s * side, z: 0 });
+  // En haut, répartis sur un arc derrière la ligne à 3 pts.
+  const top = (k: number, n: number): Vec3 => {
+    const angle = ((n <= 1 ? 0 : -50 + (100 * k) / (n - 1)) * Math.PI) / 180;
+    const r = court.threeArc + 1.2;
+    return { x: hoop.rim.x + hoop.toCourt * Math.cos(angle) * r, y: cy + Math.sin(angle) * r, z: 0 };
+  };
+  const result = new Map<number, Vec3>();
+  result.set(shooter, freeThrowSpot(court, hoop));
+  const offense = [...order[team]].filter((i) => i !== shooter).reverse();
+  const defense = [...order[1 - team]].reverse();
+  const defLane = [lane(0, -1), lane(0, 1), lane(2, 1)];
+  const offLane = [lane(1, -1), lane(1, 1)];
+  defense.slice(0, defLane.length).forEach((i, k) => result.set(i, defLane[k]));
+  offense.slice(0, offLane.length).forEach((i, k) => result.set(i, offLane[k]));
+  const rest = [...offense.slice(offLane.length), ...defense.slice(defLane.length)];
+  rest.forEach((i, k) => result.set(i, top(k, rest.length)));
   return result;
 }
