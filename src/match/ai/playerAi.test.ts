@@ -473,6 +473,9 @@ describe('IA sur terrain entier (5 contre 5)', () => {
     let crossings = 0;
     let back = 0;
     let wasFront = false;
+    let ftClock = 0;
+    let ftShot: ShotRecord | null = null;
+    let maxFreeThrow = 0;
     let t = 0;
     for (; t < 600 && full.phase !== 'fin-match'; t += WORLD_DT) {
       w.step(WORLD_DT, ais.map((ai) => ai.think(w, WORLD_DT)));
@@ -495,6 +498,15 @@ describe('IA sur terrain entier (5 contre 5)', () => {
         back += w.membersOf(defense).filter((i) => !inFrontcourt(court, defense, full.period, w.players[i].pos.x)).length;
       }
       wasFront = full.frontcourt;
+      // Durée d'un lancer (de la mise en place au lâcher suivant).
+      if (full.phase === 'lancers') {
+        ftClock += WORLD_DT;
+        if (w.lastShot !== ftShot) {
+          ftShot = w.lastShot;
+          ftClock = 0;
+        }
+        maxFreeThrow = Math.max(maxFreeThrow, ftClock);
+      }
     }
     expect(full.phase).toBe('fin-match');
     expect(full.period).toBeGreaterThanOrEqual(4);
@@ -506,5 +518,10 @@ describe('IA sur terrain entier (5 contre 5)', () => {
     expect(w.turnovers.length / possessions).toBeLessThan(0.25);
     expect(maxHold).toBeLessThan(8);
     expect(back / (crossings * 5)).toBeGreaterThan(0.8);
+    // Lancers francs : l'IA les tire à temps, avec une réussite plausible.
+    const fts = [...shots].filter((s) => s.kind === 'lancer');
+    expect(fts.length).toBeGreaterThan(0);
+    expect(fts.filter((s) => s.scored).length / fts.length).toBeGreaterThan(0.4);
+    expect(maxFreeThrow).toBeLessThan(6);
   });
 });

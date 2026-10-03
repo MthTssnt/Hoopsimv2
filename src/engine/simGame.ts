@@ -1,7 +1,7 @@
 import { minuteTargets, pickLineup } from './coach';
 import { POSITION_INDEX } from './ratings';
 import type { Rng } from './rng';
-import { SHOT_MODEL } from './shot';
+import { freeThrowBase, SHOT_MODEL } from './shot';
 import {
   emptyStatLine,
   playerName,
@@ -511,7 +511,7 @@ function shootFreeThrows(
   log: LogFn,
 ): ShotOutcome {
   // Les lancers francs dépendent peu de la fatigue : on prend la note brute.
-  const p = clamp(0.4 + shooter.player.attrs.freeThrow * 0.0055, 0.45, 0.95);
+  const p = freeThrowBase(shooter.player.attrs.freeThrow);
   let made = 0;
   for (let i = 0; i < count; i++) {
     shooter.line.fta += 1;

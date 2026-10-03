@@ -20,6 +20,20 @@ export const SHOT_MODEL = {
   bounds: { rim: [0.34, 0.82], mid: [0.22, 0.6], three: [0.2, 0.5] },
 } as const;
 
+/** Lancer franc : partagé par la simulation et le match joué (réussite selon la stat de lancer franc). */
+export const FREE_THROW_MODEL = {
+  base: 0.4,
+  /** Gain par point de stat de lancer franc. */
+  slope: 0.0055,
+  bounds: [0.45, 0.95],
+} as const;
+
+/** Réussite d'un lancer franc pour la simulation ; c'est aussi la cible d'un lâcher humain moyen au match joué. */
+export function freeThrowBase(rating: number): number {
+  const m = FREE_THROW_MODEL;
+  return clamp(m.base + rating * m.slope, m.bounds[0], m.bounds[1]);
+}
+
 // ---------------------------------------------------------------------------
 // Match joué : valeurs provisoires, réglables ici (voir GAMEPLAY_SPEC, phase 1).
 // ---------------------------------------------------------------------------
@@ -162,6 +176,39 @@ export function shotProbability(ctx: ShotContext): number {
   const { fullSpeed, maxPenalty } = SHOT_TUNING.moving;
   const moving = ctx.kind === 'layup' ? 1 : 1 - maxPenalty * clamp(ctx.moveSpeed / fullSpeed, 0, 1);
   return clamp(base * timing * contest * moving, SHOT_TUNING.minProbability, SHOT_MODEL.bounds[ctx.zone][1]);
+}
+
+export interface FreeThrowContext {
+  shooter: Athlete;
+  mode: ShotMode;
+  speed: ShotSpeed;
+  /** Écart entre le lâcher et la fin de la jauge (s) : négatif = trop tôt. */
+  timingError: number;
+}
+
+export const FREE_THROW_TUNING = {
+  /** Plafond d'un lancer franc parfaitement lâché. */
+  max: 0.98,
+} as const;
+
+/**
+ * Lancer franc au match joué : la base de la simulation (stat de lancer franc) multipliée par la
+ * courbe de timing du tir. La jauge est la même que celle du tir, sans saut ; en Real Player %,
+ * la stat de lancer franc élargit la zone verte. Un lâcher parfait passe au-dessus de la base, un
+ * timing humain moyen retombe autour d'elle.
+ */
+export function freeThrowProbability(ctx: FreeThrowContext): number {
+  const skill = ctx.shooter.attrs.freeThrow;
+  const window = greenWindow(ctx.mode, skill, ctx.speed);
+  const timing = timingMultiplier(ctx.mode, ctx.timingError, window, ctx.speed);
+  return clamp(freeThrowBase(skill) * timing, SHOT_TUNING.minProbability, FREE_THROW_TUNING.max);
+}
+
+/** Tire le résultat d'un lancer franc au lâcher, avec la note du lâcher. */
+export function resolveFreeThrow(ctx: FreeThrowContext, rng: Rng): ShotResult {
+  const probability = freeThrowProbability(ctx);
+  const window = greenWindow(ctx.mode, ctx.shooter.attrs.freeThrow, ctx.speed);
+  return { made: rng.chance(probability), probability, grade: timingGrade(ctx.timingError, window) };
 }
 
 /** Tire le résultat d'un tir ou d'un layup au moment du lâcher. */

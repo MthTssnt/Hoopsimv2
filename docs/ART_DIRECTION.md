@@ -307,6 +307,12 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     viendra en phase 3) ;
   - **remise** : le lanceur se tient hors des lignes, sur le tablier de l'arène ; s'il est de ton
     équipe, il a l'anneau.
+- **Lancers francs (incrément 11)** :
+  - « LANCER 1/2 », « 2/2 », « 1/3 »… (`chalk`) au-dessus du tireur à chaque lancer, puis la
+    note PARFAIT, BON, TÔT ou TARD comme pour un tir ; la petite police gagne la barre « / » ;
+  - la jauge du tir, à côté du tireur, sans saut ;
+  - pose provisoire : l'image 13 (ballon levé) pendant la visée, l'image 14 (lâcher) ~0,4 s
+    après, au sol ; de vraies poses viendront en phase 3.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

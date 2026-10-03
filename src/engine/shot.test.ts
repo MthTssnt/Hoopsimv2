@@ -7,7 +7,11 @@ import {
   contestLevel,
   dunkProbability,
   foulProbability,
+  FREE_THROW_TUNING,
+  freeThrowBase,
+  freeThrowProbability,
   greenWindow,
+  resolveFreeThrow,
   resolveShot,
   SHOT_MODEL,
   SHOT_TUNING,
@@ -144,6 +148,63 @@ describe('modèle de tir du match joué', () => {
       if (r.made) made++;
     }
     expect(made / 20000).toBeCloseTo(p, 1);
+  });
+});
+
+describe('lancer franc', () => {
+  const ft = (o: Partial<Parameters<typeof freeThrowProbability>[0]> = {}) => ({
+    shooter: athlete({ freeThrow: 75 }),
+    mode: 'timing' as const,
+    speed: 'normal' as const,
+    timingError: 0,
+    ...o,
+  });
+  /** Réussite moyenne avec un lâcher humain moyen, intégrée numériquement. */
+  const human = (o: Partial<Parameters<typeof freeThrowProbability>[0]> = {}) => {
+    const sd = SHOT_TUNING.humanTimingSd;
+    let sum = 0;
+    let weight = 0;
+    for (let i = -600; i <= 600; i++) {
+      const e = (i / 100) * sd;
+      const w = Math.exp(-0.5 * (e / sd) ** 2);
+      sum += w * freeThrowProbability(ft({ ...o, timingError: e }));
+      weight += w;
+    }
+    return sum / weight;
+  };
+
+  it('base de la simulation : 0,40 + 0,0055 × stat, bornée', () => {
+    expect(freeThrowBase(75)).toBeCloseTo(0.8125, 9);
+    expect(freeThrowBase(0)).toBe(0.45);
+    expect(freeThrowBase(120)).toBe(0.95);
+  });
+
+  it('lâcher parfait au-dessus de la base ; un timing humain moyen retombe autour d’elle', () => {
+    expect(freeThrowProbability(ft())).toBeGreaterThan(freeThrowBase(75));
+    expect(freeThrowProbability(ft())).toBeLessThanOrEqual(FREE_THROW_TUNING.max);
+    expect(Math.abs(human() - freeThrowBase(75))).toBeLessThan(0.06);
+    expect(freeThrowProbability(ft({ timingError: 0.25 }))).toBeLessThan(0.4);
+  });
+
+  it('un meilleur tireur réussit plus ; en Real Player %, sa stat élargit le vert', () => {
+    expect(human({ shooter: athlete({ freeThrow: 90 }) })).toBeGreaterThan(human({ shooter: athlete({ freeThrow: 50 }) }));
+    const late = 0.09;
+    const good = freeThrowProbability(ft({ mode: 'realPct', timingError: late, shooter: athlete({ freeThrow: 95 }) })) / freeThrowBase(95);
+    const bad = freeThrowProbability(ft({ mode: 'realPct', timingError: late, shooter: athlete({ freeThrow: 40 }) })) / freeThrowBase(40);
+    expect(good).toBeGreaterThan(bad);
+  });
+
+  it('les issues suivent la proba, avec la note du lâcher ; déterminisme', () => {
+    const rng = new Rng(4);
+    let made = 0;
+    for (let i = 0; i < 4000; i++) if (resolveFreeThrow(ft(), rng).made) made++;
+    expect(made / 4000).toBeCloseTo(freeThrowProbability(ft()), 1);
+    expect(resolveFreeThrow(ft({ timingError: -0.3 }), new Rng(1)).grade).toBe('early');
+    const run = () => {
+      const r = new Rng(8);
+      return Array.from({ length: 30 }, (_, i) => resolveFreeThrow(ft({ timingError: (i - 15) / 100 }), r).made);
+    };
+    expect(run()).toEqual(run());
   });
 });
 

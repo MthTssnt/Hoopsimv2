@@ -6,6 +6,7 @@ import { BALL_PHYSICS } from '../physics/ball';
 import { isThreePoint, type Court, type Hoop } from '../physics/court';
 import { attacksRight, inFrontcourt, type Inbound } from '../world/fullCourt';
 import type { MatchWorld, WorldInput } from '../world/MatchWorld';
+import { freeTimeToApex } from '../world/player';
 import { attacksRim } from '../world/shooting';
 import { ballExposure, measureSteal, STEAL_FLOW } from '../world/steal';
 
@@ -119,6 +120,8 @@ export const AI_TUNING = {
   tipSd: { worst: 0.12, best: 0.04 },
   /** Tir de son équipe en l'air : les deux arrières repartent, à (m) de la ligne médiane dans leur moitié. */
   safetyDepth: 4,
+  /** Tireur adverse en l'air à moins de (m) : les autres défenseurs (aide, rebond) restent plantés, sans contact. */
+  shooterSpace: 1.5,
 } as const;
 
 export type AiPlan = 'rim' | 'mid' | 'three';
@@ -135,6 +138,7 @@ export type AiMode =
   | 'réception'
   | 'rebond'
   | 'entre-deux'
+  | 'lancer'
   | 'pause';
 
 type Point = { x: number; y: number };
@@ -268,6 +272,14 @@ export function spacingSpots(world: MatchWorld, team: number): Map<number, Point
   return result;
 }
 
+/** Tireur encore en l'air : son tir en cours, ou son lâcher dont l'issue n'est pas connue. */
+function airborneShooter(world: MatchWorld): number | null {
+  if (world.shot) return world.shot.shooter;
+  const last = world.lastShot;
+  if (last && !last.demo && last.live === null && world.players[last.shooter]?.airborne) return last.shooter;
+  return null;
+}
+
 /** Distance d'un point au segment [a, b] (à l'horizontale). */
 export function segmentDistance(p: Point, a: Point, b: Point): number {
   const vx = b.x - a.x;
@@ -330,6 +342,10 @@ export class PlayerAi {
   private tipError = 0;
   /** Le porteur était déjà dans sa moitié avant au pas précédent (terrain entier). */
   private wasFront = false;
+  /** Lancer franc en cours : série et numéro vus, appui prévu (temps de l'IA), lâcher prévu (temps de visée). */
+  private seenFreeThrow: { series: object; taken: number } | null = null;
+  private freeThrowPressAt = 0;
+  private freeThrowReleaseAt: number | null = null;
 
   constructor(index: number, rng: Rng) {
     this.index = index;
@@ -363,6 +379,7 @@ export class PlayerAi {
       return { x: 0, y: 0, jump: false };
     }
     if (full?.phase === 'entre-deux') return this.tipOff(world);
+    if (full?.phase === 'lancers') return this.freeThrow(world, dt);
     const shot = world.shot;
     if (shot && shot.shooter === this.index) {
       // En l'air : on lâche au moment prévu (pas de lâcher pour un dunk).
@@ -376,6 +393,16 @@ export class PlayerAi {
     if (holding) return full?.phase === 'remise' ? this.inbound(world) : this.attack(world, dt);
 
     const myTeam = world.team[this.index];
+    // Tireur adverse encore en l'air tout près : on ne lui rentre pas dedans (ce serait faute).
+    const shooter = airborneShooter(world);
+    if (shooter !== null && world.team[shooter] !== myTeam && shooter !== this.mark) {
+      const sp = world.players[shooter].pos;
+      const me = world.players[this.index].pos;
+      if (Math.hypot(sp.x - me.x, sp.y - me.y) < AI_TUNING.shooterSpace) {
+        this.target = { x: me.x, y: me.y };
+        return { x: 0, y: 0, jump: false };
+      }
+    }
     const pass = world.pass;
     if (pass && pass.receiver === this.index) return this.receive(world);
     const holder = world.holder;
@@ -418,7 +445,30 @@ export class PlayerAi {
     const disc = vz * vz + 2 * g * (z - hand);
     if (disc < 0) return idle;
     const arrive = (vz + Math.sqrt(disc)) / g;
-    return arrive - body.timeToApex <= this.tipError ? { x: 0, y: 0, jump: true } : idle;
+    return arrive - freeTimeToApex(body) <= this.tipError ? { x: 0, y: 0, jump: true } : idle;
+  }
+
+  /**
+   * Lancers francs : le tireur appuie après un court temps, puis relâche au sommet de la jauge plus
+   * une erreur (plus petite avec sa stat de lancer franc). Les autres attendent.
+   */
+  private freeThrow(world: MatchWorld, dt: number): WorldInput {
+    this.mode = 'lancer';
+    this.target = null;
+    const idle = { x: 0, y: 0, jump: false };
+    const ft = world.full!.freeThrows;
+    if (!ft || ft.shooter !== this.index || world.holder !== this.index) return idle;
+    if (this.seenFreeThrow?.series !== ft || this.seenFreeThrow.taken !== ft.taken) {
+      this.seenFreeThrow = { series: ft, taken: ft.taken };
+      this.freeThrowPressAt = this.clock + this.rng.range(0.5, 1);
+      this.freeThrowReleaseAt = null;
+    }
+    if (ft.aim === null) return this.clock >= this.freeThrowPressAt ? { ...idle, jump: true } : idle;
+    if (this.freeThrowReleaseAt === null) {
+      const body = world.players[this.index];
+      this.freeThrowReleaseAt = body.timeToApex + gaussian(this.rng) * timingSd(body.athlete.attrs.freeThrow);
+    }
+    return { ...idle, release: ft.aim + dt >= this.freeThrowReleaseAt };
   }
 
   /**

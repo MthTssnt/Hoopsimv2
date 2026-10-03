@@ -280,9 +280,32 @@ Règles appliquées par `match/world/` (le moteur n'est pas modifié). Le demi-t
   (le porteur qui revient dans sa moitié arrière, ou une prise dans sa moitié arrière d'un ballon
   que son équipe a touché en dernier ; une touche de la défense l'excuse, un tir aussi) ; 24 s ;
   5 s. Chacune est une perte de balle (`turnovers`, sans voleur), annoncée au-dessus du fautif.
-- **Fautes, en attendant les lancers francs du 11** : faute de main ou faute sur un tir raté →
-  ballon mort, puis remise de côté pour l'équipe qui l'a subie ; tir marqué avec faute → le panier
-  compte, puis la remise après panier.
+- **Fautes** (décisions de Matheo, incrément 11) :
+  - faute de main (hors tir) : ballon mort, puis remise de côté pour l'équipe qui l'a subie
+    (fautes d'équipe, bonus et 6 fautes viendront avec le box score) ;
+  - faute sur un tir raté : 3 lancers francs si le tir était derrière l'arc, sinon 2 (tir, layup
+    ou dunk) ;
+  - tir marqué avec faute : le panier compte, puis 1 lancer.
+- **Lancers francs** (5 contre 5 seulement ; le demi-terrain garde la remise au tireur) :
+  - après 1 s de ballon mort, le tireur se place derrière la ligne de lancer franc (à la longueur
+    de la raquette de la ligne de fond) ;
+  - placements le long de la raquette : deux défenseurs près du cercle, deux attaquants derrière
+    eux, un troisième défenseur plus haut ; les autres sur un arc derrière la ligne à 3 pts ;
+  - personne ne bouge, sauf le tireur ;
+  - `match/` mesure le temps entre l'appui sur Tir (sans saut) et le relâchement, comparé à la
+    jauge du tir (`gaugeTime`) ; Tir tenu plus de 2 jauges : le lancer part tout seul ;
+  - `engine/` tranche avec `resolveFreeThrow` : base de la simulation (`freeThrowBase`, la même
+    constante `FREE_THROW_MODEL` que `simGame`) × courbe de timing du tir, avec la zone verte élargie
+    par la stat de lancer franc en Real Player % ;
+  - la physique met en scène le résultat (`solveShot`) depuis la main ; 1 point par lancer réussi ;
+  - entre deux lancers, une courte pause, puis le ballon revient au tireur ;
+  - dernier lancer réussi : remise de la ligne de fond pour l'autre équipe ;
+  - dernier lancer raté : tout le monde peut bouger dès le lâcher, le rebond se joue ;
+  - le chrono et le shot clock restent arrêtés pendant la série, et jusqu'au premier toucher
+    après un dernier lancer raté (14 s sur rebond offensif).
+- **Sauts** : un saut qui lance un tir (tir, layup, dunk) garde son sommet à la fin de la jauge ;
+  tout autre saut (contre, contestation, rebond, entre-deux) se fait à la gravité réelle
+  (9,81 m/s², `PLAYER_TUNING.freeJumpGravity`), même hauteur : ~0,7 s en l'air au lieu de 1,2 s.
 - **IA** :
   - duels par poste ;
   - montée de balle par le milieu : un intérieur la donne à un arrière, le porteur passe en avant
@@ -294,7 +317,14 @@ Règles appliquées par `match/world/` (le moteur n'est pas modifié). Le demi-t
   - retour en défense (on attend son joueur à 9 m de son cercle au plus), défenseur du porteur à
     3 m tant qu'il est dans sa moitié arrière ;
   - au tir de son équipe, les deux arrières se replient ;
-  - à l'entre-deux, le pivot saute avec une erreur selon sa détente et son QI.
+  - à l'entre-deux, le pivot saute avec une erreur selon sa détente et son QI ;
+  - aux lancers, le tireur appuie après 0,5-1 s et relâche au sommet plus une erreur selon sa stat
+    de lancer franc ;
+  - un défenseur qui ne marque pas le tireur ne lui rentre pas dedans tant qu'il est en l'air (à
+    moins de 1,5 m, il reste planté) : moins de fautes de l'aide et du rebond.
+- **Mesures avec les lancers** (match de 4 × 3 min, 3 graines) : fautes sur 15 à 22 % des tirs
+  (surtout sur les layups et les dunks), 36 à 54 lancers par match, 75 % de réussite (57 à 90 %
+  selon les tireurs), contres sur ~7 % des tirs.
 - **Mesures en IA contre IA** (match de 4 × 3 min, 3 graines) :
   - le match dure 13 à 14 min de temps réel, avec ~95-105 possessions ;
   - 54 à 78 points par équipe, 34-47 % de réussite ;
