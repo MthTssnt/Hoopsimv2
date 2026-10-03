@@ -3,6 +3,7 @@ import { PALETTE } from '../../assets/palette';
 import { createNewGame, TEAM_SEEDS, type Player } from '../../engine';
 import { DUNK_TUNING, dunkScore, greenWindow, shotSkill, type ShotZone, type TimingGrade } from '../../engine/shot';
 import { hashSeed, randomSeed, Rng } from '../../engine/rng';
+import { matchRotation } from '../../engine/rotation';
 import type { TeamSeed } from '../../engine/teamsData';
 import { PlayerAi } from '../ai/playerAi';
 import { ARENA_APRON, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
@@ -25,7 +26,8 @@ import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
-import { fullCourtRoster, halfCourtRoster } from '../roster';
+import { buildBoxView, type BoxView } from '../boxView';
+import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
 import { attacksRight, formatClock, FULL_COURT, periodLabel } from '../world/fullCourt';
@@ -62,8 +64,8 @@ function teamsRoster(seed: number, perTeam: number): { home: TeamSeed; away: Tea
 }
 
 /**
- * Terrain entier : le cinq majeur de l'équipe du meilleur meneur de la ligue (l'arène) contre celui
- * d'une équipe dont les couleurs tranchent, chacun rangé par poste.
+ * Terrain entier : la rotation de l'équipe du meilleur meneur de la ligue (l'arène) contre celle
+ * d'une équipe dont les couleurs tranchent, chacune dans l'ordre du coach (comme la simulation).
  */
 function fullRoster(seed: number): { home: TeamSeed; away: TeamSeed; homePlayers: Player[]; awayPlayers: Player[] } {
   const league = createNewGame('bos', seed);
@@ -72,7 +74,7 @@ function fullRoster(seed: number): { home: TeamSeed; away: TeamSeed; homePlayers
   const home = teamOf(bestGuard);
   const away = contrastingTeam(home, TEAM_SEEDS, 7);
   const team = (id: string) => league.teams.find((t) => t.id === id)!;
-  return { home, away, homePlayers: fullCourtRoster(league.players, team(home.id)), awayPlayers: fullCourtRoster(league.players, team(away.id)) };
+  return { home, away, homePlayers: matchRotation(team(home.id), league.players), awayPlayers: matchRotation(team(away.id), league.players) };
 }
 
 /** Lissage indépendant de la fréquence d'affichage (`rate` donné pour 60 i/s). */
@@ -113,6 +115,9 @@ const EVENT_TAGS: Record<MatchEvent['kind'], string> = {
   '24 secondes': 'tag-24s',
   '5 secondes': 'tag-5s',
   'entre-deux': 'tag-tip-violation',
+  bonus: 'tag-bonus',
+  '6 fautes': 'tag-fouled-out',
+  changement: 'tag-sub',
 };
 /** Textes des violations (petite police, `orange`). */
 const VIOLATION_TAGS: [string, string][] = [
@@ -122,6 +127,12 @@ const VIOLATION_TAGS: [string, string][] = [
   ['tag-24s', '24 SECONDES'],
   ['tag-5s', '5 SECONDES'],
   ['tag-tip-violation', 'VIOLATION'],
+];
+/** Messages de la rotation et des fautes d'équipe. */
+const ROTATION_TAGS: [string, string, number][] = [
+  ['tag-bonus', 'BONUS', PALETTE.orange],
+  ['tag-fouled-out', '6 FAUTES', PALETTE.red],
+  ['tag-sub', 'CHANGEMENT', PALETTE.chalk],
 ];
 /** Clignotement de l'anneau quand le contrôle change de joueur (ms). */
 const RING_BLINK_MS = 240;
@@ -218,6 +229,15 @@ export class MatchScene extends Phaser.Scene {
   private awaySeed!: TeamSeed;
   private homeCast: CastMember[] = [];
   private awayCast: CastMember[] = [];
+  /** Terrain entier : joueurs déjà cuits (un remplaçant l'est à sa première entrée), et durée de la dernière cuisson (ms). */
+  private castCache = new Map<string, CastMember>();
+  private lastBakeMs = 0;
+  private homeLook!: TeamLook;
+  private awayLook!: TeamLook;
+  /** Carte du joueur contrôlé déjà publiée (énergie et stats changent pendant le match). */
+  private cardKey = '';
+  /** Menu pause ouvert : le monde ne fait plus aucun pas. */
+  private paused = false;
   private world!: MatchWorld;
   /** Une IA par joueur ; celle du joueur contrôlé tourne aussi, mais ses entrées sont ignorées. */
   private ais: PlayerAi[] = [];
@@ -321,6 +341,10 @@ export class MatchScene extends Phaser.Scene {
     this.seenFreeThrow = null;
     this.homeCast = [];
     this.awayCast = [];
+    this.castCache = new Map();
+    this.lastBakeMs = 0;
+    this.cardKey = '';
+    this.paused = false;
     this.bodies = [];
     this.blocked = false;
     this.pendingJump = false;
@@ -372,12 +396,19 @@ export class MatchScene extends Phaser.Scene {
     createTag(this, 'tag-intercept', 'INTERCEPTION', PALETTE.yellow);
     createTag(this, 'tag-deflect', 'DÉVIÉE', PALETTE.silver);
     for (const [key, text] of VIOLATION_TAGS) createTag(this, key, text, PALETTE.orange);
+    for (const [key, text, color] of ROTATION_TAGS) createTag(this, key, text, color);
     createTag(this, 'tag-tipoff', 'ENTRE-DEUX', PALETTE.chalk);
     for (let total = 1; total <= 3; total++) {
       for (let n = 1; n <= total; n++) createTag(this, `tag-ft-${n}-${total}`, `LANCER ${n}/${total}`, PALETTE.chalk);
     }
-    this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home));
-    this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away));
+    this.homeLook = home;
+    this.awayLook = away;
+    // Demi-terrain : tout le monde est cuit au départ. Terrain entier : les dix sur le terrain, les
+    // remplaçants à leur première entrée.
+    if (this.perTeam !== 5) {
+      this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home));
+      this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away));
+    }
 
     const court = makeCourt(this.settings.level);
     this.arena = this.add.image(0, 0, `arena-${this.settings.level}`).setOrigin(0).setDepth(0);
@@ -388,9 +419,18 @@ export class MatchScene extends Phaser.Scene {
     }
     this.marker = this.add.image(0, 0, 'shot-marker').setDepth(1).setVisible(false);
     this.ring = this.add.image(0, 0, 'control-ring').setDepth(2);
-    // En 1 contre 1, un seul joueur de chaque côté (les autres servent aux touches 1-3).
+    // Terrain entier : entre-deux pour commencer. Demi-terrain sur le panier de droite : le monde
+    // place chacun (ton équipe derrière l'arc, ballon à ton meneur, chaque défenseur devant le sien).
     const n = this.perTeam;
-    const onCourt = [...this.homeCast.slice(0, n), ...this.awayCast.slice(0, n)];
+    const settings = { mode: this.settings.shotMode, speed: this.settings.shotSpeed };
+    this.world = new MatchWorld(court, this.athletes[0], { x: 0, y: 0, z: 0 }, settings, this.rng);
+    if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
+    else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
+    // En 1 contre 1, un seul joueur de chaque côté (les autres servent aux touches 1-3).
+    const onCourt =
+      n === 5
+        ? this.world.players.map((_, i) => this.castFor(this.world.team[i], this.world.memberOf(i)!.player))
+        : [...this.homeCast.slice(0, n), ...this.awayCast.slice(0, n)];
     this.bodies = onCourt.map((member) => this.createBodySprite(member));
     this.ballShadow = this.add.image(0, 0, BALL_SHADOW_TEXTURE).setDepth(1);
     this.ballImage = this.add.image(0, 0, BALL_TEXTURE);
@@ -398,12 +438,6 @@ export class MatchScene extends Phaser.Scene {
     this.tag = this.add.image(0, 0, 'grade-perfect').setOrigin(0.5, 1).setDepth(960).setVisible(false);
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
-    // Terrain entier : entre-deux pour commencer. Demi-terrain sur le panier de droite : le monde
-    // place chacun (ton équipe derrière l'arc, ballon à ton meneur, chaque défenseur devant le sien).
-    const settings = { mode: this.settings.shotMode, speed: this.settings.shotSpeed };
-    this.world = new MatchWorld(court, this.athletes[0], { x: 0, y: 0, z: 0 }, settings, this.rng);
-    if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
-    else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     this.ais = this.world.players.map((_, i) => new PlayerAi(i, new Rng(hashSeed(`ia-${this.seed}-${i}`))));
     this.passPose = this.world.players.map(() => 0);
     this.freeThrowPose = this.world.players.map(() => 0);
@@ -421,11 +455,14 @@ export class MatchScene extends Phaser.Scene {
 
     const onSettings = (_parent: unknown, value: MatchSettings) => this.applySettings(value);
     const onBlocked = (_parent: unknown, value: boolean) => this.setBlocked(value);
+    const onPause = (value: boolean) => this.setPaused(value);
     this.registry.events.on('changedata-settings', onSettings);
     this.registry.events.on('changedata-inputBlocked', onBlocked);
+    this.game.events.on('pause-request', onPause);
     this.events.once('shutdown', () => {
       this.registry.events.off('changedata-settings', onSettings);
       this.registry.events.off('changedata-inputBlocked', onBlocked);
+      this.game.events.off('pause-request', onPause);
       this.controls.destroy();
     });
     if (this.registry.get('inputBlocked')) this.setBlocked(true);
@@ -433,7 +470,7 @@ export class MatchScene extends Phaser.Scene {
     // Le HUD lit ces clés à son lancement, puis suit leurs changements.
     this.score = { home, away, homeScore: 0, awayScore: 0, period: '', clock: '', shotClock: null, note: n === 5 ? undefined : `PREMIER À ${this.target}` };
     this.registry.set(HUD_KEYS.score, this.score);
-    this.registry.set(HUD_KEYS.card, this.cardFor(this.world.controlled));
+    this.publishCard(this.world.controlled);
     this.shownControlled = this.world.controlled;
     this.registry.set(HUD_KEYS.banner, null);
     this.registry.set(HUD_KEYS.debugVisible, false);
@@ -513,18 +550,81 @@ export class MatchScene extends Phaser.Scene {
     };
   }
 
-  /** Carte du joueur contrôlé : taille réelle et hauteur de saut calculée par le monde. */
+  /** Terrain entier : joueur cuit (sprites, ombre, étiquettes) ; un remplaçant l'est à sa première entrée. */
+  private castFor(team: number, player: Player): CastMember {
+    const key = `${team === USER_TEAM ? 'player' : 'rival'}-${player.id}`;
+    let member = this.castCache.get(key);
+    if (!member) {
+      const start = performance.now();
+      member = this.bakeCastMember(player, key, team === USER_TEAM ? this.homeLook : this.awayLook);
+      this.lastBakeMs = performance.now() - start;
+      this.castCache.set(key, member);
+    }
+    return member;
+  }
+
+  /** Terrain entier : un corps dont le joueur a changé (remplaçant entré) prend ses sprites et son étiquette. */
+  private syncCast() {
+    if (!this.world.squads) return;
+    this.bodies.forEach((view, i) => {
+      const member = this.world.memberOf(i);
+      if (!member || view.member.player.id === member.player.id) return;
+      view.member = this.castFor(this.world.team[i], member.player);
+      view.shadow.setTexture(view.member.shadow);
+      view.label.setTexture(view.member.label);
+    });
+  }
+
+  /**
+   * Carte du joueur contrôlé. Terrain entier : son énergie et ses stats du match (« 12 PTS 4 REB
+   * 3 PD ») ; demi-terrain : taille réelle et hauteur de saut calculée par le monde.
+   */
   private cardFor(index: number): PlayerCardData {
     const { player, team, look } = this.bodies[index].member;
+    const member = this.world.memberOf(index);
+    const line = member?.line;
     const jump = this.world.players[index].jumpHeight;
     return {
       look,
       team,
       name: `${player.firstName.charAt(0)}. ${player.lastName}`,
       position: POSITION_SHORT[player.pos] ?? player.pos,
-      energy: 1,
-      stats: `${decimal(player.heightCm / 100)} M  SAUT ${decimal(jump)}`,
+      energy: member ? member.energy / 100 : 1,
+      stats: line ? `${line.pts} PTS ${line.oreb + line.dreb} REB ${line.ast} PD` : `${decimal(player.heightCm / 100)} M  SAUT ${decimal(jump)}`,
     };
+  }
+
+  /** Publie la carte du joueur contrôlé si elle a changé (joueur, énergie au %, stats). */
+  private publishCard(index: number) {
+    const card = this.cardFor(index);
+    const key = `${index}|${card.name}|${Math.round(card.energy * 100)}|${card.stats}`;
+    if (key === this.cardKey) return;
+    this.cardKey = key;
+    this.registry.set(HUD_KEYS.card, card);
+  }
+
+  /** Box score du menu pause (terrain entier), aux noms et couleurs des deux équipes. */
+  private boxView(): BoxView | null {
+    const names = [this.homeSeed, this.awaySeed].map((t) => ({ name: `${t.city} ${t.name}`, abbr: t.abbr, color: t.colors.primary }));
+    return buildBoxView(this.world, names);
+  }
+
+  /** Menu pause : le monde s'arrête et le box score part au panneau React ; à la reprise, les touches repartent de zéro. */
+  private setPaused(paused: boolean) {
+    if (paused === this.paused) return;
+    this.paused = paused;
+    if (paused) {
+      this.game.events.emit('pause-box', this.boxView());
+      this.scene.pause();
+      return;
+    }
+    this.controls.reset();
+    this.shotButton.reset();
+    this.pendingJump = false;
+    this.pendingRelease = false;
+    this.pendingPass = false;
+    this.pendingSteal = false;
+    this.scene.resume();
   }
 
   // --- Réglages et clavier ---
@@ -596,7 +696,8 @@ export class MatchScene extends Phaser.Scene {
       body.member = member;
       body.shadow.setTexture(member.shadow);
     });
-    this.registry.set(HUD_KEYS.card, this.cardFor(this.world.controlled));
+    this.cardKey = '';
+    this.publishCard(this.world.controlled);
   }
 
   // --- Affichage ---
@@ -621,6 +722,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.passPose = this.passPose.map((ms) => Math.max(0, ms - deltaMs));
     this.freeThrowPose = this.freeThrowPose.map((ms) => Math.max(0, ms - deltaMs));
+    this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
     const boxes = this.bodies.map((b) => ({ x: b.ground.x, y: b.ground.y + 3, width: b.label.width, height: b.label.height }));
@@ -721,8 +823,8 @@ export class MatchScene extends Phaser.Scene {
     if (controlled !== this.shownControlled) {
       this.shownControlled = controlled;
       this.ringBlink = RING_BLINK_MS;
-      this.registry.set(HUD_KEYS.card, this.cardFor(controlled));
     }
+    this.publishCard(controlled);
     this.bodies.forEach((b, i) => {
       const on = i === controlled;
       const key = on ? b.member.labelOn : b.member.label;
@@ -1088,6 +1190,20 @@ export class MatchScene extends Phaser.Scene {
     return parts.join(' · ');
   }
 
+  /** Terrain entier : ton énergie, fautes d'équipe, prochain contrôle du coach, dernière cuisson d'un remplaçant. */
+  private rotationLine(): string | null {
+    const squads = this.world.squads;
+    if (!squads) return null;
+    const me = this.world.memberOf(this.world.controlled);
+    const fouls = squads.map((s) => `${s.fouls}${s.fouls > 5 ? ' (bonus adverse)' : ''}`).join(' - ');
+    const next = squads.map((s) => `${this.world.nextSubCheck(s.team).toFixed(0)} s`).join(' / ');
+    const bench = squads[USER_TEAM].members.filter((m) => m.body === null).map((m) => `${m.player.lastName} ${Math.round(m.energy)}`);
+    return (
+      `Énergie ${me ? Math.round(me.energy) : '-'} % · notes ×${me ? (this.world.players[this.world.controlled].athlete.attrs.speed / me.player.attrs.speed).toFixed(2) : '1'} · ` +
+      `fautes d'équipe ${fouls} · coach dans ${next} · banc : ${bench.join(', ')} · cuisson ${this.lastBakeMs.toFixed(0)} ms`
+    );
+  }
+
   /** Texte de debug (affiché avec H) : publié seulement quand il change. */
   private updateDebug() {
     const controlled = this.world.controlled;
@@ -1104,6 +1220,7 @@ export class MatchScene extends Phaser.Scene {
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · ${this.perTeam} contre ${this.perTeam} · graine ${this.seed}`,
       `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · vue ${this.bodies[controlled].heading === 'back' ? 'de dos' : 'de profil'}`,
       ...this.aiLines(),
+      ...(this.rotationLine() ? [this.rotationLine()!] : []),
       this.world.full
         ? this.gameLine(holder)
         : `ballon ${holder}${owed.length ? ` · à ressortir : ${owed.join(', ')}` : ''} · premier à ${rules?.target ?? this.target}` +

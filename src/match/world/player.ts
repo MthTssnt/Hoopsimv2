@@ -72,6 +72,17 @@ export function createPlayerBody(athlete: Player, pos: Vec3, timeToApex: number)
   return body;
 }
 
+/**
+ * Le corps prend les notes de `athlete` (un remplaçant qui entre, ou le même joueur plus fatigué) :
+ * vitesse de course et hauteur de saut recalculées ; position, vitesse et saut en cours gardés.
+ */
+export function setBodyAthlete(body: PlayerBody, athlete: Player): void {
+  body.athlete = athlete;
+  body.runSpeed = runSpeed(athlete);
+  body.jumpHeight = jumpHeight(athlete);
+  setJumpTiming(body, body.timeToApex);
+}
+
 /** Le sommet d'un saut de tir coïncide avec la jauge : sa durée dépend de la vitesse de tir. */
 export function setJumpTiming(body: PlayerBody, timeToApex: number): void {
   body.timeToApex = timeToApex;

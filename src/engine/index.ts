@@ -20,6 +20,7 @@ export { migrateLeague } from './migrate';
 export * from './shot';
 export * from './athletics';
 export * from './steal';
+export * from './rotation';
 
 export const FIRST_SEASON = 2026;
 

@@ -331,12 +331,75 @@ Règles appliquées par `match/world/` (le moteur n'est pas modifié). Le demi-t
   - 5 à 12 pertes de balle ;
   - aucune violation des 8 s, 24 s ou 5 s, 0-1 retour en zone, 1 à 4 sorties.
 
+## Fatigue, rotation, fautes d'équipe et box score (incrément 12)
+- **Module partagé `engine/rotation.ts`** : l'énergie et le coach de la simulation, sortis de
+  `simGame` sans changer une valeur (`calibrate` identique avant et après) :
+  - `ENERGY_MODEL` : énergie de départ = énergie de la ligue + 40, bornée à 70-100 ; sur le
+    terrain, perte de 0,115 − 0,0005 × endurance par seconde ; sur le banc, récupération de
+    0,16 + 0,0008 × endurance ; bornes 5-100 ; repos de 15 entre les périodes, 30 à la mi-temps ;
+    notes × (0,8 + 0,2 × énergie / 100) (`energyFactor`), sauf les lancers francs ;
+  - coach : `coachValue` (minutes visées de `minuteTargets`, fatigue, fautes, money time, match
+    plié), `startingLineup`, `nextLineup` (avec `pickLineup`), `SUB_INTERVAL` (95 s),
+    `inBonus` (plus de 5 fautes d'équipe), `FOUL_OUT` (6), `matchRotation` (joueurs valides de la
+    rotation, au moins 8).
+- **Échelle** : un match joué de 4 × q min va `12 / q` fois plus vite qu'un match de 48 min (×4
+  pour 3 min, `matchTimeScale`). La perte et la récupération d'énergie sont multipliées par
+  l'échelle ; l'intervalle des changements et les seuils de fin de match du coach (5 et 8 min)
+  sont divisés ; le temps joué est remis à l'échelle de 48 min avant d'être comparé aux minutes
+  visées. La part du match écoulée (`matchProgress`) compte une prolongation pour 5/12 de
+  quart-temps, comme la simulation.
+- **Effectifs** (`world/rotation.ts`) : `startFullCourt` reçoit toute la rotation de chaque équipe
+  (ordre du coach). Les dix corps du monde sont les dix joueurs sur le terrain ; chaque joueur de
+  la rotation (`MatchMember`) a son énergie, ses minutes visées, sa ligne de stats et le corps
+  qu'il occupe (ou null sur le banc).
+- **Fatigue** : à chaque pas où le chrono tourne, ceux qui sont sur le terrain perdent de
+  l'énergie et jouent (minutes), ceux du banc récupèrent ; repos de la simulation à chaque fin de
+  période. Une fois par seconde de chrono, chaque corps au sol reprend les notes de son joueur
+  × `energyFactor` (vitesse de course et hauteur de saut recalculées) : tir, défense, vol, saut et
+  course baissent avec la fatigue, et l'IA lit les mêmes notes. Le saut en cours garde les siennes.
+- **Changements** : à chaque ballon mort (avant une remise ou des lancers), et au début de chaque
+  période, le coach de chaque équipe recompose son cinq (`nextLineup`) si l'intervalle est passé
+  ou si un de ses joueurs vient d'être éliminé.
+  - Ceux qui restent gardent leur corps ; un remplaçant prend le corps (donc la place) de celui
+    qui sort à son poste, sinon d'un autre sortant. Les postes et les duels de l'IA sont refaits.
+  - Si tu contrôlais celui qui sort, tu contrôles celui qui entre (même corps).
+  - Pendant une série de lancers, personne ne change ; le tireur reste jusqu'au bout (si le coach
+    voulait le sortir, son équipe attend le ballon mort suivant).
+- **Fautes d'équipe** (remises à 0 à chaque période) : toute faute compte (sur un tir ou de main).
+  En bonus (plus de 5 fautes d'équipe), une faute de main donne 2 lancers au porteur qui l'a subie
+  au lieu de la remise. À 6 fautes personnelles, le joueur est éliminé : il sort au ballon mort
+  (qui suit toujours une faute) et ne revient plus.
+- **Box score** (`world/boxScore.ts`, `LiveBox`) : une `StatLine` du moteur par joueur de la
+  rotation, plus les points par période ; le 13 la convertira en `GameBox`. Règles d'attribution :
+  - minutes : secondes de chrono passées sur le terrain ; `gs` pour les titulaires, `gp` dès
+    l'entrée en jeu ;
+  - tir : tenté au lâcher (au smash pour un dunk), 2 ou 3 pts, réussi quand le panier est valable
+    (goaltending compris) ; un tir contré est tenté et raté ;
+  - **tir raté avec faute** (lancers à la place) : il ne compte pas comme tenté, et un contre
+    sifflé faute ne compte pas comme contre (règle des stats, comme la simulation) ;
+  - lancers : tentés et réussis, 1 point ;
+  - rebond : au premier joueur qui prend le ballon après un tir raté ou un dernier lancer raté,
+    offensif s'il est de l'équipe du tireur ; un ballon mort (sortie, faute, violation) n'en donne
+    pas ;
+  - passe décisive : au passeur si son receveur tire moins de 4 s après la réception, sans perte
+    de possession entre les deux, et marque ;
+  - pertes de balle : celles du monde (vols, interceptions, déviations ramassées par la défense,
+    violations), avec l'interception au voleur ;
+  - fautes : faute sur tir et faute de main du défenseur ;
+  - +/- : à chaque point, pour les dix joueurs sur le terrain.
+- **Mesures** (IA contre IA, 4 × 3 min, rotations complètes, 3 graines) : 10 joueurs utilisés par
+  équipe, minutes jouées à ±1 min des minutes visées (titulaires 6,5 à 10 min sur 12), énergie de
+  fin 70-100, points du box score = score, tirs du box score = tirs du monde moins les ratés avec
+  faute ; ~70 entrées en jeu par équipe et par match (la simulation en fait ~87 avec la même
+  logique) ; 0 à 1 élimination ; le bonus est rare (il faut une faute de main après 5 fautes
+  d'équipe).
+
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate
   ne donne pas le résultat voulu, le solveur en essaie une autre.
-- La possession, le score et les règles du match restent dans `match/world/`. Le box score
-  officiel (match joué = match simulé, mêmes fonctions de `simSeason`) arrive aux incréments 12
-  et 13.
+- La possession, le score et les règles du match restent dans `match/world/`. Le box score est
+  tenu en direct depuis l'incrément 12 ; l'enregistrement officiel (match joué = match simulé,
+  mêmes fonctions de `simSeason`) arrive à l'incrément 13.
 
 ## Écarts entre le dessin et la physique (rendu seulement)
 Le rendu prend quelques libertés pour la lisibilité. Elles ne changent ni les mesures envoyées

@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
+import type { BoxView } from './boxView';
 import { VIEW_HEIGHT, VIEW_WIDTH } from './config';
 import { HudScene } from './scenes/HudScene';
 import { MatchScene } from './scenes/MatchScene';
 import { attachIntegerScaling, integerZoom } from './screen';
 import { loadSettings, saveSettings, type MatchSettings } from './settings';
+import { MatchPause } from './ui/MatchPause';
 import { MatchSettingsPanel } from './ui/MatchSettings';
+
+/** Touches du menu pause (si elles ne servent pas déjà à une action du joueur). */
+const isPauseKey = (event: KeyboardEvent) => event.key === 'Escape' || event.key === 'p' || event.key === 'P';
 
 /**
  * Monte une instance Phaser dans React et la détruit proprement au démontage. Le match est en
  * 480×270, mis à l'échelle entière (pixels nets) ; F bascule en plein écran, panneau compris.
- * Les réglages vivent ici (sauvegardés) et passent au jeu par `game.registry`.
+ * Les réglages vivent ici (sauvegardés) et passent au jeu par `game.registry`. Échap ou P (ou le
+ * bouton) met le match en pause : le match s'arrête et publie son box score, affiché par le menu.
  */
 export default function PhaserGame() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -18,6 +24,9 @@ export default function PhaserGame() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [settings, setSettings] = useState<MatchSettings>(loadSettings);
   const [panelOpen, setPanelOpen] = useState(false);
+  /** Menu pause ouvert, avec le box score publié par le match (null hors 5 contre 5). */
+  const [pause, setPause] = useState<{ box: BoxView | null } | null>(null);
+  const pausedRef = useRef(false);
   const initialSettings = useRef(settings);
   // Lus par l'écouteur de la touche F, installé une seule fois.
   const settingsRef = useRef(settings);
@@ -44,6 +53,15 @@ export default function PhaserGame() {
     game.registry.set('settings', initialSettings.current);
     // Le jeu peut demander un changement de réglage (ex. touche C pour la caméra).
     game.events.on('request-settings', (next: MatchSettings) => setSettings(next));
+    // Le match s'est arrêté : il publie son box score.
+    game.events.on('pause-box', (box: BoxView | null) => setPause({ box }));
+    const onPauseKey = (event: KeyboardEvent) => {
+      if (event.repeat || !isPauseKey(event) || panelOpenRef.current) return;
+      if (Object.values(settingsRef.current.bindings).some((b) => b.code === event.keyCode)) return;
+      event.preventDefault();
+      togglePause(game);
+    };
+    window.addEventListener('keydown', onPauseKey);
     // F : plein écran, sauf panneau ouvert ou touche déjà liée à une action du joueur.
     const detach = attachIntegerScaling(
       game,
@@ -52,6 +70,7 @@ export default function PhaserGame() {
     );
     gameRef.current = game;
     return () => {
+      window.removeEventListener('keydown', onPauseKey);
       detach();
       gameRef.current = null;
       game.destroy(true);
@@ -71,9 +90,27 @@ export default function PhaserGame() {
 
   const onChange = useCallback((next: MatchSettings) => setSettings(next), []);
 
+  /** Pause ou reprise : le match s'arrête (et publie son box score) ou repart. */
+  function togglePause(game: Phaser.Game | null) {
+    if (!game) return;
+    const paused = !pausedRef.current;
+    pausedRef.current = paused;
+    if (!paused) setPause(null);
+    game.events.emit('pause-request', paused);
+  }
+  const onResume = () => {
+    if (pausedRef.current) togglePause(gameRef.current);
+  };
+
   return (
     <div ref={rootRef} style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
       <div ref={parentRef} style={{ width: '100%', height: '100%' }} />
+      {pause && <MatchPause box={pause.box} onResume={onResume} />}
+      {!pause && (
+        <button className="btn btn-sm" style={{ position: 'absolute', top: 48, right: 12 }} onClick={() => togglePause(gameRef.current)}>
+          ⏸ Pause
+        </button>
+      )}
       <MatchSettingsPanel settings={settings} onChange={onChange} open={panelOpen} onOpenChange={setPanelOpen} />
     </div>
   );

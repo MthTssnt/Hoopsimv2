@@ -206,6 +206,16 @@
   - **défense automatique** : en défense, tant que tu ne touches à rien, ton joueur suit son
     joueur comme l'IA (déplacement seulement : sauter et A restent à toi). Dès qu'une touche est
     appuyée, tu reprends la main.
+- **Fatigue, rotation et box score (incrément 12)** :
+  - **fatigue et rotation à l'échelle du match** : les coefficients de la simulation, accélérés
+    selon la durée (×4 pour 4 × 3 min) ; un match joué fatigue et fait tourner le banc comme un
+    match complet ;
+  - **bonus comme la simulation** : lancers sur faute hors tir dès la 6e faute d'équipe de la
+    période, 2 lancers ; élimination à 6 fautes personnelles ;
+  - **changements** : le coach automatique pour les deux équipes, aux arrêts de jeu ; les
+    changements à la main viendront avec les modes de jeu ;
+  - **menu pause** : Échap ou P (ou le bouton « Pause ») ; le match s'arrête et affiche le score
+    par période, les fautes d'équipe et le box score des deux équipes.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

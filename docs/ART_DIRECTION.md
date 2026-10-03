@@ -313,6 +313,19 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   - la jauge du tir, à côté du tireur, sans saut ;
   - pose provisoire : l'image 13 (ballon levé) pendant la visée, l'image 14 (lâcher) ~0,4 s
     après, au sol ; de vraies poses viendront en phase 3.
+- **Rotation et box score (incrément 12)** :
+  - **carte du joueur contrôlé** : la barre d'énergie suit son énergie, la ligne du bas donne ses
+    stats du match, « 12 PTS 4 REB 3 PD » (demi-terrain : taille et saut, comme avant) ;
+  - **messages** : « BONUS » (`orange`) au-dessus du fautif quand une faute de main envoie
+    l'adversaire aux lancers ; « 6 FAUTES » (`red`) au-dessus de l'éliminé ; « CHANGEMENT »
+    (`chalk`) au-dessus de chaque joueur qui entre. Mêmes règles que les autres messages
+    (montée, effacement en 1,5 s, pile) ;
+  - **remplaçants** : cuits à leur première entrée (sprites, ombre, étiquette), pendant le
+    ballon mort ; le corps garde sa place, seuls le sprite et l'étiquette changent ;
+  - **menu pause** (React, superposé au match comme le panneau des réglages, qui reste
+    accessible) : score par période et fautes d'équipe (avec « bonus »), puis un tableau par
+    équipe (MIN, PTS, REB, OFF/DÉF, PD, INT, CTR, BP, F, TIRS, 3 PTS, LF, +/-, énergie), titulaires
+    en tête et en gras, ● pour les joueurs sur le terrain, éliminés grisés, bouton « Reprendre ».
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

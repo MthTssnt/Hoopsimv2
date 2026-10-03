@@ -1,6 +1,22 @@
-import { minuteTargets, pickLineup } from './coach';
 import { POSITION_INDEX } from './ratings';
 import type { Rng } from './rng';
+import {
+  drainEnergy,
+  energyFactor,
+  FOUL_OUT,
+  inBonus,
+  matchRotation,
+  newCoachContext,
+  nextLineup,
+  restEnergy,
+  rotationTargets,
+  seatLineup,
+  startingEnergy,
+  startingLineup,
+  SUB_INTERVAL,
+  updateCoachContext,
+  type CoachContext,
+} from './rotation';
 import { freeThrowBase, SHOT_MODEL } from './shot';
 import {
   emptyStatLine,
@@ -17,10 +33,6 @@ import {
 const PERIOD_SECONDS = 720;
 const OT_SECONDS = 300;
 const REGULATION_PERIODS = 4;
-/** Intervalle minimum entre deux contrôles de rotation, en secondes de jeu. */
-const SUB_INTERVAL = 95;
-/** Nombre de fautes d'équipe à partir duquel l'adversaire tire des lancers. */
-const BONUS_THRESHOLD = 5;
 
 interface LivePlayer {
   id: string;
@@ -34,17 +46,6 @@ interface LivePlayer {
   /** Temps de jeu visé sur l'ensemble du match, en secondes. */
   targetSecs: number;
   line: StatLine;
-}
-
-/** Contexte utilisé par l'entraîneur virtuel pour composer son cinq. */
-interface CoachContext {
-  /** Part du match déjà écoulée (0 → 1, au-delà en prolongation). */
-  progress: number;
-  period: number;
-  /** Fin de match serrée : on sort les meilleurs, la fatigue passe au second plan. */
-  closing: boolean;
-  /** Match plié : on protège les cadres et on fait tourner le banc. */
-  garbage: boolean;
 }
 
 interface LiveTeam {
@@ -66,7 +67,7 @@ export interface GameSimOptions {
 
 /** Note d'attribut corrigée par la fatigue. */
 function eff(lp: LivePlayer, key: AttributeKey): number {
-  return lp.player.attrs[key] * (0.8 + 0.2 * (lp.energy / 100));
+  return lp.player.attrs[key] * energyFactor(lp.energy);
 }
 
 function lineupAvg(team: LiveTeam, key: AttributeKey): number {
@@ -98,7 +99,7 @@ export function simulateGame(
   const collectPbp = options.collectPbp ?? false;
   const hca = options.neutralCourt ? 0 : 1;
 
-  const ctx: CoachContext = { progress: 0, period: 1, closing: false, garbage: false };
+  const ctx = newCoachContext();
   // Le cinq de départ, ce sont les cinq premiers de la rotation.
   setStartingLineup(home);
   setStartingLineup(away);
@@ -138,11 +139,8 @@ export function simulateGame(
       const off = offenseIsHome ? home : away;
       const def = offenseIsHome ? away : home;
 
-      ctx.period = period;
-      ctx.progress = elapsedTotal / (REGULATION_PERIODS * PERIOD_SECONDS);
       const margin = Math.abs(home.score - away.score);
-      ctx.closing = period >= REGULATION_PERIODS && clock < 300 && margin <= 12;
-      ctx.garbage = !ctx.closing && period >= REGULATION_PERIODS && clock < 480 && margin > 19;
+      updateCoachContext(ctx, period, clock, elapsedTotal, REGULATION_PERIODS * PERIOD_SECONDS, margin, REGULATION_PERIODS);
 
       if (sinceLastSub >= SUB_INTERVAL) {
         setLineup(home, ctx);
@@ -164,9 +162,8 @@ export function simulateGame(
     }
 
     // Récupération entre les périodes (plus longue à la mi-temps).
-    const rest = period === 2 ? 30 : 15;
     for (const lp of [...home.rotation, ...away.rotation]) {
-      lp.energy = clamp(lp.energy + rest, 0, 100);
+      lp.energy = restEnergy(lp.energy, period);
     }
 
     const tied = home.score === away.score;
@@ -200,31 +197,10 @@ export function simulateGame(
 }
 
 function buildLiveTeam(team: Team, players: Record<string, Player>, isHome: boolean): LiveTeam {
-  const available = team.rotation
-    .map((id) => players[id])
-    .filter((p): p is Player => Boolean(p) && p.teamId === team.id && p.injuryGames === 0);
-
-  if (available.length < 8) {
-    const known = new Set(available.map((p) => p.id));
-    const extras = team.roster
-      .map((id) => players[id])
-      .filter((p) => p && p.injuryGames === 0 && !known.has(p.id))
-      .sort((a, b) => b.overall - a.overall);
-    while (available.length < 8 && extras.length > 0) available.push(extras.shift()!);
-  }
-  // Cas extrême (effectif décimé) : on fait jouer les blessés légers.
-  if (available.length < 5) {
-    const known = new Set(available.map((p) => p.id));
-    for (const id of team.roster) {
-      if (available.length >= 5) break;
-      if (!known.has(id) && players[id]) available.push(players[id]);
-    }
-  }
-
+  const available = matchRotation(team, players);
   // L'ordre de la rotation choisi par l'entraîneur fixe les minutes visées :
   // le premier de la liste joue le plus, le dernier le moins.
-  const targets = minuteTargets(available.length);
-  const targetById = new Map(available.map((p, i) => [p.id, targets[i]]));
+  const targetById = rotationTargets(available);
 
   return {
     team,
@@ -233,7 +209,7 @@ function buildLiveTeam(team: Team, players: Record<string, Player>, isHome: bool
       player,
       overall: player.overall,
       posIndex: POSITION_INDEX[player.pos],
-      energy: clamp(player.energy + 40, 70, 100),
+      energy: startingEnergy(player),
       onCourt: false,
       starter: false,
       fouledOut: false,
@@ -248,57 +224,23 @@ function buildLiveTeam(team: Team, players: Record<string, Player>, isHome: bool
   };
 }
 
-/**
- * Valeur d'un joueur aux yeux du coach à l'instant T.
- * Le temps de jeu suit d'abord un plan de rotation (minutes visées) ; la
- * fatigue, les fautes et le money time viennent ensuite le corriger.
- */
-function coachValue(lp: LivePlayer, ctx: CoachContext): number {
-  if (ctx.closing) {
-    return lp.overall * (0.85 + 0.15 * (lp.energy / 100)) + (lp.onCourt ? 2 : 0) - (lp.line.pf >= 5 ? 10 : 0);
-  }
-  const expected = lp.targetSecs * ctx.progress;
-  const deficitMinutes = clamp((expected - lp.line.secs) / 60, -10, 10);
-  if (ctx.garbage) {
-    // Écart trop large pour être rattrapé : les cadres vont s'asseoir.
-    return 55 + deficitMinutes * 4 - (lp.overall - 60) * 0.55 + (lp.onCourt ? 2 : 0);
-  }
-  let value = 55 + deficitMinutes * 4 + (lp.overall - 60) * 0.25 + (lp.energy - 65) * 0.12;
-  if (lp.onCourt) value += 2;
-  if (lp.line.pf >= 5) value -= 15;
-  else if (lp.line.pf >= 4 && ctx.period <= 3) value -= 8;
-  else if (lp.line.pf >= 3 && ctx.period <= 2) value -= 5;
-  return value;
-}
-
 /** Aligne les cinq premiers joueurs de la rotation, chacun au poste qui lui va le mieux. */
 function setStartingLineup(team: LiveTeam): void {
-  const five = team.rotation.slice(0, 5);
-  const next = pickLineup(five, (lp) => lp.overall);
-  for (const lp of team.rotation) lp.onCourt = false;
-  for (const lp of next) lp.onCourt = true;
+  const next = startingLineup(team.rotation);
+  seatLineup(team.rotation, next);
   team.lineup = next;
 }
 
 function setLineup(team: LiveTeam, ctx: CoachContext): void {
-  const candidates = team.rotation.filter((lp) => !lp.fouledOut);
-  const pool = candidates.length >= 5 ? candidates : team.rotation;
-  const next = pickLineup(pool, (lp) => coachValue(lp, ctx));
-  for (const lp of team.rotation) lp.onCourt = false;
-  for (const lp of next) lp.onCourt = true;
+  const next = nextLineup(team.rotation, ctx);
+  seatLineup(team.rotation, next);
   team.lineup = next;
 }
 
 function advanceTime(team: LiveTeam, seconds: number): void {
   for (const lp of team.rotation) {
-    if (lp.onCourt) {
-      lp.line.secs += seconds;
-      const drain = 0.115 - lp.player.attrs.stamina * 0.0005;
-      lp.energy = clamp(lp.energy - drain * seconds, 5, 100);
-    } else {
-      const recovery = 0.16 + lp.player.attrs.stamina * 0.0008;
-      lp.energy = clamp(lp.energy + recovery * seconds, 5, 100);
-    }
+    if (lp.onCourt) lp.line.secs += seconds;
+    lp.energy = drainEnergy(lp.energy, lp.player.attrs.stamina, seconds, lp.onCourt);
   }
 }
 
@@ -351,7 +293,7 @@ function runPossession(
     fouler.line.pf += 1;
     def.periodFouls += 1;
     checkFoulOut(fouler, def, log, clock, ctx);
-    if (def.periodFouls > BONUS_THRESHOLD) {
+    if (inBonus(def.periodFouls)) {
       log(`Faute de ${playerName(fouler.player)} — bonus, ${playerName(handler.player)} sur la ligne`, def.team.id, clock);
       shootFreeThrows(rng, handler, off, def, 2, clock, log);
       return extra;
@@ -494,7 +436,7 @@ function registerMake(
 }
 
 function checkFoulOut(lp: LivePlayer, team: LiveTeam, log: LogFn, clock: number, ctx: CoachContext): void {
-  if (lp.line.pf >= 6 && !lp.fouledOut) {
+  if (lp.line.pf >= FOUL_OUT && !lp.fouledOut) {
     lp.fouledOut = true;
     log(`${playerName(lp.player)} est éliminé pour six fautes`, team.team.id, clock, true);
     setLineup(team, ctx);
