@@ -394,12 +394,37 @@ Règles appliquées par `match/world/` (le moteur n'est pas modifié). Le demi-t
   logique) ; 0 à 1 élimination ; le bonus est rare (il faut une faute de main après 5 fautes
   d'équipe).
 
+## Le match joué dans le GM (incrément 13)
+- **Un seul enregistrement** (`engine/simSeason.ts`) : `playGame` = `simulateGame` +
+  `recordGame(league, game, result)` ; `recordGame` fait tout ce qui suit un match, simulé ou joué
+  (score, stats et carrière, classement en saison régulière, feuille archivée, blessures), dans le
+  même ordre de tirages qu'avant (`calibrate` identique).
+- **Match joué** : `PlayedGame` = le `GameResult` produit par `match/` (box score brut, sans déroulé
+  texte) et l'énergie de fin de chaque joueur de la rotation. `simulateDay` et `advancePlayoffs`
+  prennent `played` : le match de ton équipe est enregistré tel quel (énergie reportée, puis
+  `recordGame`), les autres matchs du jour sont simulés. `userGameToday` donne le match de ton
+  équipe du jour (en playoffs, `userPlayoffGame` le calcule sans rien modifier : id, domicile
+  2-2-1-1-1).
+- **Mise en place** (`match/gameResult.ts`) : `gmMatchSetup` passe au match les deux équipes, leurs
+  rotations (`matchRotation`, comme la simulation, ta rotation de l'onglet Effectif comprise), ton
+  côté, le mode (jouer ou regarder) et une graine tirée de la ligue et de l'id du match. Ton équipe
+  est l'équipe 0 du monde.
+- **Conversion** (`toPlayedGame`) : lignes des joueurs qui ont joué et des titulaires (`gp` = 1,
+  titulaires en tête puis par minutes, comme la simulation), scores et points par période remis à
+  domicile et à l'extérieur, énergie de fin.
+- **Fin de match** : dans le GM, le monde ne relance pas de match après le bandeau de fin
+  (`autoRestart` faux) ; il passe à `matchOver`, et la scène publie le `PlayedGame`.
+- **« Simuler la fin »** (`ai/finish.ts`, `runToEnd`) : le monde continue depuis son état (score,
+  chrono, fatigue, box score), les dix joueurs à l'IA, jusqu'à la fin ; la scène le fait tourner
+  par tranches de ~25 ms par image (~3-4 s pour un match entier dans le navigateur de test).
+- **Regarder** : les dix joueurs à l'IA, ×1, ×2 ou ×4 pas du monde par image.
+
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate
   ne donne pas le résultat voulu, le solveur en essaie une autre.
 - La possession, le score et les règles du match restent dans `match/world/`. Le box score est
-  tenu en direct depuis l'incrément 12 ; l'enregistrement officiel (match joué = match simulé,
-  mêmes fonctions de `simSeason`) arrive à l'incrément 13.
+  tenu en direct depuis l'incrément 12 et enregistré par les mêmes fonctions de `simSeason` que
+  la simulation depuis l'incrément 13.
 
 ## Écarts entre le dessin et la physique (rendu seulement)
 Le rendu prend quelques libertés pour la lisibilité. Elles ne changent ni les mesures envoyées

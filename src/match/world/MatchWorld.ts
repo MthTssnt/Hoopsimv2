@@ -313,6 +313,12 @@ export class MatchWorld {
   box: LiveBox | null = null;
   /** Nombre de changements de cinq depuis la création (les IA recalculent alors leurs duels). */
   lineupVersion = 0;
+  /**
+   * Terrain entier : après le bandeau de fin, un nouveau match commence (page de test) ; sinon (match
+   * du GM) le monde s'arrête et `matchOver` passe à vrai.
+   */
+  autoRestart = true;
+  matchOver = false;
   private readonly rng: Rng;
   /** Rotations de départ (ordre du coach) : un nouveau match repart d'elles. */
   private rosters: Player[][] = [];
@@ -830,9 +836,11 @@ export class MatchWorld {
       return false;
     }
     if (full.phase === 'fin-periode' || full.phase === 'fin-match') {
+      if (this.matchOver) return true;
       full.pause -= dt;
       if (full.pause <= 0) {
-        if (full.phase === 'fin-match') this.startMatch();
+        if (full.phase === 'fin-match' && this.autoRestart) this.startMatch();
+        else if (full.phase === 'fin-match') this.matchOver = true;
         else this.startPeriod(full.period + 1);
       }
       return true;
@@ -1044,6 +1052,7 @@ export class MatchWorld {
     const full = this.full!;
     const fresh = newFullCourt(full.quarterMinutes);
     Object.assign(full, fresh);
+    this.matchOver = false;
     this.points = [0, 0];
     this.lastPass = null;
     this.lastSteal = null;

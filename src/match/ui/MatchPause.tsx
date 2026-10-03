@@ -5,6 +5,8 @@ interface Props {
   /** Box score au moment de la pause (null hors 5 contre 5). */
   box: BoxView | null;
   onResume: () => void;
+  /** Match du GM : le finir tout seul (IA contre IA, en accéléré). */
+  onFinish?: () => void;
 }
 
 const backdrop: CSSProperties = {
@@ -198,7 +200,7 @@ function TeamTable({ team }: { team: BoxTeamView }) {
  * d'équipe, box score des deux équipes (titulaires en tête, ● sur le terrain, éliminés grisés).
  * Il ne fait qu'afficher la photo publiée par le match ; aucune logique de jeu ici.
  */
-export function MatchPause({ box, onResume }: Props) {
+export function MatchPause({ box, onResume, onFinish }: Props) {
   return (
     <div style={backdrop} onClick={onResume}>
       <div style={panel} onClick={(event) => event.stopPropagation()}>
@@ -210,6 +212,11 @@ export function MatchPause({ box, onResume }: Props) {
             </div>
           )}
           <div style={{ flex: 1 }} />
+          {onFinish && (
+            <button className="btn" onClick={onFinish} title="Le match continue tout seul, IA contre IA en accéléré ; le résultat est enregistré.">
+              Simuler la fin
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onResume} autoFocus>
             Reprendre
           </button>

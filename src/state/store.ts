@@ -11,12 +11,15 @@ import {
   simulateDay,
   startNextSeason,
   startPlayoffs,
+  userGameToday,
   type DaySummary,
   type Game,
   type GameResult,
   type League,
+  type PlayedGame,
   type PlayoffDaySummary,
 } from '../engine';
+import { gmMatchSetup, type MatchMode, type MatchSetup } from '../match/gameResult';
 
 const SAVE_KEY = 'hoopsim.save.v1';
 
@@ -34,6 +37,8 @@ class GameStore {
   league: League | null = null;
   /** Dernier match de l'utilisateur, conservé pour l'écran de match (non sauvegardé). */
   watched: WatchedGame | null = null;
+  /** Match de ton équipe en cours dans le navigateur (jouer ou regarder), non sauvegardé. */
+  liveMatch: MatchSetup | null = null;
   busy = false;
 
   private version = 0;
@@ -111,17 +116,20 @@ class GameStore {
 
   // --- Progression ---
 
-  /** Joue une journée (ou une soirée de playoffs) et renvoie le match de l'utilisateur. */
-  advanceOneDay(watchUserGame = true): WatchedGame | null {
+  /**
+   * Joue une journée (ou une soirée de playoffs) et renvoie le match de l'utilisateur. `played` :
+   * son match, joué dans le navigateur, enregistré tel quel (les autres matchs sont simulés).
+   */
+  advanceOneDay(watchUserGame = true, played?: PlayedGame): WatchedGame | null {
     const league = this.league_();
     let userGame: WatchedGame | null = null;
 
     if (league.phase === 'regular') {
-      const summary: DaySummary = simulateDay(league, { watchUserGame });
+      const summary: DaySummary = simulateDay(league, { watchUserGame, played });
       userGame = summary.userGame;
       if (regularSeasonFinished(league)) startPlayoffs(league);
     } else if (league.phase === 'playoffs') {
-      const summary: PlayoffDaySummary = advancePlayoffs(league, { watchUserGame });
+      const summary: PlayoffDaySummary = advancePlayoffs(league, { watchUserGame, played });
       userGame = summary.userGame;
       if (playoffsFinished(league.playoffs)) closeSeason(league);
     }
@@ -130,6 +138,25 @@ class GameStore {
     this.save();
     this.emit();
     return userGame;
+  }
+
+  // --- Match joué ---
+
+  /** Lance le match de ton équipe du jour dans le navigateur : à jouer, ou à regarder (CPU contre CPU). */
+  startLiveMatch(mode: MatchMode): void {
+    const league = this.league_();
+    const game = userGameToday(league);
+    if (!game) return;
+    this.liveMatch = gmMatchSetup(league, game, mode);
+    this.watched = null;
+    this.emit();
+  }
+
+  /** Fin du match joué : il est enregistré avec la journée (ou la soirée), puis sa feuille s'affiche. */
+  finishLiveMatch(played: PlayedGame): void {
+    if (!this.liveMatch) return;
+    this.liveMatch = null;
+    this.advanceOneDay(true, played);
   }
 
   /** Avance jusqu'à la veille du prochain match de l'utilisateur (sans le jouer). */

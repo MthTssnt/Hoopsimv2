@@ -5,6 +5,7 @@ import {
   perGame,
   playerName,
   totalReb,
+  userGameToday,
   winPct,
   type Game,
   type League,
@@ -12,6 +13,7 @@ import {
 } from '../../engine';
 import { store } from '../../state/store';
 import { Rating, StatTile, TeamLogo, num, signed, teamFullName } from '../common';
+import { MatchButtons } from '../MatchButtons';
 import { useUi } from '../uiContext';
 
 export function Dashboard({
@@ -29,7 +31,8 @@ export function Dashboard({
   const diff = team.pointsFor - team.pointsAgainst;
   const games = team.wins + team.losses;
 
-  const upcoming = nextUserGame(league);
+  // En playoffs, le match du soir n'est pas encore au calendrier.
+  const upcoming = nextUserGame(league) ?? userGameToday(league);
   const recent = league.schedule
     .filter((g) => g.played && (g.homeId === team.id || g.awayId === team.id))
     .slice(-5)
@@ -199,9 +202,9 @@ function NextGameCard({ league, team, game }: { league: League; team: Team; game
         </button>
       )}
       {inDays <= 0 && (
-        <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => store.advanceOneDay(true)}>
-          Jouer le match
-        </button>
+        <div className="row" style={{ marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
+          <MatchButtons small />
+        </div>
       )}
     </div>
   );

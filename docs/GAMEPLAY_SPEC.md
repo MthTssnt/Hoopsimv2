@@ -216,6 +216,18 @@
     changements à la main viendront avec les modes de jeu ;
   - **menu pause** : Échap ou P (ou le bouton « Pause ») ; le match s'arrête et affiche le score
     par période, les fautes d'équipe et le box score des deux équipes.
+- **Match joué dans le GM (incrément 13)** :
+  - le jour d'un match de ton équipe (saison régulière et playoffs) : **Jouer** (le match avec ta
+    vraie équipe), **Regarder** (CPU contre CPU) ou **Simuler** (le résultat de la simulation,
+    avec le déroulé) ; le match joué ou regardé est enregistré comme un match simulé (box score
+    brut) ;
+  - **quitter en cours de match** : « Simuler la fin » (menu pause) ; le match continue tout seul,
+    IA contre IA en accéléré, depuis le score et le chrono actuels, et le résultat est enregistré ;
+  - **Regarder** : vitesses ×1, ×2 et ×4 (touches 1-3 ou boutons), et « Simuler la fin » ;
+  - **arène et tenues** : l'arène et le maillot du club qui reçoit ; l'équipe qui se déplace garde
+    ses couleurs, ou passe à sa couleur secondaire (sinon un maillot clair) si elles sont trop
+    proches ; ton équipe toujours à gauche du tableau de score ;
+  - un rechargement de la page pendant le match : rien n'est enregistré, le match reste à jouer.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

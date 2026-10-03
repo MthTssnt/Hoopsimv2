@@ -326,6 +326,17 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     accessible) : score par période et fautes d'équipe (avec « bonus »), puis un tableau par
     équipe (MIN, PTS, REB, OFF/DÉF, PD, INT, CTR, BP, F, TIRS, 3 PTS, LF, +/-, énergie), titulaires
     en tête et en gras, ● pour les joueurs sur le terrain, éliminés grisés, bouton « Reprendre ».
+- **Match du GM (incrément 13)** :
+  - **arène** du club qui reçoit (couleurs, nom, rond central, poteaux) ;
+  - **tenue extérieure** (`awayLook`) : les couleurs de l'équipe, sinon sa couleur secondaire en
+    maillot, sinon un maillot `chalk` à ses couleurs (ou `ink`), dès que les deux maillots sont à
+    moins de 140 d'écart ;
+  - **Regarder** : ni anneau, ni étiquette soulignée, ni carte du joueur ; la caméra suit le
+    porteur (sinon le ballon) ; boutons ×1 ×2 ×4 et « Simuler la fin » en bas au centre ;
+  - **bandeaux** : « SIMULATION DE LA FIN » (sous-titre : période et chrono simulés) pendant la
+    fin simulée, sans messages ni jauge ; en fin de match, « GAGNÉ / PERDU 92-86 » avec « FIN DU
+    MATCH » (« IND 92-86 » quand tu regardes) ;
+  - menu pause : bouton « Simuler la fin » à côté de « Reprendre ».
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

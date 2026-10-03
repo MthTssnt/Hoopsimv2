@@ -71,7 +71,7 @@ export class HudScene extends Phaser.Scene {
 
     const handlers: [string, (value: never) => void][] = [
       [HUD_KEYS.score, (value: ScoreboardData) => this.showScore(value)],
-      [HUD_KEYS.card, (value: PlayerCardData) => this.showCard(value)],
+      [HUD_KEYS.card, (value: PlayerCardData | null) => this.showCard(value)],
       [HUD_KEYS.debug, (value: HudDebug) => this.showDebug(value)],
       [HUD_KEYS.debugVisible, (value: boolean) => this.setDebugVisible(value)],
       [HUD_KEYS.banner, (value: HudBanner | null) => this.showBanner(value)],
@@ -90,9 +90,10 @@ export class HudScene extends Phaser.Scene {
     drawScoreboard(this.board, SCOREBOARD_AT.x, SCOREBOARD_AT.y, data);
   }
 
-  private showCard(data: PlayerCardData) {
+  /** Carte du joueur contrôlé (aucune quand tu regardes un match). */
+  private showCard(data: PlayerCardData | null) {
     this.card.clear();
-    drawPlayerCard(this.card, CARD_AT.x, CARD_AT.y, data);
+    if (data) drawPlayerCard(this.card, CARD_AT.x, CARD_AT.y, data);
   }
 
   private showBanner(data: HudBanner | null) {

@@ -28,14 +28,14 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ 7a. 1 contre 1 contre l'IA (panier de droite, ressortie derrière l'arc, panier non valable, premier à 11) : contestation mesurée dans le tir et le dunk, IA qui attaque selon ses tendances, défend avec un temps de réaction et va au rebond, tableau de score, RESSORS / NON VALABLE, bandeau de fin
 - ✅ 7b. Contre (main en l'air sur le ballon en montée, le moteur tranche), faute sur tout contact pendant le tir (ballon au tireur si raté), goaltending ; pose « contre », messages CONTRE / FAUTE / GOALTENDING ; IA qui contre et ne rentre plus dans le tireur
 
-## Phase 2 — Vrai match 🔄
+## Phase 2 — Vrai match ✅
 - ✅ Décisions de Matheo (contrôle, durée 4 × 3 min, fatigue + coach auto, lancers à la jauge, règles, touches E/A, Live Sim)
 - ✅ 8. 3 contre 3 sur un panier : passes, coéquipiers IA (écartement, coupes, passes), défense d'équipe (duels, aide), changement de joueur contrôlé (`?court`, `&format=1|2|3`)
 - ✅ 9. Interception : vol sur le porteur avec A (faute de main trop près, déséquilibre si raté), passes interceptées ou déviées dans la ligne (au sol, bras allongé avec A, en sautant), pertes de balle notées ; IA qui tente des vols, coupe les lignes et évite les lignes occupées ; messages VOL / INTERCEPTION / DÉVIÉE
 - ✅ 10. 5 contre 5 sur terrain entier (`?court`, demi-terrain avec `&format=1|2|3`) : entre-deux au saut, quart-temps (durée réglable), mi-temps et changement de panier, prolongation, chrono arrêté sur ballon mort, shot clock, sorties et remises (E), 8 s, retour en zone, 5 s, 24 s ; IA qui monte le ballon, se place à 5, revient en défense, défend par poste ; tableau de score vivant et bandeaux
 - ✅ 11. Retours de Matheo sur le 10 : lancers francs à la jauge (2 ou 3 sur un tir raté selon la zone, 1 après un panier, remise sur faute hors tir), jauge toujours à côté du tireur (même après un rebond) et appui gardé en retombant, sauts sans ballon à la vitesse réelle, défense automatique du joueur contrôlé ; fautes d'équipe, bonus et 6 fautes faits avec le 12
 - ✅ 12. Fatigue et rotation à l'échelle du match (énergie et coach de la simulation sortis dans `engine/rotation.ts`, `calibrate` identique), changements automatiques aux ballons morts (le remplaçant prend le corps et le contrôle), fautes d'équipe par période, bonus (2 lancers dès la 6e faute), élimination à 6 fautes, box score en direct (minutes, tirs, lancers, rebonds, passes décisives, interceptions, contres, pertes, fautes, +/-), carte du joueur vivante (énergie, PTS REB PD), messages BONUS / 6 FAUTES / CHANGEMENT, menu pause (Échap, P ou bouton) avec le box score
-- ⬜ 13. Match joué dans le GM (« Jouer », « Regarder », « Simuler »), enregistré par `simSeason`
+- ✅ 13. Match joué dans le GM : « Jouer », « Regarder » (×1, ×2, ×4) ou « Simuler » le match de ton équipe, en saison régulière et en playoffs ; `playGame` = `simulateGame` + `recordGame` (`calibrate` identique), le match joué enregistré par les mêmes fonctions (classement, stats, blessures, feuille) ; « Simuler la fin » (IA contre IA en accéléré, depuis l'état du match) ; arène du club qui reçoit, tenue extérieure quand les couleurs sont proches
 
 ## Phase 3 — DA et ressenti ⬜
 - ✅ Direction artistique et sprites de base (chantier style S1–S4, voir phase 1)

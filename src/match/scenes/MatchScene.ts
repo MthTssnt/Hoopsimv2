@@ -5,6 +5,7 @@ import { DUNK_TUNING, dunkScore, greenWindow, shotSkill, type ShotZone, type Tim
 import { hashSeed, randomSeed, Rng } from '../../engine/rng';
 import { matchRotation } from '../../engine/rotation';
 import type { TeamSeed } from '../../engine/teamsData';
+import { runToEnd } from '../ai/finish';
 import { PlayerAi } from '../ai/playerAi';
 import { ARENA_APRON, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
 import { controlledInput, ShotButton } from '../input/control';
@@ -12,7 +13,7 @@ import { KeyboardInput, NO_INPUT } from '../input/keyboard';
 import { BALL_RADIUS, makeCourt, RIM_HEIGHT, type CourtLevel } from '../physics/court';
 import { createArena } from '../render/arena/arena';
 import { BALL_SHADOW_TEXTURE, BALL_TEXTURE, createBallTextures } from '../render/arena/ball';
-import { contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
+import { awayLook, contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
 import { drawHoopArt } from '../render/arena/hoopArt';
 import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
@@ -27,6 +28,7 @@ import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../rende
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
 import { buildBoxView, type BoxView } from '../boxView';
+import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
@@ -134,6 +136,11 @@ const ROTATION_TAGS: [string, string, number][] = [
   ['tag-fouled-out', '6 FAUTES', PALETTE.red],
   ['tag-sub', 'CHANGEMENT', PALETTE.chalk],
 ];
+/** « Simuler la fin » : temps de calcul par image (ms), pas du monde par tranche. */
+const FINISH_BUDGET_MS = 25;
+const FINISH_CHUNK = 60;
+/** Vitesses de « Regarder ». */
+export const WATCH_SPEEDS = [1, 2, 4] as const;
 /** Clignotement de l'anneau quand le contrôle change de joueur (ms). */
 const RING_BLINK_MS = 240;
 
@@ -225,8 +232,18 @@ export class MatchScene extends Phaser.Scene {
   /** Joueurs de chaque camp ; en 1 contre 1, les trois joueurs de test (touches 1-3) et leurs vis-à-vis. */
   private athletes: Player[] = [];
   private opponents: Player[] = [];
+  /** Ton équipe (équipe 0 du monde, à gauche du tableau de score) et l'adversaire ; club qui reçoit (arène). */
   private homeSeed!: TeamSeed;
   private awaySeed!: TeamSeed;
+  private arenaSeed!: TeamSeed;
+  /** Match du GM (null : page de test `?court`). */
+  private setup: MatchSetup | null = null;
+  /** Regarder : les dix joueurs à l'IA, caméra sur le ballon, vitesse ×1, ×2 ou ×4. */
+  private watching = false;
+  private speed = 1;
+  /** « Simuler la fin » en cours, et résultat déjà publié. */
+  private finishing = false;
+  private reported = false;
   private homeCast: CastMember[] = [];
   private awayCast: CastMember[] = [];
   /** Terrain entier : joueurs déjà cuits (un remplaçant l'est à sa première entrée), et durée de la dernière cuisson (ms). */
@@ -311,24 +328,43 @@ export class MatchScene extends Phaser.Scene {
     this.perTeam = formatFromUrl();
     this.target = targetFromUrl(this.perTeam);
     this.settings = (this.registry.get('settings') as MatchSettings | undefined) ?? loadSettings();
-    if (this.perTeam === 5) {
+    this.setup = (this.registry.get('matchSetup') as MatchSetup | null | undefined) ?? null;
+    this.watching = this.setup?.mode === 'regarder';
+    this.speed = 1;
+    this.finishing = false;
+    this.reported = false;
+    if (this.setup) {
+      // Match du GM : ton équipe en équipe 0 (tes entrées), dans l'arène du club qui reçoit.
+      const setup = this.setup;
+      this.seed = setup.seed;
+      this.rng = new Rng(this.seed);
+      this.perTeam = 5;
+      [this.athletes, this.opponents] = worldRotations(setup);
+      const user = setup.userSide === 'home' ? setup.home : setup.away;
+      this.homeSeed = user;
+      this.awaySeed = user === setup.home ? setup.away : setup.home;
+      this.arenaSeed = setup.home;
+    } else if (this.perTeam === 5) {
       const roster = fullRoster(this.seed);
       this.athletes = roster.homePlayers;
       this.opponents = roster.awayPlayers;
       this.homeSeed = roster.home;
       this.awaySeed = roster.away;
+      this.arenaSeed = roster.home;
     } else if (this.perTeam === 1) {
       const roster = testRoster(this.seed);
       this.athletes = roster.athletes;
       this.opponents = roster.opponents;
       this.homeSeed = roster.home;
       this.awaySeed = roster.away;
+      this.arenaSeed = roster.home;
     } else {
       const roster = teamsRoster(this.seed, this.perTeam);
       this.athletes = roster.homePlayers;
       this.opponents = roster.awayPlayers;
       this.homeSeed = roster.home;
       this.awaySeed = roster.away;
+      this.arenaSeed = roster.home;
     }
     this.ais = [];
     this.pendingPass = false;
@@ -374,10 +410,16 @@ export class MatchScene extends Phaser.Scene {
 
   create() {
     // Arène aux couleurs de ton équipe ; l'IA porte la tenue d'une équipe qui tranche avec elle.
-    const home = teamLook(this.homeSeed);
-    const away = teamLook(this.awaySeed);
+    // Page de test : ton équipe chez elle, l'adversaire dans des couleurs qui tranchent. Match du GM :
+    // l'arène et le maillot du club qui reçoit ; l'équipe qui se déplace garde ses couleurs si elles
+    // tranchent (sinon sa couleur secondaire, ou un maillot clair).
+    const setup = this.setup;
+    const arena = teamLook(this.arenaSeed);
+    const visitors = setup ? awayLook(setup.home, setup.away) : null;
+    const home = !setup || this.homeSeed === setup.home ? teamLook(this.homeSeed) : visitors!;
+    const away = !setup ? teamLook(this.awaySeed) : this.awaySeed === setup.home ? arena : visitors!;
     for (const level of LEVELS) {
-      createArena(this, `arena-${level}`, MATCH_PROJECTION, makeCourt(level), home, {
+      createArena(this, `arena-${level}`, MATCH_PROJECTION, makeCourt(level), arena, {
         size: { width: WORLD_WIDTH, height: WORLD_HEIGHT },
         apron: ARENA_APRON,
       });
@@ -413,7 +455,7 @@ export class MatchScene extends Phaser.Scene {
     const court = makeCourt(this.settings.level);
     this.arena = this.add.image(0, 0, `arena-${this.settings.level}`).setOrigin(0).setDepth(0);
     for (const hoop of [court.hoops.left, court.hoops.right]) {
-      const art = drawHoopArt(this, MATCH_PROJECTION, hoop, home);
+      const art = drawHoopArt(this, MATCH_PROJECTION, hoop, arena);
       art.back.setDepth(depthOf(hoop.rim.y) - 0.2);
       art.front.setDepth(depthOf(hoop.rim.y) + 0.2);
     }
@@ -424,6 +466,7 @@ export class MatchScene extends Phaser.Scene {
     const n = this.perTeam;
     const settings = { mode: this.settings.shotMode, speed: this.settings.shotSpeed };
     this.world = new MatchWorld(court, this.athletes[0], { x: 0, y: 0, z: 0 }, settings, this.rng);
+    this.world.autoRestart = !setup;
     if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
     else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     // En 1 contre 1, un seul joueur de chaque côté (les autres servent aux touches 1-3).
@@ -456,13 +499,19 @@ export class MatchScene extends Phaser.Scene {
     const onSettings = (_parent: unknown, value: MatchSettings) => this.applySettings(value);
     const onBlocked = (_parent: unknown, value: boolean) => this.setBlocked(value);
     const onPause = (value: boolean) => this.setPaused(value);
+    const onSpeed = (value: number) => (this.speed = WATCH_SPEEDS.includes(value as 1) ? value : 1);
+    const onFinish = () => this.startFinishing();
     this.registry.events.on('changedata-settings', onSettings);
     this.registry.events.on('changedata-inputBlocked', onBlocked);
     this.game.events.on('pause-request', onPause);
+    this.game.events.on('watch-speed', onSpeed);
+    this.game.events.on('finish-request', onFinish);
     this.events.once('shutdown', () => {
       this.registry.events.off('changedata-settings', onSettings);
       this.registry.events.off('changedata-inputBlocked', onBlocked);
       this.game.events.off('pause-request', onPause);
+      this.game.events.off('watch-speed', onSpeed);
+      this.game.events.off('finish-request', onFinish);
       this.controls.destroy();
     });
     if (this.registry.get('inputBlocked')) this.setBlocked(true);
@@ -479,14 +528,23 @@ export class MatchScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number) {
-    const input = this.blocked ? NO_INPUT : this.controls.read();
+    // « Simuler la fin » : le monde avance à l'IA par tranches, sans entrées, jusqu'à la fin.
+    if (this.finishing) {
+      const start = performance.now();
+      let over = false;
+      while (!over && performance.now() - start < FINISH_BUDGET_MS) over = runToEnd(this.world, this.ais, FINISH_CHUNK);
+      this.renderWorld(deltaMs);
+      this.reportMatchOver();
+      return;
+    }
+    const input = this.blocked || this.watching ? NO_INPUT : this.controls.read();
     // Appui et relâche sont gardés jusqu'au prochain pas de simulation (rien de perdu à haute
     // fréquence) ; un appui bref passe donc par un saut puis un lâcher immédiat.
     if (input.shootPressed) this.pendingJump = true;
     if (input.shootReleased) this.pendingRelease = true;
     if (input.passPressed) this.pendingPass = true;
     if (input.stealPressed) this.pendingSteal = true;
-    this.accumulator += Math.min(deltaMs, 100) / 1000;
+    this.accumulator += (Math.min(deltaMs, 100) / 1000) * this.speed;
     while (this.accumulator >= WORLD_DT) {
       this.accumulator -= WORLD_DT;
       const controlled = this.world.controlled;
@@ -512,7 +570,7 @@ export class MatchScene extends Phaser.Scene {
       // touches, ou son IA en défense quand tu ne touches à rien (déplacement seulement).
       const inputs = this.ais.map((ai, i) => {
         const thought = ai.think(this.world, WORLD_DT);
-        return i === controlled ? controlledInput(mine, thought, defending, untouched) : thought;
+        return i === controlled && !this.watching ? controlledInput(mine, thought, defending, untouched) : thought;
       });
       this.world.step(WORLD_DT, inputs);
       this.pendingJump = false;
@@ -521,6 +579,24 @@ export class MatchScene extends Phaser.Scene {
       this.pendingSteal = false;
     }
     this.renderWorld(deltaMs);
+    this.reportMatchOver();
+  }
+
+  /** Match du GM fini (après le bandeau) : le résultat part au GM, une seule fois. */
+  private reportMatchOver() {
+    if (!this.setup || this.reported || !this.world.matchOver) return;
+    this.reported = true;
+    this.game.events.emit('match-over', toPlayedGame(this.world, this.setup));
+  }
+
+  /** « Simuler la fin » : le menu pause se ferme, le match finit tout seul en accéléré. */
+  private startFinishing() {
+    if (!this.setup || this.finishing) return;
+    this.finishing = true;
+    if (this.paused) {
+      this.paused = false;
+      this.scene.resume();
+    }
   }
 
   private bakeCastMember(player: Player, key: string, team: TeamLook): CastMember {
@@ -820,6 +896,19 @@ export class MatchScene extends Phaser.Scene {
    */
   private updateControl(deltaMs: number) {
     const controlled = this.world.controlled;
+    // Regarder : ni anneau, ni étiquette soulignée, ni carte du joueur.
+    if (this.watching) {
+      this.ring.setVisible(false);
+      this.bodies.forEach((b) => {
+        if (b.label.texture.key !== b.member.label) b.label.setTexture(b.member.label);
+        b.label.setDepth(900);
+      });
+      if (this.cardKey !== 'regarder') {
+        this.cardKey = 'regarder';
+        this.registry.set(HUD_KEYS.card, null);
+      }
+      return;
+    }
     if (controlled !== this.shownControlled) {
       this.shownControlled = controlled;
       this.ringBlink = RING_BLINK_MS;
@@ -848,8 +937,9 @@ export class MatchScene extends Phaser.Scene {
    */
   private updateShotFeedback(deltaMs: number) {
     const shot = this.world.shot;
-    // Pas de jauge pour un dunk (simple appui) ni pour les tirs de l'IA.
-    const controlled = this.world.controlled;
+    // Pas de jauge pour un dunk (simple appui) ni pour les tirs de l'IA (ni quand tu regardes, ni
+    // pendant la fin simulée).
+    const controlled = this.watching || this.finishing ? -1 : this.world.controlled;
     const mine = shot && shot.shooter === controlled && shot.kind !== 'dunk' ? shot : null;
     // Lancer franc : la même jauge, sans saut (temps depuis l'appui sur Tir).
     const full = this.world.full;
@@ -953,6 +1043,8 @@ export class MatchScene extends Phaser.Scene {
       this.seenFoul = foul;
       this.addCallout('tag-foul', foul.defender);
     }
+    // Fin simulée en accéléré : pas de messages (ils défileraient par dizaines).
+    if (this.finishing) this.seenEvent = this.world.eventCount;
     // Vols, fautes de main et passes coupées : au-dessus du défenseur ; violations : au-dessus du fautif.
     for (const event of this.world.events) {
       if (event.id <= this.seenEvent) continue;
@@ -1046,8 +1138,16 @@ export class MatchScene extends Phaser.Scene {
       return { title: `${winner === USER_TEAM ? 'GAGNÉ' : 'PERDU'} ${mine}-${theirs}`, subtitle: 'NOUVELLE PARTIE À 0-0', tone: winner === USER_TEAM ? 'won' : 'lost' };
     }
     if (full.phase === 'fin-match' && full.winner !== null) {
-      return { title: `${full.winner === USER_TEAM ? 'GAGNÉ' : 'PERDU'} ${mine}-${theirs}`, subtitle: 'NOUVEAU MATCH', tone: full.winner === USER_TEAM ? 'won' : 'lost' };
+      // Regarder : le vainqueur et le score ; jouer : gagné ou perdu.
+      if (this.watching) {
+        const abbr = [this.homeSeed.abbr, this.awaySeed.abbr];
+        const w = full.winner;
+        return { title: `${abbr[w]} ${this.world.points[w]}-${this.world.points[1 - w]}`, subtitle: 'FIN DU MATCH', tone: 'info' };
+      }
+      const subtitle = this.setup ? 'FIN DU MATCH' : 'NOUVEAU MATCH';
+      return { title: `${full.winner === USER_TEAM ? 'GAGNÉ' : 'PERDU'} ${mine}-${theirs}`, subtitle, tone: full.winner === USER_TEAM ? 'won' : 'lost' };
     }
+    if (this.finishing) return { title: 'SIMULATION DE LA FIN', subtitle: `${periodLabel(full.period)} ${formatClock(full.clock)}`, tone: 'info' };
     if (full.phase !== 'fin-periode') return null;
     const score = `${mine}-${theirs}`;
     if (full.period === 2) return { title: 'MI-TEMPS', subtitle: `${score} - CHANGEMENT DE PANIER`, tone: 'info' };
@@ -1057,9 +1157,13 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private updateCamera(me: BodySprite, ball: Point, deltaMs: number) {
-    // Boîte du joueur : du sommet de la tête à l'étiquette sous ses pieds.
-    const { feet, ground } = me;
-    const playerBox = { left: feet.x - 10, right: feet.x + 10, top: feet.y - me.member.height, bottom: ground.y + 12 };
+    // Boîte du joueur suivi (toi ; le porteur quand tu regardes, sinon le ballon) : du sommet de la
+    // tête à l'étiquette sous ses pieds.
+    const holder = this.world.holder;
+    const followed = this.watching ? (holder !== null ? this.bodies[holder] : null) : me;
+    const playerBox = followed
+      ? { left: followed.feet.x - 10, right: followed.feet.x + 10, top: followed.feet.y - followed.member.height, bottom: followed.ground.y + 12 }
+      : { left: ball.x - 10, right: ball.x + 10, top: ball.y - 30, bottom: ball.y + 12 };
     const target = targetFraming(playerBox, ball, this.anchorY, this.settings.camera, this.cam.zoom, VIEW_WIDTH, VIEW_HEIGHT);
     this.cam.zoom =
       this.settings.camera === 'steps' ? target.zoom : smooth(this.cam.zoom, target.zoom, CAMERA_TUNING.zoomLerp, deltaMs);
