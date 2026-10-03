@@ -39,6 +39,16 @@ export function teamById(league: League, id: string): Team {
   return team;
 }
 
+/**
+ * Match joué (ou regardé) par `match/` : son box score, au format de la simulation, et l'énergie de
+ * fin de chaque joueur de la rotation (ce que `simulateGame` reporte lui-même sur les joueurs).
+ */
+export interface PlayedGame {
+  result: GameResult;
+  energy: Record<string, number>;
+}
+
+/** Simule un match puis l'enregistre. */
 export function playGame(league: League, game: Game, options: GameSimOptions = {}): GameResult {
   const home = teamById(league, game.homeId);
   const away = teamById(league, game.awayId);
@@ -46,6 +56,28 @@ export function playGame(league: League, game: Game, options: GameSimOptions = {
   const result = withRng(league, (rng) =>
     simulateGame(rng, game.id, home, away, league.players, options),
   );
+  recordGame(league, game, result);
+  return result;
+}
+
+/** Enregistre un match joué dans le navigateur : énergie de fin reportée, puis comme un match simulé. */
+export function recordPlayedGame(league: League, game: Game, played: PlayedGame): GameResult {
+  for (const [id, energy] of Object.entries(played.energy)) {
+    const player = league.players[id];
+    if (player) player.energy = energy;
+  }
+  recordGame(league, game, played.result);
+  return played.result;
+}
+
+/**
+ * Enregistre le résultat d'un match, simulé ou joué : score, stats et carrière, classement (saison
+ * régulière), feuille archivée, blessures.
+ */
+export function recordGame(league: League, game: Game, result: GameResult): void {
+  const home = teamById(league, game.homeId);
+  const away = teamById(league, game.awayId);
+  result.box.gameId = game.id;
 
   game.played = true;
   game.homeScore = result.homeScore;
@@ -65,8 +97,6 @@ export function playGame(league: League, game: Game, options: GameSimOptions = {
     tickInjuries(league, away);
     rollInjuries(league, result, rng);
   });
-
-  return result;
 }
 
 function applyBoxScore(league: League, result: GameResult, isPlayoffs: boolean): void {
@@ -165,8 +195,16 @@ export interface DaySummary {
   userGame: { game: Game; result: GameResult } | null;
 }
 
+/** Options d'une journée (ou d'une soirée de playoffs). */
+export interface DayOptions {
+  /** Garder le déroulé du match de ton équipe (simulé). */
+  watchUserGame?: boolean;
+  /** Ton match, joué dans le navigateur : il est enregistré tel quel au lieu d'être simulé. */
+  played?: PlayedGame;
+}
+
 /** Joue tous les matchs du jour courant puis avance d'une journée. */
-export function simulateDay(league: League, options: { watchUserGame?: boolean } = {}): DaySummary {
+export function simulateDay(league: League, options: DayOptions = {}): DaySummary {
   const today = league.schedule.filter((g) => g.day === league.day && !g.played);
   const playing = new Set<string>();
   const played: { game: Game; result: GameResult }[] = [];
@@ -176,7 +214,10 @@ export function simulateDay(league: League, options: { watchUserGame?: boolean }
     playing.add(game.homeId);
     playing.add(game.awayId);
     const isUserGame = game.homeId === league.userTeamId || game.awayId === league.userTeamId;
-    const result = playGame(league, game, { collectPbp: isUserGame && (options.watchUserGame ?? true) });
+    const result =
+      isUserGame && options.played
+        ? recordPlayedGame(league, game, options.played)
+        : playGame(league, game, { collectPbp: isUserGame && (options.watchUserGame ?? true) });
     played.push({ game, result });
     if (isUserGame) userGame = { game, result };
   }

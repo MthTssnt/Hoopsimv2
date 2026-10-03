@@ -19,6 +19,7 @@ import {
   type ShotZone,
   type TimingGrade,
 } from '../../engine/shot';
+import { FOUL_OUT, inBonus, newCoachContext, nextLineup, restEnergy, seatLineup, startingLineup, SUB_INTERVAL, updateCoachContext } from '../../engine/rotation';
 import type { Player } from '../../engine/types';
 import { BALL_PHYSICS, stepBall, type BallState } from '../physics/ball';
 import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
@@ -56,7 +57,9 @@ import {
 } from './fullCourt';
 import { defaultTarget, HALF_COURT, isCleared, mustClearAfterPickup, newHalfCourt, startPositions, type HalfCourtState } from './halfCourt';
 import { leadPoint, PASS_FLOW, passSpeed, passTarget, passVelocity } from './passing';
-import { createPlayerBody, PLAYER_TUNING, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
+import { BOX_RULES, LiveBox, type ShotValue } from './boxScore';
+import { createPlayerBody, PLAYER_TUNING, setBodyAthlete, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
+import { createSquad, matchProgress, matchTimeScale, substitute, tickSquad, tiredAthlete, type MatchMember, type Squad } from './rotation';
 import { attacksRim, dunkFinish, dunkJumpHeight, layupFinish, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
 
 /** Valeurs provisoires, réglables à l'œil. */
@@ -151,6 +154,8 @@ interface Play {
   missed: boolean;
   /** Lancers francs déjà accordés pour la faute sur ce tir (terrain entier). */
   freeThrows: boolean;
+  /** Passeur décisif si ce tir est marqué (passe reçue juste avant, même possession), noté au lâcher. */
+  assist: number | null;
 }
 
 /** Dunk en cours : résultat déjà tiré à l'appui, smash au sommet, puis accroche si réussi. */
@@ -233,7 +238,7 @@ export interface Turnover {
 /** Événement à annoncer (messages du rendu), numéroté dans l'ordre : `by` est le joueur au-dessus duquel l'annoncer. */
 export interface MatchEvent {
   id: number;
-  kind: 'vol' | 'faute-main' | 'interception' | 'déviation' | ViolationKind;
+  kind: 'vol' | 'faute-main' | 'interception' | 'déviation' | 'bonus' | '6 fautes' | 'changement' | ViolationKind;
   by: number;
   of: number;
   time: number;
@@ -302,7 +307,26 @@ export class MatchWorld {
   /** Derniers événements à annoncer, et leur nombre total. */
   readonly events: MatchEvent[] = [];
   eventCount = 0;
+  /** Terrain entier : rotation, énergie, fautes et stats de chaque équipe (null ailleurs). */
+  squads: Squad[] | null = null;
+  /** Box score en direct (terrain entier). */
+  box: LiveBox | null = null;
+  /** Nombre de changements de cinq depuis la création (les IA recalculent alors leurs duels). */
+  lineupVersion = 0;
+  /**
+   * Terrain entier : après le bandeau de fin, un nouveau match commence (page de test) ; sinon (match
+   * du GM) le monde s'arrête et `matchOver` passe à vrai.
+   */
+  autoRestart = true;
+  matchOver = false;
   private readonly rng: Rng;
+  /** Rotations de départ (ordre du coach) : un nouveau match repart d'elles. */
+  private rosters: Player[][] = [];
+  private readonly coach = newCoachContext();
+  /** Ballon mort à ce pas : le coach regardera son cinq à la fin du pas. */
+  private subsDue = false;
+  /** Temps de chrono depuis la dernière mise à jour des notes (fatigue, s). */
+  private tiredClock = 0;
   private dribbleTime = 0;
   private cooldown = 0;
   private play: Play | null = null;
@@ -353,11 +377,15 @@ export class MatchWorld {
   }
 
   /**
-   * Match sur terrain entier : `home` (ton équipe, joueurs 0…4) contre `away` (5…9), chacun rangé
-   * par poste (meneur d'abord, pivot en dernier). Le match commence par un entre-deux.
+   * Match sur terrain entier : la rotation de `home` (ton équipe, corps 0…4 sur le terrain) contre
+   * celle de `away` (corps 5…9), chacune dans l'ordre du coach (le premier joue le plus). Le cinq de
+   * départ vient des cinq premiers, rangés par poste (meneur d'abord, pivot en dernier) ; les autres
+   * attendent sur le banc. Le match commence par un entre-deux.
    */
   startFullCourt(home: readonly Player[], away: readonly Player[], quarterMinutes: number = FULL_COURT.quarterMinutes): void {
-    this.startTeams(home, away);
+    this.rosters = [[...home], [...away]];
+    const fives = this.rosters.map((rotation, team) => startingLineup(createSquad(team, rotation).members).map((m) => m.player));
+    this.startTeams(fives[0], fives[1]);
     this.rules = null;
     this.full = newFullCourt(quarterMinutes);
     this.startMatch();
@@ -604,7 +632,10 @@ export class MatchWorld {
         if (event.type === 'score' && event.hoop === shot.hoop && !shot.scored) this.onBasket(shot);
         if (event.type === 'floor') shot.live = shot.scored;
         // Raté : au sol, ou dès le cercle ou la planche quand le résultat tiré est un raté.
-        if (!shot.scored && (event.type === 'floor' || ((event.type === 'rim' || event.type === 'board') && !shot.wanted))) this.markMissed(shot);
+        if (!shot.scored && (event.type === 'floor' || ((event.type === 'rim' || event.type === 'board') && !shot.wanted))) {
+          this.boxMissed(shot);
+          this.markMissed(shot);
+        }
       }
       if (full?.phase === 'entre-deux') this.checkTip();
       else if (!this.rules?.restart && this.ballLive) {
@@ -614,6 +645,11 @@ export class MatchWorld {
       }
     }
     if (this.full) this.referee(dt, wall);
+    // Ballon mort à ce pas : le coach de chaque équipe regarde son cinq (le tireur des lancers reste).
+    if (this.subsDue) {
+      this.subsDue = false;
+      if (this.full?.phase === 'mort') this.coachSubs(this.full.freeThrows?.shooter ?? null);
+    }
   }
 
   /**
@@ -634,6 +670,154 @@ export class MatchWorld {
     return phase === undefined || phase === 'jeu' || phase === 'remise';
   }
 
+  // --- Terrain entier : effectifs, fatigue, box score ---
+
+  /** Joueur de la rotation qui occupe le corps `body` (terrain entier), ou null. */
+  memberOf(body: number): MatchMember | null {
+    return this.squads?.[this.team[body]]?.members.find((m) => m.body === body) ?? null;
+  }
+
+  /** Temps de chrono avant le prochain contrôle du coach de l'équipe `team` (s), 0 s'il est dû. */
+  nextSubCheck(team: number): number {
+    const full = this.full;
+    const squad = this.squads?.[team];
+    if (!full || !squad) return 0;
+    return Math.max(0, SUB_INTERVAL / matchTimeScale(full.quarterMinutes) - squad.sinceSub);
+  }
+
+  /** Nouveau match : rotations remises à neuf (énergie, stats, fautes), cinq de départ sur les corps de chaque équipe. */
+  private setupSquads(): void {
+    if (this.rosters.length !== 2) return;
+    const squads = this.rosters.map((rotation, team) => createSquad(team, rotation));
+    squads.forEach((squad, team) => {
+      const five = startingLineup(squad.members);
+      const bodies = this.membersOf(team);
+      five.forEach((m, k) => {
+        m.body = bodies[k];
+        m.starter = true;
+        m.line.gs = 1;
+        m.line.gp = 1;
+      });
+      seatLineup(squad.members, five);
+      this.lineup[team] = five.map((m) => m.body!);
+    });
+    this.squads = squads;
+    this.box = new LiveBox(squads.map((s) => s.members));
+    this.box.startPeriod();
+    this.tiredClock = 0;
+    this.subsDue = false;
+    this.lineupVersion++;
+    this.refreshAthletes(true);
+  }
+
+  /**
+   * Le corps de chaque joueur sur le terrain prend ses notes du moment (fatigue). Hors `all`, on ne
+   * touche pas à un joueur en l'air ni au tireur : son saut en cours garde ses notes.
+   */
+  private refreshAthletes(all: boolean): void {
+    for (const squad of this.squads ?? []) {
+      for (const m of squad.members) {
+        if (m.body === null) continue;
+        const body = this.players[m.body];
+        if (!all && (body.airborne || this.shot?.shooter === m.body)) continue;
+        setBodyAthlete(body, tiredAthlete(m.player, m.energy));
+      }
+    }
+  }
+
+  /** Le chrono a tourné de `seconds` : minutes jouées, fatigue et récupération ; notes recalculées chaque seconde. */
+  private playTime(seconds: number): void {
+    const full = this.full;
+    if (!full || !this.squads || seconds <= 0) return;
+    const scale = matchTimeScale(full.quarterMinutes);
+    for (const squad of this.squads) tickSquad(squad, seconds, scale);
+    this.tiredClock += seconds;
+    if (this.tiredClock >= 1) {
+      this.tiredClock = 0;
+      this.refreshAthletes(false);
+    }
+  }
+
+  /**
+   * Ballon mort : le coach de chaque équipe recompose son cinq (logique de la simulation), si
+   * l'intervalle des changements est passé ou si un de ses joueurs vient d'être éliminé. Un
+   * remplaçant prend le corps de celui qui sort ; `keep` (tireur des lancers) reste sur le terrain.
+   */
+  private coachSubs(keep: number | null): void {
+    const full = this.full;
+    if (!full || !this.squads) return;
+    const ctx = this.coach;
+    ctx.timeScale = matchTimeScale(full.quarterMinutes);
+    const progress = matchProgress(full.period, full.clock, full.quarterMinutes);
+    updateCoachContext(ctx, full.period, full.clock, progress, 1, Math.abs(this.points[0] - this.points[1]), FULL_COURT.periods);
+    const keeper = keep !== null ? this.memberOf(keep) : null;
+    for (const squad of this.squads) {
+      const forced = squad.members.some((m) => m.body !== null && m.fouledOut);
+      if (!forced && squad.sinceSub * ctx.timeScale < SUB_INTERVAL) continue;
+      const five = nextLineup(squad.members, ctx);
+      if (keeper && keeper.team === squad.team && !five.includes(keeper)) continue;
+      squad.sinceSub = 0;
+      const before = this.lineup[squad.team].join();
+      const { lineup, entering } = substitute(squad, five, this.lineup[squad.team]);
+      this.lineup[squad.team] = lineup;
+      for (const sub of entering) {
+        const body = this.players[sub.body];
+        setBodyAthlete(body, tiredAthlete(sub.member.player, sub.member.energy));
+        this.followThrough[sub.body] = false;
+        this.reachUntil[sub.body] = 0;
+        this.stealCooldown[sub.body] = 0;
+        this.offBalance[sub.body] = 0;
+        this.pushEvent('changement', sub.body, sub.body);
+      }
+      if (entering.length > 0 || lineup.join() !== before) this.lineupVersion++;
+    }
+  }
+
+  /** Faute personnelle de `fouler` : faute d'équipe ; à la 6e, il est éliminé (il sortira au ballon mort). */
+  private foulCommitted(fouler: number): void {
+    const member = this.memberOf(fouler);
+    const squad = this.squads?.[this.team[fouler]];
+    if (!member || !squad) return;
+    this.box?.foul(member);
+    squad.fouls += 1;
+    if (member.line.pf >= FOUL_OUT && !member.fouledOut) {
+      member.fouledOut = true;
+      this.pushEvent('6 fautes', fouler, fouler);
+    }
+  }
+
+  /** Perte de balle : notée, et comptée au box score (perte au joueur, interception au voleur). */
+  private addTurnover(turnover: Turnover): void {
+    this.turnovers.push(turnover);
+    const loser = this.memberOf(turnover.loser);
+    if (!loser || !this.box) return;
+    this.box.turnover(loser, turnover.thief !== null ? this.memberOf(turnover.thief) : null);
+  }
+
+  /** Tir lâché par `shooter` : tentative au box score. */
+  private boxAttempt(shooter: number, value: ShotValue): void {
+    const member = this.memberOf(shooter);
+    if (member) this.box?.attempt(member, value);
+  }
+
+  /** Tir raté (sauf un lancer suivi d'un autre) : le prochain qui prend le ballon a le rebond. */
+  private boxMissed(shot: ShotRecord): void {
+    if (!this.box || shot.demo || (shot.kind === 'lancer' && this.full?.phase === 'lancers')) return;
+    this.box.missed(this.team[shot.shooter]);
+  }
+
+  /**
+   * Passeur décisif possible d'un tir de `shooter` lâché maintenant : il a reçu la passe il y a
+   * moins de 4 s, et son équipe n'a pas perdu le ballon depuis.
+   */
+  private assistFor(shooter: number): number | null {
+    const pass = this.lastPass;
+    const possession = this.possession;
+    if (!pass || pass.receiver !== shooter || !possession || possession.team !== this.team[shooter]) return null;
+    if (possession.since > pass.time || this.clock - pass.time > BOX_RULES.assistWindow) return null;
+    return pass.passer;
+  }
+
   // --- Terrain entier : arbitrage ---
 
   /**
@@ -652,9 +836,11 @@ export class MatchWorld {
       return false;
     }
     if (full.phase === 'fin-periode' || full.phase === 'fin-match') {
+      if (this.matchOver) return true;
       full.pause -= dt;
       if (full.pause <= 0) {
-        if (full.phase === 'fin-match') this.startMatch();
+        if (full.phase === 'fin-match' && this.autoRestart) this.startMatch();
+        else if (full.phase === 'fin-match') this.matchOver = true;
         else this.startPeriod(full.period + 1);
       }
       return true;
@@ -669,7 +855,9 @@ export class MatchWorld {
   private runClock(dt: number): boolean {
     const full = this.full!;
     if (full.buzzerPending || full.waitTouch) return false;
+    const before = full.clock;
     full.clock = Math.max(0, full.clock - dt);
+    this.playTime(before - full.clock);
     if (full.clock > 0) return false;
     const shot = this.lastShot;
     const inAir = full.phase === 'jeu' && full.shotUp && shot !== null && !shot.demo && shot.live === null && !shot.scored && this.holder === null;
@@ -785,7 +973,7 @@ export class MatchWorld {
    */
   private callViolation(kind: ViolationKind, team: number, player: number, at: { x: number; y: number }): void {
     const full = this.full!;
-    if (kind !== 'entre-deux') this.turnovers.push({ kind, thief: null, loser: player, time: this.clock });
+    if (kind !== 'entre-deux') this.addTurnover({ kind, thief: null, loser: player, time: this.clock });
     this.pushEvent(kind, player, player);
     full.lastViolation = { kind, team, player, time: this.clock };
     const spot = kind === '5 secondes' && full.inbound ? full.inbound.spot : outSpot(this.court, at, kind !== 'sortie');
@@ -806,6 +994,8 @@ export class MatchWorld {
     full.inbound = inbound;
     full.shotUp = false;
     full.shotClockPending = false;
+    this.box?.dead();
+    this.subsDue = true;
   }
 
   /**
@@ -845,6 +1035,7 @@ export class MatchWorld {
     this.cooldown = 0;
     this.passCooldown = 0;
     this.ball = { pos: this.handPosition(body), vel: { x: 0, y: 0, z: 0 } };
+    this.box?.dead();
     full.phase = 'remise';
     full.lastTouch = { player: thrower, team: inbound.team };
     full.frontcourt = false;
@@ -861,12 +1052,14 @@ export class MatchWorld {
     const full = this.full!;
     const fresh = newFullCourt(full.quarterMinutes);
     Object.assign(full, fresh);
+    this.matchOver = false;
     this.points = [0, 0];
     this.lastPass = null;
     this.lastSteal = null;
     this.lastIntercept = null;
     this.lastShot = null;
     this.turnovers.length = 0;
+    this.setupSquads();
     this.setupTip();
   }
 
@@ -876,6 +1069,10 @@ export class MatchWorld {
     full.period = period;
     full.clock = periodLength(full.quarterMinutes, period);
     full.buzzerPending = false;
+    // Fautes d'équipe remises à 0 ; le coach peut changer son cinq avant la reprise.
+    for (const squad of this.squads ?? []) squad.fouls = 0;
+    this.box?.startPeriod();
+    this.coachSubs(null);
     if (period > FULL_COURT.periods) {
       this.setupTip();
       return;
@@ -902,6 +1099,9 @@ export class MatchWorld {
     full.freeThrows = null;
     full.waitTouch = false;
     full.clock = 0;
+    this.box?.dead();
+    // Repos entre les périodes (plus long à la mi-temps), comme en simulation.
+    for (const squad of this.squads ?? []) for (const m of squad.members) m.energy = restEnergy(m.energy, full.period);
     if (full.period >= FULL_COURT.periods && this.points[0] !== this.points[1]) {
       full.phase = 'fin-match';
       full.winner = this.points[0] > this.points[1] ? 0 : 1;
@@ -932,6 +1132,7 @@ export class MatchWorld {
     this.basketPending = false;
     this.dribbleTime = 0;
     this.cooldown = 0;
+    this.box?.dead();
   }
 
   /**
@@ -1116,6 +1317,14 @@ export class MatchWorld {
       // Faute de main : ballon mort, puis le porteur reprend en haut de la raquette.
       attempt.result = 'faute';
       this.pushEvent('faute-main', i, h);
+      this.foulCommitted(i);
+      // En bonus (plus de 5 fautes d'équipe dans la période) : 2 lancers au porteur au lieu de la remise.
+      const squad = this.squads?.[this.team[i]];
+      if (this.full && squad && inBonus(squad.fouls)) {
+        this.pushEvent('bonus', i, h);
+        this.freeThrowsFor(h, 2);
+        return;
+      }
       this.startRestart(h);
       return;
     }
@@ -1165,7 +1374,7 @@ export class MatchWorld {
         if (!this.fullGain(j)) return;
         this.holder = j;
         this.dribbleTime = 0;
-        this.turnovers.push({ kind: 'interception', thief: j, loser: pass.passer, time: this.clock });
+        this.addTurnover({ kind: 'interception', thief: j, loser: pass.passer, time: this.clock });
         this.pushEvent('interception', j, pass.passer);
         this.takeBall(j);
         return;
@@ -1217,7 +1426,13 @@ export class MatchWorld {
       return;
     }
     const team = this.team[shot.shooter];
-    this.points[team] += shot.kind === 'lancer' ? 1 : shot.three ? 3 : 2;
+    const value: ShotValue = shot.kind === 'lancer' ? 1 : shot.three ? 3 : 2;
+    this.points[team] += value;
+    const scorer = this.memberOf(shot.shooter);
+    if (scorer && this.box) {
+      const assist = this.play?.record === shot ? this.play.assist : null;
+      this.box.scored(team, scorer, value, assist !== null ? this.memberOf(assist) : null);
+    }
     if (rules && rules.winner === null && this.points[team] >= rules.target) {
       rules.winner = team;
       rules.pause = HALF_COURT.endPause;
@@ -1269,6 +1484,7 @@ export class MatchWorld {
       const foul: FoulCall = { defender: i, probability: foulProbability(ctx), called: foulOnContact(ctx, this.rng) };
       play.foul = foul;
       if (play.record) play.record.foul = foul;
+      if (foul.called) this.foulCommitted(i);
       if (foul.called && play.missed) this.foulOnMiss(play);
       // Contact après que le ballon est entré (dunk) : panier et un lancer.
       else if (foul.called && this.full && play.record?.scored && !play.record.invalid) this.awardFreeThrows(play, 1);
@@ -1312,6 +1528,9 @@ export class MatchWorld {
         this.touchBall(i);
         this.swat(body, shooter);
         shot.live = false;
+        const blocker = this.memberOf(i);
+        if (blocker) this.box?.block(blocker);
+        this.boxMissed(shot);
         this.markMissed(shot);
       }
       return;
@@ -1335,18 +1554,34 @@ export class MatchWorld {
 
   /** Faute sur un tir raté : lancers francs sur terrain entier (3 sur un tir à 3 pts, sinon 2), ballon au tireur au demi-terrain. */
   private foulOnMiss(play: Play): void {
-    if (this.full) this.awardFreeThrows(play, play.record?.three ? 3 : 2);
-    else this.startRestart(play.shooter);
+    if (!this.full) {
+      this.startRestart(play.shooter);
+      return;
+    }
+    const record = play.record;
+    if (this.awardFreeThrows(play, record?.three ? 3 : 2) && record) {
+      // Tir raté avec faute : il ne compte pas comme tenté, et un contre sifflé faute n'est pas un contre.
+      const shooter = this.memberOf(record.shooter);
+      if (shooter) this.box?.cancelAttempt(shooter, record.three ? 3 : 2);
+      const blocker = record.block?.success ? this.memberOf(record.block.blocker) : null;
+      if (blocker) blocker.line.blk = Math.max(0, blocker.line.blk - 1);
+    }
   }
 
-  /** Lancers francs pour le tireur fautif : ballon mort, puis la série (chrono arrêté). */
-  private awardFreeThrows(play: Play, total: number): void {
+  /** Lancers francs pour le tireur fautif (une seule série par tir). Renvoie vrai s'ils sont accordés. */
+  private awardFreeThrows(play: Play, total: number): boolean {
+    if (play.freeThrows) return false;
+    if (!this.freeThrowsFor(play.shooter, total)) return false;
+    play.freeThrows = true;
+    return true;
+  }
+
+  /** Lancers francs pour `shooter` : ballon mort, puis la série (chrono arrêté). Renvoie vrai s'ils sont accordés. */
+  private freeThrowsFor(shooter: number, total: number): boolean {
     const full = this.full;
     // Contact sifflé juste après un panier (dunk) : le lancer remplace la remise prévue.
     const afterBasket = full?.phase === 'mort' && full.inbound?.afterBasket === true;
-    if (!full || play.freeThrows || (full.phase !== 'jeu' && full.phase !== 'remise' && !afterBasket)) return;
-    play.freeThrows = true;
-    const shooter = play.shooter;
+    if (!full || (full.phase !== 'jeu' && full.phase !== 'remise' && !afterBasket)) return false;
     if (this.shot) this.endShot();
     this.play = null;
     this.pass = null;
@@ -1358,6 +1593,9 @@ export class MatchWorld {
     full.shotUp = false;
     full.shotClockPending = false;
     full.freeThrows = { shooter, team: this.team[shooter], total, taken: 0, made: 0, aim: null, flying: false, pause: 0 };
+    this.box?.dead();
+    this.subsDue = true;
+    return true;
   }
 
   /**
@@ -1453,6 +1691,7 @@ export class MatchWorld {
       goaltend: false,
     };
     full.lastTouch = { player: ft.shooter, team: ft.team };
+    this.boxAttempt(ft.shooter, 1);
     if (ft.taken < ft.total) {
       ft.flying = true;
       return;
@@ -1644,7 +1883,7 @@ export class MatchWorld {
     const zone: ShotZone = kind === 'jump' ? shotZone(this.court, hoop, takeoff.x, takeoff.y) : 'rim';
     const contest = dunkCtx?.defender ? { distance: dunkCtx.defender.distance, facing: dunkCtx.defender.facing } : null;
     this.shot = { shooter, kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, contest, dunk };
-    this.play = { shooter, record: null, foul: null, watching: true, missed: false, freeThrows: false };
+    this.play = { shooter, record: null, foul: null, watching: true, missed: false, freeThrows: false, assist: null };
   }
 
   /** L'équipe du tireur avait-elle ressorti le ballon (toujours vrai hors demi-terrain) ? */
@@ -1695,6 +1934,8 @@ export class MatchWorld {
       if (this.play) this.play.record = this.lastShot;
       this.rimTouched = false;
       this.shotReleased(shot.shooter);
+      if (this.play) this.play.assist = this.assistFor(shot.shooter);
+      this.boxAttempt(shot.shooter, 2);
     }
     if (!body.airborne) this.endShot();
   }
@@ -1755,6 +1996,8 @@ export class MatchWorld {
     if (this.play) this.play.record = this.lastShot;
     if (body.airborne) this.followThrough[shot.shooter] = true;
     this.shotReleased(shot.shooter);
+    if (this.play) this.play.assist = this.assistFor(shot.shooter);
+    this.boxAttempt(shot.shooter, zone === 'three' ? 3 : 2);
   }
 
   /**
@@ -1810,12 +2053,15 @@ export class MatchWorld {
     // jugé là.
     if (shot && shot.live === null) {
       shot.live = shot.scored;
-      if (!shot.scored) this.markMissed(shot);
+      if (!shot.scored) {
+        this.boxMissed(shot);
+        this.markMissed(shot);
+      }
     }
     // Ballon arraché ou dévié ramassé par la défense : perte de balle.
     if (this.loose) {
       if (this.team[picker] !== this.team[this.loose.from]) {
-        this.turnovers.push({ kind: this.loose.kind, thief: this.loose.by, loser: this.loose.from, time: this.clock });
+        this.addTurnover({ kind: this.loose.kind, thief: this.loose.by, loser: this.loose.from, time: this.clock });
       }
       this.loose = null;
     }
@@ -1824,6 +2070,9 @@ export class MatchWorld {
     this.basketPending = false;
     if (this.rules?.restart) return;
     if (!this.fullGain(picker)) return;
+    // Premier à prendre le ballon après un tir raté : rebond.
+    const member = this.memberOf(picker);
+    if (member) this.box?.gained(this.team[picker], member);
     this.takeBall(picker, afterBasket);
   }
 

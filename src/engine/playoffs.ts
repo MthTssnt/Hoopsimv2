@@ -1,5 +1,5 @@
 import { refreshRotations } from './coach';
-import { playGame } from './simSeason';
+import { nextUserGame, playGame, recordPlayedGame, type DayOptions } from './simSeason';
 import { buildStandings, gameScore } from './stats';
 import type { Conference, Game, GameResult, League, PlayoffSeries, Playoffs, Team } from './types';
 
@@ -63,8 +63,44 @@ export interface PlayoffDaySummary {
   championId: string | null;
 }
 
+/** Prochain match d'une série : id, équipe qui reçoit (2-2-1-1-1) et équipe qui se déplace. */
+function nextSeriesGame(league: League, series: PlayoffSeries): Game {
+  const { high, low } = seriesTeams(league, series);
+  const gameIndex = series.games.length;
+  const highHosts = HOME_PATTERN[Math.min(gameIndex, HOME_PATTERN.length - 1)];
+  return {
+    id: `${series.id}-g${gameIndex}`,
+    day: league.day,
+    homeId: highHosts ? high.id : low.id,
+    awayId: highHosts ? low.id : high.id,
+    played: false,
+    homeScore: null,
+    awayScore: null,
+    seriesId: series.id,
+  };
+}
+
+/** Le match de ton équipe ce soir (playoffs), sans rien modifier ; null si elle ne joue pas. */
+export function userPlayoffGame(league: League): Game | null {
+  const playoffs = league.playoffs;
+  if (!playoffs || playoffs.championId) return null;
+  for (const series of playoffs.rounds[playoffs.round] ?? []) {
+    if (seriesIsOver(series)) continue;
+    if (series.highSeed.teamId === league.userTeamId || series.lowSeed.teamId === league.userTeamId) return nextSeriesGame(league, series);
+  }
+  return null;
+}
+
+/** Le match de ton équipe aujourd'hui (saison régulière) ou ce soir (playoffs), ou null. */
+export function userGameToday(league: League): Game | null {
+  if (league.phase === 'playoffs') return userPlayoffGame(league);
+  if (league.phase !== 'regular') return null;
+  const next = nextUserGame(league);
+  return next && next.day === league.day ? next : null;
+}
+
 /** Joue une rencontre dans chaque série encore en cours, puis fait avancer le tableau. */
-export function advancePlayoffs(league: League, options: { watchUserGame?: boolean } = {}): PlayoffDaySummary {
+export function advancePlayoffs(league: League, options: DayOptions = {}): PlayoffDaySummary {
   const playoffs = league.playoffs;
   if (!playoffs) throw new Error('Les playoffs ne sont pas lancés');
 
@@ -80,25 +116,16 @@ export function advancePlayoffs(league: League, options: { watchUserGame?: boole
   for (const series of current) {
     if (seriesIsOver(series)) continue;
     const { high, low } = seriesTeams(league, series);
-    const gameIndex = series.games.length;
-    const highHosts = HOME_PATTERN[Math.min(gameIndex, HOME_PATTERN.length - 1)];
-    const homeTeam = highHosts ? high : low;
-    const awayTeam = highHosts ? low : high;
-
-    const game: Game = {
-      id: `${series.id}-g${gameIndex}`,
-      day: league.day,
-      homeId: homeTeam.id,
-      awayId: awayTeam.id,
-      played: false,
-      homeScore: null,
-      awayScore: null,
-      seriesId: series.id,
-    };
+    const game = nextSeriesGame(league, series);
+    const homeTeam = game.homeId === high.id ? high : low;
+    const awayTeam = homeTeam === high ? low : high;
     league.schedule.push(game);
 
     const isUserGame = homeTeam.id === league.userTeamId || awayTeam.id === league.userTeamId;
-    const result = playGame(league, game, { collectPbp: isUserGame && (options.watchUserGame ?? true) });
+    const result =
+      isUserGame && options.played
+        ? recordPlayedGame(league, game, options.played)
+        : playGame(league, game, { collectPbp: isUserGame && (options.watchUserGame ?? true) });
 
     const homeWon = result.homeScore > result.awayScore;
     const winnerId = homeWon ? homeTeam.id : awayTeam.id;

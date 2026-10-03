@@ -62,9 +62,18 @@ export interface TeamLook {
 /** Écart minimal entre maillot et couleur secondaire pour que numéros et noms restent lisibles. */
 const MIN_TRIM_CONTRAST = 130;
 
-export function teamLook(team: TeamSeed): TeamLook {
-  const primary = teamRamp(team.colors.primary);
-  let secondary = teamRamp(team.colors.secondary);
+/** Maillot et couleur secondaire d'une tenue (couleurs hex de l'équipe ou de la palette). */
+export interface Kit {
+  primary: string | number;
+  secondary: string | number;
+}
+
+/** Écart minimal entre les maillots des deux équipes (comme `contrastingTeam`). */
+export const JERSEY_CLASH = 140;
+
+export function teamLook(team: TeamSeed, kit: Kit = team.colors): TeamLook {
+  const primary = teamRamp(kit.primary);
+  let secondary = teamRamp(kit.secondary);
   // Secondaire trop proche du maillot (ex. orange et brun) : craie, ou encre sur un maillot clair.
   if (colorDistance(secondary[1], primary[1]) < MIN_TRIM_CONTRAST) {
     secondary = teamRamp(luminance(primary[1]) > 160 ? PALETTE.ink : PALETTE.chalk);
@@ -76,6 +85,25 @@ export function teamLook(team: TeamSeed): TeamLook {
     name: team.name,
     city: team.city,
   };
+}
+
+/**
+ * Tenue de l'équipe qui se déplace : ses couleurs ; si son maillot est trop proche de celui de
+ * l'équipe qui reçoit, sa couleur secondaire, sinon un maillot clair (ou foncé) à ses couleurs.
+ */
+export function awayLook(home: TeamSeed, away: TeamSeed): TeamLook {
+  const homeJersey = teamLook(home).primary[1];
+  const kits: Kit[] = [
+    away.colors,
+    { primary: away.colors.secondary, secondary: away.colors.primary },
+    { primary: PALETTE.chalk, secondary: away.colors.primary },
+    { primary: PALETTE.ink, secondary: away.colors.primary },
+  ];
+  for (const kit of kits) {
+    const look = teamLook(away, kit);
+    if (colorDistance(look.primary[1], homeJersey) > JERSEY_CLASH) return look;
+  }
+  return teamLook(away, kits[2]);
 }
 
 /** Luminance perçue (0-255). */
@@ -94,7 +122,7 @@ export function contrastingTeam(home: TeamSeed, teams: readonly TeamSeed[], star
   const homeColor = teamRamp(home.colors.primary)[1];
   for (let i = 0; i < teams.length; i++) {
     const candidate = teams[(start + i) % teams.length];
-    if (candidate.id !== home.id && colorDistance(teamRamp(candidate.colors.primary)[1], homeColor) > 140) return candidate;
+    if (candidate.id !== home.id && colorDistance(teamRamp(candidate.colors.primary)[1], homeColor) > JERSEY_CLASH) return candidate;
   }
   return teams.find((t) => t.id !== home.id) ?? home;
 }

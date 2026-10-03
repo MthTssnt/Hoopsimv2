@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import {
   ROUND_NAMES,
   daysUntilNextUserGame,
   nextUserGame,
   seasonDays,
+  userGameToday,
   type League,
   type Team,
 } from '../engine';
 import { store, useStore } from '../state/store';
 import { GameViewer } from './GameViewer';
+import { MatchButtons } from './MatchButtons';
 import { NewGameScreen } from './NewGameScreen';
 import { PlayerModal } from './PlayerModal';
 import { TeamModal } from './TeamModal';
@@ -21,6 +23,9 @@ import { ScheduleTab } from './tabs/ScheduleTab';
 import { StandingsTab } from './tabs/StandingsTab';
 import { StatsTab } from './tabs/StatsTab';
 import { UiContext } from './uiContext';
+
+// Le match jouable (Phaser), chargé à part : seulement quand tu joues ou regardes un match.
+const PhaserGame = lazy(() => import('../match/PhaserGame'));
 
 const TABS = [
   { id: 'accueil', label: 'Accueil' },
@@ -51,6 +56,15 @@ export default function App() {
 
   const league = state.league;
   const userTeam = league.teams.find((t) => t.id === league.userTeamId)!;
+
+  // Match de ton équipe en cours (jouer ou regarder) : plein écran, à la place du GM.
+  if (state.liveMatch) {
+    return (
+      <Suspense fallback={<div className="muted" style={{ padding: 24 }}>Chargement du match…</div>}>
+        <PhaserGame match={state.liveMatch} onMatchOver={(played) => store.finishLiveMatch(played)} />
+      </Suspense>
+    );
+  }
 
   return (
     <UiContext.Provider value={ui}>
@@ -90,6 +104,7 @@ function TopBar({ league, userTeam }: { league: League; userTeam: Team }) {
   const [confirmNew, setConfirmNew] = useState(false);
   const upcoming = nextUserGame(league);
   const isGameDay = upcoming?.day === league.day;
+  const today = userGameToday(league);
   const daysOff = daysUntilNextUserGame(league);
   const totalDays = seasonDays(league);
 
@@ -119,9 +134,7 @@ function TopBar({ league, userTeam }: { league: League; userTeam: Team }) {
           {league.phase === 'regular' && (
             <>
               {isGameDay ? (
-                <button className="btn btn-primary" onClick={() => store.advanceOneDay(true)}>
-                  Jouer le match
-                </button>
+                <MatchButtons />
               ) : (
                 <button className="btn btn-primary" onClick={() => store.simulateToNextUserGame()}>
                   {daysOff <= 1 ? 'Passer au match suivant' : `Avancer de ${daysOff} jours`}
@@ -141,9 +154,13 @@ function TopBar({ league, userTeam }: { league: League; userTeam: Team }) {
 
           {league.phase === 'playoffs' && (
             <>
-              <button className="btn btn-primary" onClick={() => store.advanceOneDay(true)}>
-                {isGameDay ? 'Jouer le match' : 'Soirée suivante'}
-              </button>
+              {today ? (
+                <MatchButtons />
+              ) : (
+                <button className="btn btn-primary" onClick={() => store.advanceOneDay(true)}>
+                  Soirée suivante
+                </button>
+              )}
               <button className="btn" onClick={() => store.simulateRestOfSeason()}>
                 Simuler les playoffs
               </button>

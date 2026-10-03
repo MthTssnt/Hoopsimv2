@@ -527,9 +527,10 @@ export class PlayerAi {
     return this.moveTo(world, this.target, true);
   }
 
-  /** Duels recalculés à chaque nouvelle possession. */
+  /** Duels recalculés à chaque nouvelle possession et à chaque changement de cinq. */
   private refreshMark(world: MatchWorld): void {
-    const key = world.possession ? `${world.possession.team}:${world.possession.since}` : '';
+    // Après un changement de cinq, les duels par poste sont refaits.
+    const key = world.possession ? `${world.possession.team}:${world.possession.since}:${world.lineupVersion}` : '';
     if (key === this.marksKey && this.mark !== null) return;
     this.marksKey = key;
     this.mark = assignMarks(world).get(this.index) ?? null;
