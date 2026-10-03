@@ -284,6 +284,13 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   au-dessus du panier. Comme NON VALABLE, ils montent de 4 px et s'effacent en 1,5 s, et
   s'empilent quand plusieurs visent le même joueur ou le panier (au-dessus de l'annonce du
   tir).
+- **Vols et passes coupées (incrément 9)** : « VOL » (`yellow`) au-dessus du défenseur qui
+  arrache le ballon, « INTERCEPTION » (`yellow`) au-dessus de celui qui attrape une passe,
+  « DÉVIÉE » (`silver`) au-dessus de celui qui la touche sans la garder ; une faute de main
+  reprend « FAUTE » (`red`) au-dessus du défenseur. Mêmes règles que les messages du 7b (montée,
+  effacement en 1,5 s, pile). Pose provisoire du geste de vol : l'image 14 (bras tendu) pendant
+  0,25 s, de profil, tournée vers le ballon ; une vraie pose viendra en phase 3. Le déséquilibre
+  après un vol raté (0,3 s) n'a pas encore de pose : il se voit au ralentissement.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?

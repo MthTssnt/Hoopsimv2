@@ -4,6 +4,7 @@ import type { Tendencies } from '../../engine/types';
 import { isThreePoint, type Court, type Hoop } from '../physics/court';
 import type { MatchWorld, WorldInput } from '../world/MatchWorld';
 import { attacksRim } from '../world/shooting';
+import { ballExposure, measureSteal, STEAL_FLOW } from '../world/steal';
 
 /** IA des joueurs non contrôlés, du 1 contre 1 au 3 contre 3 (valeurs provisoires, réglables à l'œil). */
 export const AI_TUNING = {
@@ -67,6 +68,26 @@ export const AI_TUNING = {
   helpPull: 0.15,
   /** Joueurs de chaque équipe qui vont au rebond (les plus proches du ballon). */
   rebounders: 2,
+  // --- Vols et lignes de passe (incrément 9) ---
+  /** Défenseur du porteur : il juge un vol à ce rythme (s), main bien placée et ballon exposé au moins à ce point. */
+  stealEvery: 0.3,
+  stealMinReach: 0.7,
+  stealMinExposed: 0.5,
+  /** Chance de tenter le vol à chaque décision, de la pire stat d'interception (25) à la meilleure (99). */
+  stealChance: [0.12, 0.45],
+  /** Pour tenter, il s'avance vers le ballon s'il est à moins de (m) de sa main, pendant au plus (s). */
+  stealStep: 0.5,
+  stealStepTime: 0.35,
+  /** Trop près : il ne tend la main que si le rapprochement reste sous (m), de QI 25 à 99 (un QI élevé est prudent). */
+  stealRisk: [0.12, 0],
+  /** Loin du ballon : part du chemin vers la ligne de passe (ballon → son joueur), de la pire stat d'interception à la meilleure. */
+  deny: [0.1, 0.4],
+  /** Où il coupe la ligne : à cette part du trajet ballon → son joueur. */
+  denyAt: 0.75,
+  /** Passeur : il évite une ligne où un adversaire passe à moins de (m), de QI 25 à 99 (un QI bas prend des risques). */
+  laneClear: [0.25, 0.7],
+  /** La ligne se juge à partir de (m) devant le passeur : son défenseur collé à côté ne la bouche pas. */
+  laneFrom: 0.9,
 } as const;
 
 export type AiPlan = 'rim' | 'mid' | 'three';
@@ -187,6 +208,15 @@ export function spacingSpots(world: MatchWorld, team: number): Map<number, Point
   return result;
 }
 
+/** Distance d'un point au segment [a, b] (à l'horizontale). */
+export function segmentDistance(p: Point, a: Point, b: Point): number {
+  const vx = b.x - a.x;
+  const vy = b.y - a.y;
+  const len2 = vx * vx + vy * vy;
+  const t = len2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / len2));
+  return Math.hypot(p.x - (a.x + vx * t), p.y - (a.y + vy * t));
+}
+
 /** Place d'aide loin du ballon : entre son joueur et le cercle, attirée vers le ballon. */
 export function helpSpot(mark: Point, hoop: Hoop, ball: Point): Point {
   const x = mark.x + (hoop.rim.x - mark.x) * AI_TUNING.helpDepth;
@@ -226,6 +256,9 @@ export class PlayerAi {
   private decideClock = 0;
   /** Au moment de tirer serré : passe ou tir déjà décidé pour cette possession. */
   private tightShotDecided = false;
+  /** Prochaine décision de vol, et fin du pas en avant d'un vol tenté (temps de l'IA, s). */
+  private nextStealAt = 0;
+  private reachInUntil = -1;
   /** Prochaine coupe possible, et fin de la coupe en cours (temps de l'IA, s). */
   private nextCutAt: number;
   private cutUntil = -1;
@@ -359,6 +392,11 @@ export class PlayerAi {
       if (beyondArc && !isThreePoint(world.court, hoop, p.x, p.y)) continue;
       const open = openness(world, j);
       if (open <= AI_TUNING.openRange) continue;
+      // Ligne de passe occupée : un adversaire trop près de la trajectoire (un QI bas s'y risque).
+      const clear = lerp(AI_TUNING.laneClear[0], AI_TUNING.laneClear[1], ratingT(world.players[this.index].athlete.attrs.iq));
+      const from = Math.min(AI_TUNING.laneFrom, d) / (d || 1);
+      const start = { x: me.x + (p.x - me.x) * from, y: me.y + (p.y - me.y) * from };
+      if (world.opponentsOf(this.index).some((o) => segmentDistance(world.players[o].pos, start, p) < clear)) continue;
       const score = beyondArc ? -d : open;
       if (score > bestScore) {
         bestScore = score;
@@ -514,7 +552,51 @@ export class PlayerAi {
     if (gap < AI_TUNING.guardGap && Math.hypot(now.x - this.target.x, now.y - this.target.y) < gap) {
       this.target = { x: body.pos.x, y: body.pos.y };
     }
-    return this.moveTo(world, this.target);
+    return this.trySteal(world, other) ?? this.moveTo(world, this.target);
+  }
+
+  /**
+   * Vol sur le porteur : à son rythme (stat d'interception), sur un ballon exposé à un pas, il
+   * s'avance pour l'avoir à bonne distance et tend la main dès qu'il y est ; jamais trop près du
+   * corps pour un défenseur malin. Renvoie null s'il ne tente rien.
+   */
+  private trySteal(world: MatchWorld, holder: number): WorldInput | null {
+    const me = world.players[this.index];
+    if (world.holder !== holder || world.shot !== null || me.airborne || world.offBalance[this.index] > 0 || world.stealCooldown[this.index] > 0) {
+      this.reachInUntil = -1;
+      return null;
+    }
+    const a = me.athlete.attrs;
+    const h = world.players[holder].pos;
+    const ball = world.ball.pos;
+    const minGap = STEAL_FLOW.closeRange - lerp(AI_TUNING.stealRisk[0], AI_TUNING.stealRisk[1], ratingT(a.iq));
+    const m = measureSteal(me.pos, h, ball);
+    const ready = m !== null && m.reach >= AI_TUNING.stealMinReach && m.exposed >= AI_TUNING.stealMinExposed && STEAL_FLOW.closeRange - m.closeness >= minGap;
+    if (this.clock >= this.reachInUntil) {
+      if (this.clock < this.nextStealAt) return null;
+      this.nextStealAt = this.clock + AI_TUNING.stealEvery;
+      const toBall = Math.hypot(ball.x - me.pos.x, ball.y - me.pos.y);
+      if (ball.z > STEAL_FLOW.maxBallHeight || toBall > STEAL_FLOW.reachBest + AI_TUNING.stealStep) return null;
+      if (ballExposure(me.pos, h, ball) < AI_TUNING.stealMinExposed) return null;
+      if (!this.rng.chance(lerp(AI_TUNING.stealChance[0], AI_TUNING.stealChance[1], ratingT(a.steal)))) return null;
+      this.reachInUntil = this.clock + AI_TUNING.stealStepTime;
+    }
+    // Ballon à bonne distance : la main part.
+    if (ready) {
+      this.reachInUntil = -1;
+      return { x: 0, y: 0, jump: false, steal: true };
+    }
+    // Sinon un pas vers le ballon, sans venir sous `minGap` du corps du porteur.
+    const d = Math.hypot(me.pos.x - ball.x, me.pos.y - ball.y) || 1;
+    const k = (STEAL_FLOW.reachBest - 0.05) / d;
+    let target = { x: ball.x + (me.pos.x - ball.x) * k, y: ball.y + (me.pos.y - ball.y) * k };
+    const gap = Math.hypot(target.x - h.x, target.y - h.y);
+    if (gap < minGap) {
+      const s = minGap / (gap || 1);
+      target = { x: h.x + (target.x - h.x) * s, y: h.y + (target.y - h.y) * s };
+    }
+    this.target = target;
+    return this.moveTo(world, target);
   }
 
   /** Défense loin du ballon : entre son joueur (vu avec retard) et le cercle, en aidant vers le ballon. */
@@ -524,7 +606,11 @@ export class PlayerAi {
     const seen = delayedPosition(this.history, this.clock, this.reaction(world));
     const hoop = world.court.hoops.right;
     const ball = world.holder !== null ? world.players[world.holder].pos : world.ball.pos;
-    this.target = helpSpot(seen, hoop, ball);
+    const spot = helpSpot(seen, hoop, ball);
+    // Un bon intercepteur se décale vers la ligne de passe vers son joueur.
+    const deny = lerp(AI_TUNING.deny[0], AI_TUNING.deny[1], ratingT(world.players[this.index].athlete.attrs.steal));
+    const lane = { x: ball.x + (seen.x - ball.x) * AI_TUNING.denyAt, y: ball.y + (seen.y - ball.y) * AI_TUNING.denyAt };
+    this.target = { x: spot.x + (lane.x - spot.x) * deny, y: spot.y + (lane.y - spot.y) * deny };
     return this.moveTo(world, this.target);
   }
 

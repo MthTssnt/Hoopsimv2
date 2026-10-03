@@ -10,7 +10,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   right: 'Droite',
   shoot: 'Tir / Saut',
   pass: 'Passe (défense : changer de joueur)',
-  steal: 'Interception (incrément 9)',
+  steal: 'Interception (vol, ligne de passe)',
 };
 
 export interface KeyBinding {

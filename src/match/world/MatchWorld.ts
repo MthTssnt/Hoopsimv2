@@ -21,6 +21,16 @@ import type { Player } from '../../engine/types';
 import { BALL_PHYSICS, stepBall, type BallState } from '../physics/ball';
 import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
 import { solveDunk } from '../physics/dunk';
+import {
+  interceptionChances,
+  reachFoulProbability,
+  resolveInterception,
+  resolveReachFoul,
+  resolveSteal,
+  stealProbability,
+  type InterceptOutcome,
+} from '../../engine/steal';
+import { deflectVelocity, laneContact, measureSteal, pokeVelocity, STEAL_FLOW, type StealMeasure } from './steal';
 import { armContact, bodyContact, DEFENSE_FLOW, inGoaltendZone, swatVelocity } from './defense';
 import { solveShot } from '../physics/shotSolver';
 import { defaultTarget, HALF_COURT, isCleared, mustClearAfterPickup, newHalfCourt, startPositions, type HalfCourtState } from './halfCourt';
@@ -164,6 +174,46 @@ export interface WorldInput extends MoveInput {
   release?: boolean;
   /** Passe demandée à ce pas (en défense, pour le joueur contrôlé : changer de défenseur). */
   pass?: boolean;
+  /** Interception (A) : geste de vol sur le porteur, ou bras allongé dans une ligne de passe. */
+  steal?: boolean;
+}
+
+/** Geste de vol sur le porteur : mesures de `match/`, probabilités du moteur, issue. */
+export interface StealAttempt extends StealMeasure {
+  thief: number;
+  handler: number;
+  foulProbability: number;
+  stealProbability: number;
+  result: 'vol' | 'faute' | 'raté';
+  time: number;
+}
+
+/** Passe passée à portée d'un défenseur : contact mesuré, chances du moteur, issue. */
+export interface InterceptAttempt {
+  defender: number;
+  passer: number;
+  contact: number;
+  touch: number;
+  catchShare: number;
+  outcome: InterceptOutcome;
+  time: number;
+}
+
+/** Perte de balle : vol, interception, ou ballon dévié ramassé par la défense. */
+export interface Turnover {
+  kind: 'vol' | 'interception' | 'déviation';
+  thief: number;
+  loser: number;
+  time: number;
+}
+
+/** Événement à annoncer (messages du rendu), numéroté dans l'ordre. */
+export interface MatchEvent {
+  id: number;
+  kind: 'vol' | 'faute-main' | 'interception' | 'déviation';
+  by: number;
+  of: number;
+  time: number;
 }
 
 /** Passe en vol : seuls les coéquipiers du passeur peuvent l'attraper (l'interception arrive au 9). */
@@ -175,6 +225,8 @@ export interface PassFlight {
   target: Vec3;
   time: number;
   elapsed: number;
+  /** Défenseurs déjà évalués sur cette passe (une seule chance chacun). */
+  checked: number[];
 }
 
 const IDLE_INPUT: WorldInput = { x: 0, y: 0, jump: false };
@@ -211,11 +263,27 @@ export class MatchWorld {
   shotSettings: ShotSettings;
   /** Le joueur a lâché le ballon pendant son saut en cours (pose de la retombée du tir). */
   readonly followThrough: boolean[] = [];
+  /** Par joueur : bras allongé (A) jusqu'à cet instant (s), délai avant un nouveau geste, déséquilibre restant (s). */
+  readonly reachUntil: number[] = [];
+  readonly stealCooldown: number[] = [];
+  readonly offBalance: number[] = [];
+  /** Dernière tentative de vol, dernière passe à portée d'un défenseur (debug). */
+  lastSteal: StealAttempt | null = null;
+  lastIntercept: InterceptAttempt | null = null;
+  /** Pertes de balle de la partie (pour le box score). */
+  readonly turnovers: Turnover[] = [];
+  /** Derniers événements à annoncer, et leur nombre total. */
+  readonly events: MatchEvent[] = [];
+  eventCount = 0;
   private readonly rng: Rng;
   private dribbleTime = 0;
   private cooldown = 0;
   private play: Play | null = null;
   private passCooldown = 0;
+  /** Panier marqué, ballon pas encore ramassé depuis : le prochain qui le ramasse doit ressortir. */
+  private basketPending = false;
+  /** Ballon arraché ou dévié : qui l'a touché, à qui il appartenait (perte si la défense le ramasse). */
+  private loose: { by: number; from: number; kind: 'vol' | 'déviation' } | null = null;
   /** Le tir en vol a déjà touché le cercle ou la planche (plus de goaltending possible). */
   private rimTouched = false;
 
@@ -367,6 +435,10 @@ export class MatchWorld {
     let list: readonly WorldInput[] = Array.isArray(inputs) ? inputs : [inputs as WorldInput];
     this.clock += dt;
     this.passCooldown = Math.max(0, this.passCooldown - dt);
+    for (let i = 0; i < this.players.length; i++) {
+      this.stealCooldown[i] = Math.max(0, (this.stealCooldown[i] ?? 0) - dt);
+      this.offBalance[i] = Math.max(0, (this.offBalance[i] ?? 0) - dt);
+    }
     if (this.rules && this.rules.winner !== null) {
       this.rules.pause -= dt;
       if (this.rules.pause <= 0) this.resetGame();
@@ -381,7 +453,10 @@ export class MatchWorld {
     }
 
     this.players.forEach((body, i) => {
-      const input = list[i] ?? IDLE_INPUT;
+      const raw = list[i] ?? IDLE_INPUT;
+      // Déséquilibré après un vol raté : il avance au ralenti et ne peut pas sauter.
+      const k = STEAL_FLOW.offBalanceSpeed;
+      const input = this.offBalance[i] > 0 ? { ...raw, x: raw.x * k, y: raw.y * k, jump: false } : raw;
       // Appui sur Tir avec le ballon, au sol : le tir commence avec le saut. Dunk d'abord (s'il
       // est possible), sinon layup en attaquant le cercle, sinon tir en suspension.
       const startsShot = input.jump && this.holder === i && !body.airborne && this.shot === null;
@@ -413,6 +488,10 @@ export class MatchWorld {
     const mine = list[this.controlled];
     const defending = this.holder === null ? this.pass === null || this.pass.team !== this.userTeam : this.team[this.holder] !== this.userTeam;
     if (mine?.pass && defending && this.rules && !this.rules.restart) this.switchDefender();
+    // Interception (A) : geste de vol sur le porteur, ou bras allongé dans une ligne de passe.
+    if (this.rules && !this.rules.restart) {
+      for (let i = 0; i < this.players.length; i++) if (list[i]?.steal) this.stealGesture(i);
+    }
 
     if (this.shot) {
       const shooter = this.players[this.shot.shooter];
@@ -453,14 +532,119 @@ export class MatchWorld {
       if (!shot.scored && (event.type === 'floor' || ((event.type === 'rim' || event.type === 'board') && !shot.wanted))) this.markMissed(shot);
     }
     if (!this.rules?.restart) {
+      if (this.pass) this.checkPassLane();
       this.checkTouch();
       this.tryPickup();
     }
   }
 
+  /**
+   * Geste de vol (A) d'un joueur au sol : le bras s'allonge un instant (ligne de passe). Sur le
+   * porteur adverse, `match/` mesure la main (distance, exposition du ballon, rapprochement) et
+   * `engine/` tranche : faute de main d'abord, puis vol. Raté ou dans le vide : déséquilibre.
+   */
+  private stealGesture(i: number): void {
+    const body = this.players[i];
+    if (this.stealCooldown[i] > 0 || body.airborne || this.holder === i) return;
+    this.stealCooldown[i] = STEAL_FLOW.cooldown;
+    this.reachUntil[i] = this.clock + STEAL_FLOW.gesture;
+    const h = this.holder;
+    if (h === null || this.team[h] === this.team[i]) return;
+    const handler = this.players[h];
+    const m = measureSteal(body.pos, handler.pos, this.ball.pos);
+    if (!m) {
+      this.offBalance[i] = STEAL_FLOW.offBalance;
+      return;
+    }
+    const foulCtx = { thief: body.athlete, handler: handler.athlete, closeness: m.closeness, across: 1 - m.exposed };
+    const stealCtx = { thief: body.athlete, handler: handler.athlete, reach: m.reach, exposed: m.exposed };
+    const attempt: StealAttempt = {
+      ...m,
+      thief: i,
+      handler: h,
+      foulProbability: reachFoulProbability(foulCtx),
+      stealProbability: stealProbability(stealCtx),
+      result: 'raté',
+      time: this.clock,
+    };
+    this.lastSteal = attempt;
+    if (resolveReachFoul(foulCtx, this.rng)) {
+      // Faute de main : ballon mort, puis le porteur reprend en haut de la raquette.
+      attempt.result = 'faute';
+      this.pushEvent('faute-main', i, h);
+      this.startRestart(h);
+      return;
+    }
+    if (resolveSteal(stealCtx, this.rng)) {
+      // Ballon arraché : il part vers le défenseur, libre.
+      attempt.result = 'vol';
+      this.ball = { pos: { ...this.ball.pos }, vel: pokeVelocity(handler.pos, body.pos, this.rng) };
+      this.holder = null;
+      this.cooldown = STEAL_FLOW.pokeCooldown;
+      this.loose = { by: i, from: h, kind: 'vol' };
+      this.pushEvent('vol', i, h);
+      return;
+    }
+    this.offBalance[i] = STEAL_FLOW.offBalance;
+  }
+
+  /**
+   * Passe en vol : chaque adversaire du passeur a une chance, au premier contact (corps et mains
+   * au sol, bras allongé avec A, bras levé en l'air). `engine/` tranche : attrapée, déviée ou ratée.
+   */
+  private checkPassLane(): void {
+    const pass = this.pass!;
+    const ball = this.ball;
+    for (const j of this.membersOf(1 - pass.team)) {
+      if (pass.checked.includes(j)) continue;
+      const body = this.players[j];
+      const reaching = this.clock < (this.reachUntil[j] ?? 0);
+      // En l'air : le corps qui monte dans la ligne, ou le bras levé sur une passe haute.
+      const contact =
+        laneContact(body.pos, reach(body.athlete), ball.pos, reaching, ball.vel) ??
+        (body.airborne ? armContact(body.pos, body.athlete.heightCm, reach(body.athlete), ball.pos) : null);
+      if (!contact) continue;
+      pass.checked.push(j);
+      const ctx = {
+        defender: body.athlete,
+        passer: this.players[pass.passer].athlete,
+        contact: contact.quality,
+        passSpeed: Math.hypot(ball.vel.x, ball.vel.y),
+        reaching,
+        airborne: body.airborne,
+      };
+      const outcome = resolveInterception(ctx, this.rng);
+      this.lastIntercept = { defender: j, passer: pass.passer, contact: contact.quality, ...interceptionChances(ctx), outcome, time: this.clock };
+      if (outcome === 'catch') {
+        this.pass = null;
+        this.holder = j;
+        this.dribbleTime = 0;
+        this.turnovers.push({ kind: 'interception', thief: j, loser: pass.passer, time: this.clock });
+        this.pushEvent('interception', j, pass.passer);
+        this.takeBall(j);
+        return;
+      }
+      if (outcome === 'deflect') {
+        this.ball.vel = deflectVelocity(this.rng);
+        this.pass = null;
+        this.cooldown = STEAL_FLOW.deflectCooldown;
+        this.loose = { by: j, from: pass.passer, kind: 'déviation' };
+        this.pushEvent('déviation', j, pass.passer);
+        return;
+      }
+    }
+  }
+
+  private pushEvent(kind: MatchEvent['kind'], by: number, of: number): void {
+    this.eventCount++;
+    this.events.push({ id: this.eventCount, kind, by, of, time: this.clock });
+    if (this.events.length > 20) this.events.shift();
+  }
+
   /** Panier marqué : points au tireur, ou panier non valable (pas ressorti) et ballon à l'autre. */
   private onBasket(shot: ShotRecord): void {
     shot.scored = true;
+    this.basketPending = true;
     if (shot.demo) return;
     const rules = this.rules;
     if (rules && !shot.cleared) {
@@ -472,6 +656,7 @@ export class MatchWorld {
         return;
       }
       // Ballon à l'adversaire le plus proche, dont l'équipe doit ressortir.
+      this.basketPending = false;
       const otherTeam = 1 - this.team[shot.shooter];
       const other = this.nearestOf(otherTeam, this.ball.pos) ?? 0;
       this.holder = other;
@@ -610,9 +795,16 @@ export class MatchWorld {
     };
     att.forEach((i, k) => place(i, attackers[k % attackers.length], 1));
     def.forEach((i, k) => place(i, defenders[k % defenders.length], -1));
+    this.players.forEach((_, i) => {
+      this.reachUntil[i] = 0;
+      this.stealCooldown[i] = 0;
+      this.offBalance[i] = 0;
+    });
     this.endShot();
     this.play = null;
     this.pass = null;
+    this.loose = null;
+    this.basketPending = false;
     this.dribbleTime = 0;
     this.cooldown = 0;
   }
@@ -658,7 +850,8 @@ export class MatchWorld {
     this.cooldown = 0;
     this.passCooldown = PASS_FLOW.cooldown;
     body.facing = dx >= 0 ? 1 : -1;
-    this.pass = { passer, receiver, team: this.team[passer], target: aim, time, elapsed: 0 };
+    this.pass = { passer, receiver, team: this.team[passer], target: aim, time, elapsed: 0, checked: [] };
+    this.loose = null;
     if (this.team[passer] === this.userTeam) this.controlled = receiver;
   }
 
@@ -882,7 +1075,6 @@ export class MatchWorld {
     if (picker === null) return;
     this.holder = picker;
     this.dribbleTime = 0;
-    const pickerTeam = this.team[picker];
     if (pass) {
       // Passe attrapée : la ressortie due ne change pas (une réception derrière l'arc la lève).
       this.lastPass = { passer: pass.passer, receiver: picker, time: this.clock };
@@ -898,10 +1090,28 @@ export class MatchWorld {
       shot.live = shot.scored;
       if (!shot.scored) this.markMissed(shot);
     }
+    // Ballon arraché ou dévié ramassé par la défense : perte de balle.
+    if (this.loose) {
+      if (this.team[picker] !== this.team[this.loose.from]) {
+        this.turnovers.push({ kind: this.loose.kind, thief: this.loose.by, loser: this.loose.from, time: this.clock });
+      }
+      this.loose = null;
+    }
+    // Après un panier (le ballon n'a pas été repris depuis), celui qui ramasse doit ressortir.
+    const afterBasket = this.basketPending;
+    this.basketPending = false;
     if (this.rules?.restart) return;
+    this.takeBall(picker, afterBasket);
+  }
+
+  /**
+   * Le joueur `picker` prend le ballon (ramassage ou interception) : ressortie due à son équipe
+   * après un panier ou un ballon pris à l'adversaire, possession, contrôle.
+   */
+  private takeBall(picker: number, afterBasket = false): void {
+    const pickerTeam = this.team[picker];
     if (this.rules) {
       const rules = this.rules;
-      const afterBasket = !!shot && shot.scored && !shot.invalid;
       // Après un panier ou un ballon pris à l'adversaire : l'équipe doit ressortir. Une
       // obligation déjà due le reste (rebond offensif sur un tir qui n'avait pas ressorti).
       if (mustClearAfterPickup(pickerTeam, rules.lastTeam, afterBasket)) rules.mustClear[pickerTeam] = true;
@@ -921,6 +1131,9 @@ export class MatchWorld {
     rules.lastTeam = 0;
     this.controlled = 0;
     this.lastPass = null;
+    this.lastSteal = null;
+    this.lastIntercept = null;
+    this.turnovers.length = 0;
     this.possession = { team: 0, since: this.clock };
     rules.winner = null;
     rules.pause = 0;
