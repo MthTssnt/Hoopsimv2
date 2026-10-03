@@ -26,7 +26,7 @@ import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
 import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
-import { MatchWorld, WORLD_DT, type FoulCall, type ShotRecord, type WorldInput } from '../world/MatchWorld';
+import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
 import { defaultTarget } from '../world/halfCourt';
 import { HUD_KEYS, type HudBanner, type HudDebug } from './HudScene';
 
@@ -70,7 +70,7 @@ const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: '
 /** Annonce au-dessus d'une tête (note du lâcher, DUNK) : durée (ms) et montée (px). */
 const TAG_MS = 900;
 const TAG_RISE = 4;
-/** Messages de la défense et des règles (CONTRE, FAUTE, GOALTENDING, NON VALABLE), plus longs à lire. */
+/** Messages de la défense et des règles (CONTRE, FAUTE, VOL, INTERCEPTION…), plus longs à lire. */
 const CALLOUT_MS = 1500;
 /** Dunk réussi : secousse de caméra en pixels entiers (le pixel-art reste net). */
 const SHAKE = { ms: 150, px: 2 } as const;
@@ -81,6 +81,13 @@ const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 const USER_TEAM = 0;
 /** Pose de passe (bras du lâcher) tenue après une passe (ms). */
 const PASS_POSE_MS = 150;
+/** Messages des vols et des passes coupées, au-dessus du défenseur (la faute de main reprend FAUTE). */
+const EVENT_TAGS: Record<MatchEvent['kind'], string> = {
+  vol: 'tag-steal',
+  interception: 'tag-intercept',
+  'déviation': 'tag-deflect',
+  'faute-main': 'tag-foul',
+};
 /** Clignotement de l'anneau quand le contrôle change de joueur (ms). */
 const RING_BLINK_MS = 240;
 
@@ -176,6 +183,7 @@ export class MatchScene extends Phaser.Scene {
   private pendingJump = false;
   private pendingRelease = false;
   private pendingPass = false;
+  private pendingSteal = false;
   /** Joueur contrôlé à l'image précédente (carte, anneau qui clignote au changement). */
   private shownControlled = -1;
   private ringBlink = 0;
@@ -205,6 +213,8 @@ export class MatchScene extends Phaser.Scene {
   private seenBlock: ShotRecord | null = null;
   private seenFoul: FoulCall | null = null;
   private seenGoaltend: ShotRecord | null = null;
+  /** Dernier événement du monde déjà annoncé (vol, faute de main, interception, déviation). */
+  private seenEvent = 0;
   private callouts: Callout[] = [];
   private shakeMs = 0;
   private scoreKey = '';
@@ -246,6 +256,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.ais = [];
     this.pendingPass = false;
+    this.pendingSteal = false;
     this.shownControlled = -1;
     this.ringBlink = 0;
     this.passPose = [];
@@ -270,6 +281,7 @@ export class MatchScene extends Phaser.Scene {
     this.seenBlock = null;
     this.seenFoul = null;
     this.seenGoaltend = null;
+    this.seenEvent = 0;
     this.callouts = [];
     this.shakeMs = 0;
     this.scoreKey = '';
@@ -296,6 +308,9 @@ export class MatchScene extends Phaser.Scene {
     createTag(this, 'tag-block', 'CONTRE', PALETTE.yellow);
     createTag(this, 'tag-foul', 'FAUTE', PALETTE.red);
     createTag(this, 'tag-goaltend', 'GOALTENDING', PALETTE.yellow);
+    createTag(this, 'tag-steal', 'VOL', PALETTE.yellow);
+    createTag(this, 'tag-intercept', 'INTERCEPTION', PALETTE.yellow);
+    createTag(this, 'tag-deflect', 'DÉVIÉE', PALETTE.silver);
     this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home));
     this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away));
 
@@ -366,10 +381,18 @@ export class MatchScene extends Phaser.Scene {
     if (input.shootPressed) this.pendingJump = true;
     if (input.shootReleased) this.pendingRelease = true;
     if (input.passPressed) this.pendingPass = true;
+    if (input.stealPressed) this.pendingSteal = true;
     this.accumulator += Math.min(deltaMs, 100) / 1000;
     while (this.accumulator >= WORLD_DT) {
       this.accumulator -= WORLD_DT;
-      const mine: WorldInput = { x: input.moveX, y: input.moveY, jump: this.pendingJump, release: this.pendingRelease, pass: this.pendingPass };
+      const mine: WorldInput = {
+        x: input.moveX,
+        y: input.moveY,
+        jump: this.pendingJump,
+        release: this.pendingRelease,
+        pass: this.pendingPass,
+        steal: this.pendingSteal,
+      };
       // Toutes les IA réfléchissent (leurs souvenirs restent à jour) ; le joueur contrôlé suit tes touches.
       const inputs = this.ais.map((ai, i) => {
         const thought = ai.think(this.world, WORLD_DT);
@@ -379,6 +402,7 @@ export class MatchScene extends Phaser.Scene {
       this.pendingJump = false;
       this.pendingRelease = false;
       this.pendingPass = false;
+      this.pendingSteal = false;
     }
     this.renderWorld(deltaMs);
   }
@@ -579,10 +603,13 @@ export class MatchScene extends Phaser.Scene {
       shot: shot?.kind ?? null,
       followThrough: this.world.followThrough[index] ?? false,
     });
-    // Passe (pose provisoire) : le bras du lâcher, de profil, au sol.
-    if (this.passPose[index] > 0 && !body.airborne && this.world.holder !== index) {
+    // Passe et geste de vol (poses provisoires) : le bras du lâcher, de profil, au sol ; le vol
+    // tend le bras vers le ballon.
+    const reaching = this.world.clock < (this.world.reachUntil[index] ?? 0);
+    if ((this.passPose[index] > 0 || reaching) && !body.airborne && this.world.holder !== index) {
       view.heading = 'side';
-      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing: body.facing < 0 ? 'left' : 'right', heading: 'side' };
+      const toward = reaching ? Math.sign(this.world.ball.pos.x - pos.x) || body.facing : body.facing;
+      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing: toward < 0 ? 'left' : 'right', heading: 'side' };
     }
     this.applySprite(view.sprite, view.member.baked, state);
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
@@ -680,8 +707,9 @@ export class MatchScene extends Phaser.Scene {
 
   /**
    * « RESSORS » au-dessus de toi tant que tu dois ressortir. Messages des règles : CONTRE au-dessus
-   * du contreur (avec la secousse du dunk), FAUTE au-dessus du défenseur, NON VALABLE et
-   * GOALTENDING au-dessus du panier.
+   * du contreur (avec la secousse du dunk), FAUTE au-dessus du défenseur (sur un tir ou une faute
+   * de main), VOL, INTERCEPTION et DÉVIÉE au-dessus du défenseur, NON VALABLE et GOALTENDING
+   * au-dessus du panier.
    */
   private updateCallouts(deltaMs: number) {
     const rules = this.world.rules;
@@ -714,6 +742,12 @@ export class MatchScene extends Phaser.Scene {
     if (foul?.called && foul !== this.seenFoul) {
       this.seenFoul = foul;
       this.addCallout('tag-foul', foul.defender);
+    }
+    // Vols, fautes de main et passes coupées : au-dessus du défenseur.
+    for (const event of this.world.events) {
+      if (event.id <= this.seenEvent) continue;
+      this.seenEvent = event.id;
+      this.addCallout(EVENT_TAGS[event.kind], event.by);
     }
 
     // Chaque message monte de 4 px et s'efface ; ceux d'un même endroit s'empilent.
@@ -868,6 +902,29 @@ export class MatchScene extends Phaser.Scene {
     return last ? `Dernière passe : ${name(last.passer)} → ${name(last.receiver)} (il y a ${(this.world.clock - last.time).toFixed(1)} s)` : null;
   }
 
+  /** Dernier geste de vol et dernière passe passée à portée d'un défenseur. */
+  private defenseLines(): string[] {
+    const name = (i: number) => this.world.players[i].athlete.lastName;
+    const pct = (p: number) => `${Math.round(p * 100)} %`;
+    const lines: string[] = [];
+    const steal = this.world.lastSteal;
+    if (steal) {
+      const result = steal.result === 'vol' ? 'VOL' : steal.result === 'faute' ? 'FAUTE' : 'raté';
+      lines.push(
+        `Vol ${name(steal.thief)} sur ${name(steal.handler)} · main à ${steal.distance.toFixed(2)} m (qualité ${steal.reach.toFixed(2)}) · ` +
+          `exposé ${steal.exposed.toFixed(2)} · trop près ${steal.closeness.toFixed(2)} m · faute ${pct(steal.foulProbability)} · vol ${pct(steal.stealProbability)} · ${result}`,
+      );
+    }
+    const lane = this.world.lastIntercept;
+    if (lane) {
+      const outcome = lane.outcome === 'catch' ? 'INTERCEPTÉE' : lane.outcome === 'deflect' ? 'DÉVIÉE' : 'passe';
+      lines.push(
+        `Ligne : ${name(lane.defender)} sur la passe de ${name(lane.passer)} · contact ${lane.contact.toFixed(2)} · touche ${pct(lane.touch)} · attrape ${pct(lane.catchShare)} · ${outcome}`,
+      );
+    }
+    return lines;
+  }
+
   /** Texte de debug (affiché avec H) : publié seulement quand il change. */
   private updateDebug() {
     const controlled = this.world.controlled;
@@ -889,7 +946,7 @@ export class MatchScene extends Phaser.Scene {
       `${s.level.toUpperCase()} · tir ${s.shotMode === 'timing' ? 'Timing' : 'Real Player %'} ${SPEED_LABELS[s.shotSpeed]}` +
         ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
     ];
-    const keys = this.perTeam === 1 ? '1-3 joueur et vis-à-vis' : `${k.pass.label} passe (défense : changer)`;
+    const keys = `${this.perTeam === 1 ? '1-3 joueur et vis-à-vis' : `${k.pass.label} passe (défense : changer)`} · ${k.steal.label} interception`;
     const bottom = [
       `${k.up.label}${k.left.label}${k.down.label}${k.right.label} bouger · ${k.shoot.label} tir (maintenir, relâcher au sommet) · ${keys} · R/M tir démo · C caméra · F plein écran · H aide`,
     ];
@@ -897,6 +954,7 @@ export class MatchScene extends Phaser.Scene {
     if (shot) bottom.unshift(this.shotLine(shot));
     const pass = this.passLine();
     if (pass) bottom.unshift(pass);
+    bottom.unshift(...this.defenseLines());
     const active = this.world.shot;
     if (active) {
       const what = active.kind === 'dunk' ? 'dunk' : active.kind === 'layup' ? 'layup' : 'tir';

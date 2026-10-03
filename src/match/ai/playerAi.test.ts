@@ -34,6 +34,11 @@ function play(world: MatchWorld, ai: PlayerAi, seconds: number, user: WorldInput
   return t;
 }
 
+/** Le défenseur `index` ne tente jamais de vol (tests de placement). */
+function noSteals(world: MatchWorld, index: number): void {
+  world.stealCooldown[index] = Infinity;
+}
+
 const angleBetween = (ax: number, ay: number, bx: number, by: number) =>
   (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / (Math.hypot(ax, ay) * Math.hypot(bx, by))))) * 180) / Math.PI;
 
@@ -84,6 +89,7 @@ describe('IA en défense', () => {
     const ai = new PlayerAi(1, new Rng(1));
     place(world, 0, { x: rim.x - 7, y: rim.y + 2 });
     place(world, 1, { x: rim.x - 3, y: rim.y - 4 });
+    noSteals(world, 1);
     play(world, ai, 2);
     const user = world.players[0].pos;
     const me = world.players[1].pos;
@@ -115,12 +121,43 @@ describe('IA en défense', () => {
   });
 });
 
+describe('IA en défense : vol sur le porteur', () => {
+  /** Toi, arrêté avec le ballon tourné vers le cercle ; l'IA en défense devant toi. Combien de gestes de vol ? */
+  function steals(seed: number, glued: boolean): number {
+    const world = oneOnOne(seed);
+    const ai = new PlayerAi(1, new Rng(seed));
+    place(world, 0, { x: rim.x - 7, y: rim.y });
+    place(world, 1, { x: rim.x - 7 + AI_TUNING.guardGap, y: rim.y });
+    world.players[0].facing = 1;
+    let gestures = 0;
+    for (let t = 0; t < 3; t += WORLD_DT) {
+      if (glued) place(world, 1, { x: world.players[0].pos.x + 0.6, y: world.players[0].pos.y });
+      const input = ai.think(world, WORLD_DT);
+      if (input.steal) gestures++;
+      world.step(WORLD_DT, [IDLE, input]);
+      if (world.holder !== 0) break;
+    }
+    return gestures;
+  }
+
+  it('tend la main sur un ballon exposé à sa portée', () => {
+    let tried = 0;
+    for (let seed = 1; seed <= 10; seed++) if (steals(seed, false) > 0) tried++;
+    expect(tried).toBeGreaterThanOrEqual(6);
+  });
+
+  it('jamais collé au porteur (trop près, ce serait faute)', () => {
+    for (let seed = 1; seed <= 10; seed++) expect(steals(seed, true)).toBe(0);
+  });
+});
+
 describe('IA en défense : tireur en l’air', () => {
   it('reste plantée au lieu de rentrer dans le tireur', () => {
     const world = oneOnOne();
     const ai = new PlayerAi(1, new Rng(1));
     place(world, 0, { x: rim.x - 6, y: rim.y });
     place(world, 1, { x: rim.x - 4, y: rim.y });
+    noSteals(world, 1);
     play(world, ai, 0.5);
     // Tu files vers le cercle et tu sautes : une fois le saut vu, elle ne bouge plus vers toi.
     world.step(WORLD_DT, [{ x: 1, y: 0, jump: true }, ai.think(world, WORLD_DT)]);
@@ -279,7 +316,34 @@ describe('IA d’équipe (3 contre 3)', () => {
     expect(passed).toBeGreaterThanOrEqual(5);
   });
 
-  it('partie de contrôle IA contre IA (3 min) : passes, deux équipes qui marquent, personne ne garde le ballon', () => {
+  it('le passeur évite une ligne occupée', () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const w = threeOnThree(seed);
+      const ais = brains(w, seed);
+      // Même situation que ci-dessus, mais un adversaire se tient au milieu de la ligne vers l'aile.
+      w.holder = 3;
+      w.possession = { team: 1, since: w.clock };
+      w.rules!.mustClear = [false, false];
+      w.rules!.lastTeam = 1;
+      w.players[3].pos = { x: rim.x - 7, y: rim.y, z: 0 };
+      w.players[0].pos = { x: rim.x - 6.25, y: rim.y, z: 0 };
+      w.players[4].pos = { x: rim.x - 5, y: rim.y + 5.5, z: 0 };
+      w.players[5].pos = { x: 3, y: 7, z: 0 };
+      w.players[2].pos = { x: 3, y: 12, z: 0 };
+      for (let t = 0; t < 2.5; t += WORLD_DT) {
+        const h = w.players[3].pos;
+        const m = w.players[4].pos;
+        w.players[1].pos = { x: (h.x + m.x) / 2, y: (h.y + m.y) / 2, z: 0 };
+        w.step(WORLD_DT, ais.map((ai, i) => (i === 0 ? IDLE : ai.think(w, WORLD_DT))));
+        expect(w.pass?.receiver ?? null).not.toBe(4);
+        const d = Math.hypot(rim.x - w.players[3].pos.x, rim.y - w.players[3].pos.y) || 1;
+        w.players[0].pos = { x: w.players[3].pos.x + ((rim.x - w.players[3].pos.x) / d) * 0.75, y: w.players[3].pos.y + ((rim.y - w.players[3].pos.y) / d) * 0.75, z: 0 };
+        if (w.shot?.shooter === 3 || w.holder !== 3) break;
+      }
+    }
+  });
+
+  it('partie de contrôle IA contre IA (3 min) : passes, pertes de balle, deux équipes qui marquent, personne ne garde le ballon', () => {
     const w = threeOnThree(5);
     const ais = brains(w, 5);
     const shots = new Set<ShotRecord>();
@@ -292,8 +356,14 @@ describe('IA d’équipe (3 contre 3)', () => {
     let maxHold = 0;
     let marked = 0;
     let markChecks = 0;
+    let turnovers = 0;
+    let seenTurnovers = 0;
     for (let t = 0; t < 180; t += WORLD_DT) {
       w.step(WORLD_DT, ais.map((ai) => ai.think(w, WORLD_DT)));
+      // Pertes de balle (la liste repart de zéro à chaque nouvelle partie).
+      if (w.turnovers.length < seenTurnovers) seenTurnovers = 0;
+      turnovers += w.turnovers.length - seenTurnovers;
+      seenTurnovers = w.turnovers.length;
       if (w.lastShot && !w.lastShot.demo) shots.add(w.lastShot);
       if (w.pass && w.pass !== passRef) {
         passes++;
@@ -328,6 +398,9 @@ describe('IA d’équipe (3 contre 3)', () => {
     expect(passes / possessions).toBeGreaterThan(0.8);
     expect(maxHold).toBeLessThan(6);
     expect(marked / markChecks).toBeGreaterThan(0.9);
+    // Vols et interceptions : il y en a, sans que la moitié des possessions finissent en perte.
+    expect(turnovers).toBeGreaterThan(0);
+    expect(turnovers / possessions).toBeLessThan(0.25);
     const pct = made.length / all.length;
     expect(pct).toBeGreaterThan(0.25);
     expect(pct).toBeLessThan(0.65);

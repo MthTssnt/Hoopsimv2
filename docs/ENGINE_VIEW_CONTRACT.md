@@ -98,9 +98,10 @@
 | `shot.ts` | `gaugeTime`, `greenWindow`, `timingGrade`, `shotProbability` / `resolveShot` |
 | `shot.ts` | `canDunk`, `dunkProbability` / `resolveDunk` |
 | `shot.ts` | `blockProbability` / `resolveBlock`, `foulProbability` / `foulOnContact` |
+| `steal.ts` | `stealProbability` / `resolveSteal`, `reachFoulProbability` / `resolveReachFoul`, `interceptionChances` / `resolveInterception` |
 
-Les valeurs réglables sont dans `SHOT_TUNING`, `DUNK_TUNING`, `BLOCK_TUNING`, `FOUL_TUNING` et
-`ATHLETICS_TUNING`. La base par zone (`SHOT_MODEL`) est partagée avec la simulation.
+Les valeurs réglables sont dans `SHOT_TUNING`, `DUNK_TUNING`, `BLOCK_TUNING`, `FOUL_TUNING`,
+`STEAL_TUNING` et `ATHLETICS_TUNING`. La base par zone (`SHOT_MODEL`) est partagée avec la simulation.
 
 ## Ordre de résolution d'un tir
 Le résultat du tir est tiré **au lâcher**. Pendant le vol, les événements suivants sont
@@ -170,14 +171,13 @@ Décisions de Matheo, appliquées par `match/world/` ; `engine/` tranche avec `r
   des tirs (surtout des layups), fautes 6-11 %, goaltending ~0, réussite globale 43-49 %.
 
 ## Passes et demi-terrain en équipes (incrément 8, `world/passing.ts`, `world/halfCourt.ts`)
-- **Passe** : entièrement côté `match/` en 8 (le moteur n'interviendra qu'au 9, pour
-  l'interception) :
+- **Passe** : côté `match/` (le moteur ne tranche que l'interception, voir l'incrément 9) :
   - cible : le coéquipier le plus aligné avec la direction tenue (sinon l'orientation), dans un
     cône de 60° ; à angle voisin, le plus proche ;
   - trajectoire tendue de poitrine à poitrine, en avance sur la course du receveur (avance
     plafonnée à 3 m), à 10-14 m/s selon la stat de passe ;
-  - seuls les coéquipiers du passeur peuvent l'attraper ; ratée, elle devient un ballon libre au
-    premier rebond (ou après 1,6 s) ;
+  - seuls les coéquipiers du passeur l'attrapent normalement (un adversaire ne la prend que par
+    une interception) ; ratée, elle devient un ballon libre au premier rebond (ou après 1,6 s) ;
   - au sol seulement, 0,25 s entre deux passes ; la dernière passe attrapée est notée pour la
     future passe décisive.
 - **Demi-terrain en équipes** : points, ressortie et vainqueur par équipe ; une obligation de
@@ -187,6 +187,47 @@ Décisions de Matheo, appliquées par `match/world/` ; `engine/` tranche avec `r
 - **Contrôle** (décision de Matheo) : il suit le ballon dans ton équipe (au lâcher d'une passe,
   au ramassage) ; quand l'adversaire prend le ballon, tu prends ton défenseur le plus proche du
   ballon ; en défense, Passe te fait changer pour lui.
+
+## Vol, faute de main et interception (incrément 9, `world/steal.ts`, `engine/steal.ts`)
+`match/` mesure, `engine/` tranche (`STEAL_TUNING`). Ces fonctions n'entrent pas dans
+`simGame` : la simulation garde son propre modèle de pertes de balle, et `calibrate` est
+identique.
+- **Geste de vol** (A, `STEAL_FLOW`) : un défenseur au sol, sans le ballon ; 0,6 s entre deux
+  gestes ; le bras reste allongé 0,25 s (pour la ligne de passe). Sur le porteur adverse,
+  `match/` mesure à l'appui :
+  - la main : distance horizontale du défenseur au ballon tenu ; qualité 1 jusqu'à 0,8 m, 0 à
+    1,05 m ; au-delà, ou ballon levé au-dessus de 1,6 m, le geste est dans le vide ;
+  - l'exposition du ballon : 1 s'il est tourné vers le défenseur, 0 s'il est caché derrière le
+    porteur (cosinus de l'angle porteur → ballon, porteur → défenseur, ramené à 0-1) ;
+  - le rapprochement : mètres sous 0,85 m entre les corps.
+- **Ordre** : faute de main d'abord (`resolveReachFoul` : rapprochement, main à travers le corps
+  = 1 − exposition, QI du voleur, force des deux), puis vol (`resolveSteal` : stat
+  d'interception du voleur contre le dribble du porteur, qualité de la main, exposition).
+  - Faute : ballon mort 1 s, puis le porteur reprend en haut de la raquette (remise du 7b).
+  - Vol : le ballon part du porteur vers le défenseur (2,5-4 m/s, ±30°, seedé), libre.
+  - Raté ou dans le vide : déséquilibre de 0,3 s (entrées de déplacement ×0,3, pas de saut).
+- **Ligne de passe** : pendant le vol d'une passe, chaque adversaire du passeur est évalué une
+  seule fois, au premier contact :
+  - au sol : le ballon passe à moins de 0,55 m de son corps (0,85 m bras allongé avec A), entre
+    0,35 m au-dessus de ses pieds et sa main levée ; la qualité du contact se mesure au point de
+    passage le plus proche (1 en plein sur lui, 0 au bord) ;
+  - en l'air : la même mesure depuis ses pieds, ou le bras levé du contre (`armContact`) ;
+  - `resolveInterception` reçoit la qualité, la vitesse de la passe, A appuyé, en l'air ou non,
+    et renvoie : attrapée (le défenseur a le ballon, son équipe doit ressortir), déviée (le
+    ballon repart à 2-4 m/s dans une direction seedée, libre) ou ratée (la passe continue).
+- **Pertes de balle** (`world.turnovers`) : type (vol, interception, déviation), voleur, joueur
+  qui perd, instant. Un ballon arraché ou dévié n'est une perte que si la défense le ramasse.
+  Le box score de l'incrément 12 lira ces lignes.
+- **IA** :
+  - le défenseur du porteur, à son rythme (stat d'interception), sur un ballon exposé à un pas,
+    s'avance pour l'avoir à bonne distance et tend la main dès qu'il y est ; un QI élevé ne la
+    tend jamais trop près du corps ;
+  - loin du ballon, les défenseurs se décalent vers la ligne de passe vers leur joueur (plus
+    pour les bons intercepteurs) ;
+  - le passeur évite une ligne où un adversaire passe à moins de 0,25-0,7 m de la trajectoire
+    (selon son QI), jugée à partir de 0,9 m devant lui.
+- **Mesures en partie IA contre IA** (3 contre 3, 10 min, 3 graines) : pertes de balle sur
+  4-10 % des possessions (surtout des passes coupées), 17-25 gestes de vol, 0-2 fautes de main.
 
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate

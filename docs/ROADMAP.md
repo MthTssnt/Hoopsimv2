@@ -31,7 +31,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 ## Phase 2 — Vrai match 🔄
 - ✅ Décisions de Matheo (contrôle, durée 4 × 3 min, fatigue + coach auto, lancers à la jauge, règles, touches E/A, Live Sim)
 - ✅ 8. 3 contre 3 sur un panier : passes, coéquipiers IA (écartement, coupes, passes), défense d'équipe (duels, aide), changement de joueur contrôlé (`?court`, `&format=1|2|3`)
-- ⬜ 9. Interception (touche A, lignes de passe) et pertes de balle
+- ✅ 9. Interception : vol sur le porteur avec A (faute de main trop près, déséquilibre si raté), passes interceptées ou déviées dans la ligne (au sol, bras allongé avec A, en sautant), pertes de balle notées ; IA qui tente des vols, coupe les lignes et évite les lignes occupées ; messages VOL / INTERCEPTION / DÉVIÉE
 - ⬜ 10. 5 contre 5 sur terrain entier : chrono, shot clock, 8 s, retour en zone, hors-jeu, remises en jeu, entre-deux, mi-temps
 - ⬜ 11. Fautes d'équipe, bonus, 6 fautes, lancers francs à la jauge
 - ⬜ 12. Fatigue, remplacements automatiques, box score en direct, menu pause

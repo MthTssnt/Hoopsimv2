@@ -47,7 +47,7 @@
 | Passe | Passe (E par défaut) | appuyer en étant orienté vers le coéquipier visé. HoopSim : le coéquipier le plus aligné avec la direction tenue (cône de ~60°), passe tendue en avance sur sa course ; tu prends le receveur dès le lâcher |
 | Dribble / crossover | ? | ? (dribbles avancés : voir « Phases suivantes ») |
 | Dunk / layup | Tir | dunk : attaquer le cercle et appuyer sur Tir ; pas automatique, peut rater. Layup (décision de Matheo) : seulement en attaquant le cercle (en course vers lui, à moins de ~3 m), avec la jauge ; à l'arrêt près du cercle, c'est un petit tir en suspension |
-| Défense : vol | Interception (A par défaut, incrément 9) | difficile. Trop près, on pousse le joueur : faute. Le bras doit être à la bonne distance du ballon. Le plus efficace : se placer dans la ligne de passe. On peut aussi sauter pour dévier une passe, puis ramasser le ballon |
+| Défense : vol | Interception (A par défaut) | difficile. Trop près, on pousse le joueur : faute. Le bras doit être à la bonne distance du ballon. Le plus efficace : se placer dans la ligne de passe. On peut aussi sauter pour dévier une passe, puis ramasser le ballon. HoopSim : voir « Interception (incrément 9) » plus bas |
 | Défense : contre / saut | Tir (devient Saut/Contre) | sauter au bon moment face au tireur. J'ai fait plus de contres que d'interceptions |
 | Changer de joueur contrôlé | Passe (E), en défense | décision de Matheo : en attaque, le contrôle suit le ballon (receveur d'une passe, joueur qui ramasse) ; en défense, tu prends le défenseur le plus proche du ballon, et E te fait changer pour lui à tout moment (le suivant si c'est déjà toi) |
 
@@ -167,6 +167,17 @@
 - **Demi-terrain en équipes (incrément 8)** : les règles du 1 contre 1 s'appliquent par équipe
   (ressortie de l'équipe, une passe reçue derrière l'arc compte ; panier non valable → ballon à
   l'adversaire le plus proche) ; 1 contre 1 à 11, 2 contre 2 et 3 contre 3 à 21.
+- **Interception (incrément 9)** :
+  - **vol réussi** : le ballon est arraché et devient libre, poussé vers le défenseur ; il le
+    récupère le plus souvent, mais le porteur peut encore le reprendre ;
+  - **faute de main** (trop près, ou main à travers le corps) : 1 s de ballon mort, puis
+    l'équipe qui l'a subie reprend en haut de la raquette, comme après une faute sur un tir raté
+    (fautes d'équipe et bonus à l'incrément 11) ;
+  - **ligne de passe** : se placer dans la ligne donne déjà une chance d'interception ; appuyer
+    sur A quand le ballon arrive allonge le bras et l'augmente ; sauter (Espace) peut dévier une
+    passe ;
+  - **vol raté** (manqué, ou A trop loin) : le défenseur est déséquilibré ~0,3 s (il avance au
+    ralenti), ce qui laisse passer l'attaquant.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques
