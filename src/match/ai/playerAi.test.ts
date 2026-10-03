@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createNewGame } from '../../engine';
 import { Rng } from '../../engine/rng';
 import { makeCourt, type Vec3 } from '../physics/court';
+import { fullCourtRoster } from '../roster';
+import { inFrontcourt } from '../world/fullCourt';
 import { MatchWorld, WORLD_DT, type ShotRecord, type WorldInput } from '../world/MatchWorld';
 import { AI_TUNING, anticipatedPosition, assignMarks, choosePlan, delayedPosition, guardSpot, PlayerAi, reactionTime, spacingSpots, timingSd } from './playerAi';
 
@@ -419,5 +421,90 @@ describe('IA d’équipe (3 contre 3)', () => {
       return JSON.stringify({ players: w.players.map((p) => p.pos), ball: w.ball, points: w.points, holder: w.holder, controlled: w.controlled });
     };
     expect(replay()).toBe(replay());
+  });
+});
+
+describe('IA sur terrain entier (5 contre 5)', () => {
+  const league = createNewGame('bos', 31);
+  function fiveOnFive(seed: number, quarterMinutes = 1): MatchWorld {
+    const home = fullCourtRoster(league.players, league.teams[seed % 10]);
+    const away = fullCourtRoster(league.players, league.teams[(seed * 3 + 11) % league.teams.length]);
+    const w = new MatchWorld(court, home[0], { x: 10, y: 7, z: 0 }, { mode: 'timing', speed: 'normal' }, new Rng(seed));
+    w.startFullCourt(home, away, quarterMinutes);
+    return w;
+  }
+  const brains = (w: MatchWorld, seed: number) => w.players.map((_, i) => new PlayerAi(i, new Rng(seed * 100 + i)));
+
+  it('duels par poste : meneur contre meneur… pivot contre pivot', () => {
+    const w = fiveOnFive(1);
+    const marks = assignMarks(w);
+    w.lineup[0].forEach((i, k) => {
+      expect(marks.get(i)).toBe(w.lineup[1][k]);
+      expect(marks.get(w.lineup[1][k])).toBe(i);
+    });
+  });
+
+  it('entre-deux : le pivot IA bien calé gagne contre un sauteur qui ne saute pas', () => {
+    let won = 0;
+    for (let seed = 1; seed <= 10; seed++) {
+      const w = fiveOnFive(seed);
+      const ais = brains(w, seed);
+      for (let t = 0; t < 3 && w.full!.phase === 'entre-deux'; t += WORLD_DT) {
+        w.step(WORLD_DT, ais.map((ai, i) => (i === w.controlled ? IDLE : ai.think(w, WORLD_DT))));
+      }
+      if (w.full!.tipWinner === 1 && w.full!.phase === 'jeu') won++;
+    }
+    expect(won).toBeGreaterThanOrEqual(8);
+  });
+
+  it('match de contrôle IA contre IA (4 × 1 min) : il se termine, sans 8 s ni 5 s, peu de 24 s, la défense revient', () => {
+    const seed = 4;
+    const w = fiveOnFive(seed);
+    const ais = brains(w, seed);
+    const full = w.full!;
+    const shots = new Set<ShotRecord>();
+    const kinds: string[] = [];
+    let seen = 0;
+    let possessions = 0;
+    let team: number | null = null;
+    let holdStart = 0;
+    let holder: number | null = null;
+    let maxHold = 0;
+    let crossings = 0;
+    let back = 0;
+    let wasFront = false;
+    let t = 0;
+    for (; t < 600 && full.phase !== 'fin-match'; t += WORLD_DT) {
+      w.step(WORLD_DT, ais.map((ai) => ai.think(w, WORLD_DT)));
+      if (w.lastShot && !w.lastShot.demo) shots.add(w.lastShot);
+      for (const e of w.events) if (e.id > seen) kinds.push(e.kind);
+      seen = w.eventCount;
+      if (w.possession && w.possession.team !== team) {
+        team = w.possession.team;
+        possessions++;
+      }
+      if (w.holder !== holder) {
+        holder = w.holder;
+        holdStart = t;
+      }
+      if (w.holder !== null && full.phase === 'jeu') maxHold = Math.max(maxHold, t - holdStart);
+      // Quand l'attaque amène le ballon devant, les défenseurs sont déjà revenus dans leur moitié.
+      if (full.frontcourt && !wasFront && w.holder !== null) {
+        const defense = 1 - w.team[w.holder];
+        crossings++;
+        back += w.membersOf(defense).filter((i) => !inFrontcourt(court, defense, full.period, w.players[i].pos.x)).length;
+      }
+      wasFront = full.frontcourt;
+    }
+    expect(full.phase).toBe('fin-match');
+    expect(full.period).toBeGreaterThanOrEqual(4);
+    const made = [...shots].filter((s) => s.scored && !s.invalid);
+    expect(made.some((s) => w.team[s.shooter] === 0)).toBe(true);
+    expect(made.some((s) => w.team[s.shooter] === 1)).toBe(true);
+    expect(kinds.filter((k) => k === '8 secondes' || k === '5 secondes')).toHaveLength(0);
+    expect(kinds.filter((k) => k === '24 secondes').length / possessions).toBeLessThan(0.1);
+    expect(w.turnovers.length / possessions).toBeLessThan(0.25);
+    expect(maxHold).toBeLessThan(8);
+    expect(back / (crossings * 5)).toBeGreaterThan(0.8);
   });
 });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGame } from '../engine';
+import { POSITION_INDEX } from '../engine/ratings';
 import { spreadLabels } from './render/hud/labels';
-import { halfCourtRoster } from './roster';
+import { fullCourtRoster, halfCourtRoster } from './roster';
 
 const league = createNewGame('bos', 31);
 const players = Object.values(league.players);
@@ -20,6 +21,20 @@ describe('effectif du demi-terrain', () => {
     }
     expect(halfCourtRoster(players, league.teams[0].id, 2).map((p) => p.pos).some((pos) => pos === 'C' || pos === 'PF')).toBe(true);
     expect(halfCourtRoster(players, league.teams[0].id, 1)).toHaveLength(1);
+  });
+});
+
+describe('cinq majeur du terrain entier', () => {
+  it('les cinq premiers de la rotation, rangés du meneur au pivot', () => {
+    for (const team of league.teams.slice(0, 8)) {
+      const five = fullCourtRoster(league.players, team);
+      expect(five).toHaveLength(5);
+      expect(new Set(five).size).toBe(5);
+      const firstFive = team.rotation.map((id) => league.players[id]).filter((p) => p.injuryGames === 0).slice(0, 5);
+      expect(new Set(five)).toEqual(new Set(firstFive));
+      // Rangés par poste comme la simulation : en moyenne, le premier est plus petit poste que le dernier.
+      expect(POSITION_INDEX[five[0].pos]).toBeLessThanOrEqual(POSITION_INDEX[five[4].pos]);
+    }
   });
 });
 

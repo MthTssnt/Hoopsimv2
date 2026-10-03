@@ -11,7 +11,12 @@ export interface MatchSettings {
   shotSpeed: ShotSpeed;
   level: CourtLevel;
   camera: CameraMode;
+  /** Durée d'un quart-temps sur terrain entier (min de chrono réel). */
+  quarterMinutes: number;
 }
+
+/** Durées de quart-temps proposées (min). */
+export const QUARTER_MINUTES = [1, 2, 3, 5, 8, 12] as const;
 
 export const DEFAULT_SETTINGS: MatchSettings = {
   bindings: DEFAULT_BINDINGS,
@@ -19,6 +24,7 @@ export const DEFAULT_SETTINGS: MatchSettings = {
   shotSpeed: 'normal',
   level: 'pro',
   camera: 'free',
+  quarterMinutes: 3,
 };
 
 const STORAGE_KEY = 'hoopsim.match.settings.v1';
@@ -48,6 +54,7 @@ export function parseSettings(raw: string | null): MatchSettings {
     shotSpeed: pick(data.shotSpeed, ['slow', 'normal', 'fast'], DEFAULT_SETTINGS.shotSpeed),
     level: pick(data.level, ['pro', 'college'], DEFAULT_SETTINGS.level),
     camera: pick(data.camera, ['free', 'steps'], DEFAULT_SETTINGS.camera),
+    quarterMinutes: (QUARTER_MINUTES as readonly unknown[]).includes(data.quarterMinutes) ? (data.quarterMinutes as number) : DEFAULT_SETTINGS.quarterMinutes,
   };
 }
 

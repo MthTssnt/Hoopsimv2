@@ -171,6 +171,25 @@ describe('équipes au demi-terrain', () => {
     expect(world.rules!.mustClear[0]).toBe(false);
   });
 
+  it('le tir d’un joueur compte la ressortie de son équipe (pas celle de l’équipe de même numéro)', () => {
+    for (const [shooter, owed] of [
+      [4, [false, true]],
+      [1, [false, true]],
+      [1, [true, false]],
+    ] as const) {
+      const world = threeOnThree(10);
+      world.rules!.mustClear = [...owed];
+      world.holder = shooter;
+      world.possession = { team: world.team[shooter], since: world.clock };
+      place(world, shooter, { x: rim.x - 3, y: rim.y });
+      for (const i of world.opponentsOf(shooter)) place(world, i, { x: 2, y: 1 + i });
+      stepWith(world, shooter, { ...IDLE, jump: true });
+      for (let t = 0; t < 2 && world.shot; t += WORLD_DT) stepWith(world, shooter, { ...IDLE, release: world.shot.airTime >= world.players[shooter].timeToApex });
+      expect(world.lastShot?.shooter).toBe(shooter);
+      expect(world.lastShot?.cleared).toBe(!owed[world.team[shooter]]);
+    }
+  });
+
   it('une obligation due le reste sur un rebond de son équipe', () => {
     const world = threeOnThree(6);
     world.rules!.mustClear[0] = true;

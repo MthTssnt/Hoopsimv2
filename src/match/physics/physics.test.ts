@@ -103,11 +103,14 @@ describe('ballon', () => {
     expect(ball.vel.x).toBeLessThan(0);
   });
 
-  it('reste sur le terrain grâce aux murs invisibles', () => {
+  it('reste sur le terrain grâce aux murs invisibles, et signale qu’il les a touchés', () => {
     const ball: BallState = { pos: { x: 27, y: 7, z: 1 }, vel: { x: 12, y: 9, z: 2 } };
-    run(ball, 6);
+    const events = run(ball, 6);
     expect(ball.pos.x).toBeLessThanOrEqual(court.length + BALL_PHYSICS.wallMargin);
     expect(ball.pos.y).toBeLessThanOrEqual(court.width + BALL_PHYSICS.wallMargin);
+    expect(events.some((e) => e.type === 'wall')).toBe(true);
+    const inside: BallState = { pos: { x: 10, y: 7, z: 2 }, vel: { x: 1, y: 0, z: 0 } };
+    expect(run(inside, 1).some((e) => e.type === 'wall')).toBe(false);
   });
 });
 

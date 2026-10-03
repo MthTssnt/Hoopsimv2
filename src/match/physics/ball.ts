@@ -41,7 +41,9 @@ export type BallEvent =
   | { type: 'score'; hoop: HoopSide }
   | { type: 'rim'; hoop: HoopSide }
   | { type: 'board'; hoop: HoopSide }
-  | { type: 'floor'; speed: number };
+  | { type: 'floor'; speed: number }
+  /** Le ballon heurte le bord de la salle (public, panneaux) : il est sorti. */
+  | { type: 'wall' };
 
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
@@ -110,7 +112,8 @@ function collideBoard(ball: BallState, hoop: Hoop): boolean {
   return bounce(ball, nx, ny, nz, BALL_RADIUS, restitution, tangentKeep);
 }
 
-function collideWalls(ball: BallState, court: Court): void {
+/** Bords de la salle : le ballon rebondit dessus. Renvoie vrai s'il en a touché un. */
+function collideWalls(ball: BallState, court: Court): boolean {
   const m = BALL_PHYSICS.wallMargin;
   const e = BALL_PHYSICS.wallRestitution;
   const { pos, vel } = ball;
@@ -118,10 +121,12 @@ function collideWalls(ball: BallState, court: Court): void {
   const maxX = court.length + m - BALL_RADIUS;
   const minY = -m + BALL_RADIUS;
   const maxY = court.width + m - BALL_RADIUS;
-  if (pos.x < minX) [pos.x, vel.x] = [minX, Math.abs(vel.x) * e];
-  if (pos.x > maxX) [pos.x, vel.x] = [maxX, -Math.abs(vel.x) * e];
-  if (pos.y < minY) [pos.y, vel.y] = [minY, Math.abs(vel.y) * e];
-  if (pos.y > maxY) [pos.y, vel.y] = [maxY, -Math.abs(vel.y) * e];
+  let hit = false;
+  if (pos.x < minX) [pos.x, vel.x, hit] = [minX, Math.abs(vel.x) * e, true];
+  if (pos.x > maxX) [pos.x, vel.x, hit] = [maxX, -Math.abs(vel.x) * e, true];
+  if (pos.y < minY) [pos.y, vel.y, hit] = [minY, Math.abs(vel.y) * e, true];
+  if (pos.y > maxY) [pos.y, vel.y, hit] = [maxY, -Math.abs(vel.y) * e, true];
+  return hit;
 }
 
 /** Avance le ballon d'un pas fixe et renvoie ce qui s'est passé pendant ce pas. */
@@ -172,6 +177,6 @@ export function stepBall(ball: BallState, court: Court, dt: number = BALL_PHYSIC
       events.push({ type: 'floor', speed: impact });
     }
   }
-  collideWalls(ball, court);
+  if (collideWalls(ball, court)) events.push({ type: 'wall' });
   return events;
 }

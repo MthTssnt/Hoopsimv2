@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { ACTION_LABELS, ACTIONS, keyLabel, rebind, type Action } from '../input/bindings';
-import { DEFAULT_SETTINGS, type MatchSettings } from '../settings';
+import { DEFAULT_SETTINGS, QUARTER_MINUTES, type MatchSettings } from '../settings';
 
 interface Props {
   settings: MatchSettings;
@@ -123,6 +123,16 @@ export function MatchSettingsPanel({ settings, onChange, open, onOpenChange }: P
           ]}
           onPick={(v) => set('shotSpeed', v)}
         />
+      </Section>
+
+      <Section title="Durée d'un quart-temps" hint="Chrono réel, en 5 contre 5. S'applique à partir du quart-temps suivant.">
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {QUARTER_MINUTES.map((m) => (
+            <button key={m} className={`btn btn-sm${m === settings.quarterMinutes ? ' btn-primary' : ''}`} onClick={() => set('quarterMinutes', m)}>
+              {m} min
+            </button>
+          ))}
+        </div>
       </Section>
 
       <Section title="Niveau" hint="Change la ligne à 3 points et la largeur de la raquette.">

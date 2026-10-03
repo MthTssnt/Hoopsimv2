@@ -229,12 +229,84 @@ identique.
 - **Mesures en partie IA contre IA** (3 contre 3, 10 min, 3 graines) : pertes de balle sur
   4-10 % des possessions (surtout des passes coupées), 17-25 gestes de vol, 0-2 fautes de main.
 
+## Terrain entier (incrément 10, `world/fullCourt.ts`, `FULL_COURT`)
+Règles appliquées par `match/world/` (le moteur n'est pas modifié). Le demi-terrain (formats 1 à
+3) garde ses règles.
+- **Équipes** : le cinq majeur de chaque équipe, comme la simulation (les cinq premiers valides
+  de la rotation, rangés par poste par `pickLineup`). L'équipe 0 attaque à droite en première
+  mi-temps, à gauche ensuite (prolongations comprises).
+- **Phases** : entre-deux, jeu, ballon mort (pause avant une remise), remise, fin de période, fin
+  de match. Pendant le ballon mort et la remise, personne ne ramasse le ballon ; pendant les fins
+  de période, personne ne joue.
+- **Entre-deux** (début de match et prolongations) :
+  - les pivots dans le rond central, chacun du côté du panier qu'il défend, les autres autour ;
+  - le ballon est lancé du centre, son sommet 0,45 m au-dessus de la plus haute main (saut
+    compris) ;
+  - la première main en l'air qui le touche après son sommet (mesure de `armContact`) le tape vers
+    son coéquipier le plus proche ; si les deux le touchent au même pas, la main la plus haute ;
+  - toucher en montée est une violation (remise pour l'autre équipe) ;
+  - sans toucher, il est relancé ; le chrono part au toucher.
+- **Chrono** (décision de Matheo) : il tourne pendant le jeu et s'arrête à chaque ballon mort
+  (sortie, faute, violation) jusqu'à ce que la remise soit touchée sur le terrain. Après un
+  panier, il continue pendant la remise, sauf dans la dernière minute du QT4 et des
+  prolongations. Un tir lâché avant la sirène va jusqu'à son issue.
+- **Périodes** : 4 quart-temps de 3 min par défaut (réglable), prolongation de 5/12 d'un
+  quart-temps tant qu'il y a égalité. Les QT2 et QT3 commencent par une remise du perdant de
+  l'entre-deux, le QT4 du gagnant, depuis la ligne de fond de sa moitié arrière.
+- **Shot clock** :
+  - 24 s à chaque changement de possession ;
+  - 14 s après un rebond offensif qui a touché le cercle ;
+  - au moins 14 s après une faute de main ;
+  - après une sortie provoquée par la défense, l'attaque garde son temps ;
+  - il s'arrête quand un tir touche le cercle ;
+  - à 0, violation, sauf si un tir lâché avant touche ensuite le cercle ;
+  - il ne compte plus quand le chrono de jeu restant est plus court.
+- **Remises** :
+  - le joueur de l'équipe le plus proche du point de remise s'y place, hors du terrain, avec le
+    ballon ; il ne bouge pas et passe (E pour toi) ;
+  - 5 s au plus ;
+  - après un panier, derrière la ligne de fond sous ce panier, à côté du poteau ;
+  - après une sortie ou une violation, sur la ligne la plus proche (jamais derrière le panier) ;
+  - après une faute, sur la ligne de côté.
+- **Dernier toucher** : noté à la prise, à la passe, au tir, à la déviation, au contre et au
+  ballon arraché (pas au cercle).
+- **Sorties** (la ligne est dehors) :
+  - le porteur qui pose le pied sur la ligne ou dehors (au sol) ;
+  - le ballon libre qui touche le sol dehors ou le bord de la salle (événement `wall` de la
+    physique) ;
+  - un joueur qui touche le ballon en étant dehors.
+  Le ballon va à l'équipe qui ne l'a pas touché en dernier.
+- **Violations** : 8 s pour passer la ligne médiane (ballon tenu ou en passe) ; retour en zone
+  (le porteur qui revient dans sa moitié arrière, ou une prise dans sa moitié arrière d'un ballon
+  que son équipe a touché en dernier ; une touche de la défense l'excuse, un tir aussi) ; 24 s ;
+  5 s. Chacune est une perte de balle (`turnovers`, sans voleur), annoncée au-dessus du fautif.
+- **Fautes, en attendant les lancers francs du 11** : faute de main ou faute sur un tir raté →
+  ballon mort, puis remise de côté pour l'équipe qui l'a subie ; tir marqué avec faute → le panier
+  compte, puis la remise après panier.
+- **IA** :
+  - duels par poste ;
+  - montée de balle par le milieu : un intérieur la donne à un arrière, le porteur passe en avant
+    s'il traîne ou s'il est serré, et attaque le cercle en contre-attaque ;
+  - placements à 5 (pivot au poste bas côté ballon, les autres autour de l'arc) ;
+  - tir au plus tard quand il reste ~6 s au shot clock ;
+  - remise après 0,5-1,5 s au plus démarqué (au moins couvert après 3,5 s), le receveur venant
+    de côté ;
+  - retour en défense (on attend son joueur à 9 m de son cercle au plus), défenseur du porteur à
+    3 m tant qu'il est dans sa moitié arrière ;
+  - au tir de son équipe, les deux arrières se replient ;
+  - à l'entre-deux, le pivot saute avec une erreur selon sa détente et son QI.
+- **Mesures en IA contre IA** (match de 4 × 3 min, 3 graines) :
+  - le match dure 13 à 14 min de temps réel, avec ~95-105 possessions ;
+  - 54 à 78 points par équipe, 34-47 % de réussite ;
+  - 5 à 12 pertes de balle ;
+  - aucune violation des 8 s, 24 s ou 5 s, 0-1 retour en zone, 1 à 4 sorties.
+
 ## Ce que `match/` ne décide pas
 - Il ne modifie jamais un résultat tiré pour « suivre » la physique. Si une trajectoire candidate
   ne donne pas le résultat voulu, le solveur en essaie une autre.
-- La possession, le score et les règles du 1 contre 1 de test restent dans `match/world/` en
-  phase 1. Le box score officiel (match joué = match simulé, mêmes fonctions de `simSeason`)
-  arrive en phase 2 avec le 5 contre 5.
+- La possession, le score et les règles du match restent dans `match/world/`. Le box score
+  officiel (match joué = match simulé, mêmes fonctions de `simSeason`) arrive aux incréments 12
+  et 13.
 
 ## Écarts entre le dessin et la physique (rendu seulement)
 Le rendu prend quelques libertés pour la lisibilité. Elles ne changent ni les mesures envoyées

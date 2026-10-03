@@ -178,6 +178,23 @@
     passe ;
   - **vol raté** (manqué, ou A trop loin) : le défenseur est déséquilibré ~0,3 s (il avance au
     ralenti), ce qui laisse passer l'attaquant.
+- **5 contre 5 sur terrain entier (incrément 10)** :
+  - **remises de ton équipe** : c'est toi qui passes, avec E ; le contrôle va au joueur hors du
+    terrain, et l'IA défend la remise ;
+  - **chrono** : il s'arrête à chaque ballon mort (sortie, faute, violation) et repart quand la
+    remise est touchée sur le terrain ; il continue après un panier, sauf dans la dernière minute
+    du QT4 et des prolongations ;
+  - **entre-deux** : tu joues ton pivot et sautes avec Espace ; la première main sur le ballon
+    après son sommet le tape vers un coéquipier (taille, détente, timing) ;
+  - **toutes les règles d'un coup** : 8 s, retour en zone, 5 s sur remise, 24 s, sorties ;
+  - **choix par défaut** (règles NBA ramenées à nos quart-temps, à corriger si besoin) :
+    - shot clock : 14 s après un rebond offensif qui a touché le cercle ;
+    - prolongation : 5/12 d'un quart-temps ;
+    - remise de la ligne de fond au début des QT2-QT4 (le perdant de l'entre-deux aux QT2 et QT3) ;
+    - changement de panier à la mi-temps ;
+    - fautes : remise de côté en attendant les lancers francs (11) ;
+    - fin de match : bandeau, puis nouveau match ;
+    - durée d'un quart-temps réglable dans les paramètres (1 à 12 min, 3 par défaut).
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

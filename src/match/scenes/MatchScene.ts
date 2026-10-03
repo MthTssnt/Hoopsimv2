@@ -24,9 +24,10 @@ import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME } from '../render/sprites/rig';
-import { halfCourtRoster } from '../roster';
+import { fullCourtRoster, halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
+import { attacksRight, formatClock, FULL_COURT, periodLabel } from '../world/fullCourt';
 import { defaultTarget } from '../world/halfCourt';
 import { HUD_KEYS, type HudBanner, type HudDebug } from './HudScene';
 
@@ -59,6 +60,20 @@ function teamsRoster(seed: number, perTeam: number): { home: TeamSeed; away: Tea
   return { home, away, homePlayers: halfCourtRoster(players, home.id, perTeam), awayPlayers: halfCourtRoster(players, away.id, perTeam) };
 }
 
+/**
+ * Terrain entier : le cinq majeur de l'équipe du meilleur meneur de la ligue (l'arène) contre celui
+ * d'une équipe dont les couleurs tranchent, chacun rangé par poste.
+ */
+function fullRoster(seed: number): { home: TeamSeed; away: TeamSeed; homePlayers: Player[]; awayPlayers: Player[] } {
+  const league = createNewGame('bos', seed);
+  const players = Object.values(league.players);
+  const bestGuard = players.filter((p) => p.pos === 'PG' && p.teamId).sort((a, b) => b.overall - a.overall)[0];
+  const home = teamOf(bestGuard);
+  const away = contrastingTeam(home, TEAM_SEEDS, 7);
+  const team = (id: string) => league.teams.find((t) => t.id === id)!;
+  return { home, away, homePlayers: fullCourtRoster(league.players, team(home.id)), awayPlayers: fullCourtRoster(league.players, team(away.id)) };
+}
+
 /** Lissage indépendant de la fréquence d'affichage (`rate` donné pour 60 i/s). */
 function smooth(current: number, target: number, rate: number, deltaMs: number): number {
   return current + (target - current) * (1 - Math.pow(1 - rate, deltaMs / (1000 / 60)));
@@ -81,13 +96,31 @@ const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 const USER_TEAM = 0;
 /** Pose de passe (bras du lâcher) tenue après une passe (ms). */
 const PASS_POSE_MS = 150;
-/** Messages des vols et des passes coupées, au-dessus du défenseur (la faute de main reprend FAUTE). */
+/**
+ * Messages des événements, au-dessus du joueur concerné : vols et passes coupées (au-dessus du
+ * défenseur ; la faute de main reprend FAUTE), violations (au-dessus du fautif).
+ */
 const EVENT_TAGS: Record<MatchEvent['kind'], string> = {
   vol: 'tag-steal',
   interception: 'tag-intercept',
   'déviation': 'tag-deflect',
   'faute-main': 'tag-foul',
+  sortie: 'tag-out',
+  '8 secondes': 'tag-8s',
+  'retour en zone': 'tag-backcourt',
+  '24 secondes': 'tag-24s',
+  '5 secondes': 'tag-5s',
+  'entre-deux': 'tag-tip-violation',
 };
+/** Textes des violations (petite police, `orange`). */
+const VIOLATION_TAGS: [string, string][] = [
+  ['tag-out', 'SORTIE'],
+  ['tag-8s', '8 SECONDES'],
+  ['tag-backcourt', 'RETOUR EN ZONE'],
+  ['tag-24s', '24 SECONDES'],
+  ['tag-5s', '5 SECONDES'],
+  ['tag-tip-violation', 'VIOLATION'],
+];
 /** Clignotement de l'anneau quand le contrôle change de joueur (ms). */
 const RING_BLINK_MS = 240;
 
@@ -95,10 +128,16 @@ function teamOf(player: Player): TeamSeed {
   return TEAM_SEEDS.find((t) => t.id === player.teamId) ?? TEAM_SEEDS[0];
 }
 
-/** Joueurs par équipe : `&format=1|2|3` dans l'URL, 3 contre 3 par défaut. */
+/** Joueurs par équipe : `&format=1|2|3` pour le demi-terrain ; 5 contre 5 sur terrain entier par défaut. */
 function formatFromUrl(): number {
   const value = Number(new URLSearchParams(window.location.search).get('format'));
-  return value === 1 || value === 2 || value === 3 ? value : 3;
+  return value === 1 || value === 2 || value === 3 ? value : 5;
+}
+
+/** Durée d'un quart-temps : `&qt=1` dans l'URL (debug, min, décimales permises), sinon celle des réglages. */
+function quarterFromUrl(fallback: number): number {
+  const value = Number(new URLSearchParams(window.location.search).get('qt'));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 /** Cible : `&cible=3` dans l'URL (debug, pour atteindre vite la fin), sinon celle du format (11 ou 21). */
@@ -127,7 +166,8 @@ interface CastMember {
 /** Message qui monte et s'efface au-dessus d'un joueur ou du panier ; empilé avec ses voisins. */
 interface Callout {
   image: Phaser.GameObjects.Image;
-  owner: number | 'rim';
+  /** Au-dessus d'un joueur, du panier visé ou du rond central. */
+  owner: number | 'rim' | 'center';
   clock: number;
 }
 
@@ -154,7 +194,8 @@ function createShotMarker(scene: Phaser.Scene, key: string): void {
 }
 
 /**
- * Scène du match : demi-terrain sur le panier de droite, du 1 contre 1 au 3 contre 3 (`&format=`),
+ * Scène du match : 5 contre 5 sur terrain entier (entre-deux, quart-temps, shot clock, remises,
+ * violations), ou demi-terrain sur le panier de droite du 1 contre 1 au 3 contre 3 (`&format=`),
  * ton équipe contre l'IA, dans la vue de 3/4 validée dans `?style`. Arène aux couleurs de ton
  * équipe, deux paniers, sprites cuits du rig (ton équipe en tenue à domicile, l'adversaire en
  * tenue extérieure), ballon tenu dessiné dans la main du porteur. Tu contrôles le porteur en
@@ -215,6 +256,8 @@ export class MatchScene extends Phaser.Scene {
   private seenGoaltend: ShotRecord | null = null;
   /** Dernier événement du monde déjà annoncé (vol, faute de main, interception, déviation). */
   private seenEvent = 0;
+  /** Dernier lancer d'entre-deux annoncé. */
+  private seenToss: object | null = null;
   private callouts: Callout[] = [];
   private shakeMs = 0;
   private scoreKey = '';
@@ -241,7 +284,13 @@ export class MatchScene extends Phaser.Scene {
     this.perTeam = formatFromUrl();
     this.target = targetFromUrl(this.perTeam);
     this.settings = (this.registry.get('settings') as MatchSettings | undefined) ?? loadSettings();
-    if (this.perTeam === 1) {
+    if (this.perTeam === 5) {
+      const roster = fullRoster(this.seed);
+      this.athletes = roster.homePlayers;
+      this.opponents = roster.awayPlayers;
+      this.homeSeed = roster.home;
+      this.awaySeed = roster.away;
+    } else if (this.perTeam === 1) {
       const roster = testRoster(this.seed);
       this.athletes = roster.athletes;
       this.opponents = roster.opponents;
@@ -282,6 +331,7 @@ export class MatchScene extends Phaser.Scene {
     this.seenFoul = null;
     this.seenGoaltend = null;
     this.seenEvent = 0;
+    this.seenToss = null;
     this.callouts = [];
     this.shakeMs = 0;
     this.scoreKey = '';
@@ -311,6 +361,8 @@ export class MatchScene extends Phaser.Scene {
     createTag(this, 'tag-steal', 'VOL', PALETTE.yellow);
     createTag(this, 'tag-intercept', 'INTERCEPTION', PALETTE.yellow);
     createTag(this, 'tag-deflect', 'DÉVIÉE', PALETTE.silver);
+    for (const [key, text] of VIOLATION_TAGS) createTag(this, key, text, PALETTE.orange);
+    createTag(this, 'tag-tipoff', 'ENTRE-DEUX', PALETTE.chalk);
     this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home));
     this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away));
 
@@ -333,11 +385,12 @@ export class MatchScene extends Phaser.Scene {
     this.tag = this.add.image(0, 0, 'grade-perfect').setOrigin(0.5, 1).setDepth(960).setVisible(false);
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
-    // Demi-terrain sur le panier de droite : le monde place chacun (ton équipe derrière l'arc,
-    // ballon à ton meneur, chaque défenseur entre son attaquant et le cercle).
+    // Terrain entier : entre-deux pour commencer. Demi-terrain sur le panier de droite : le monde
+    // place chacun (ton équipe derrière l'arc, ballon à ton meneur, chaque défenseur devant le sien).
     const settings = { mode: this.settings.shotMode, speed: this.settings.shotSpeed };
     this.world = new MatchWorld(court, this.athletes[0], { x: 0, y: 0, z: 0 }, settings, this.rng);
-    this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
+    if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
+    else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     this.ais = this.world.players.map((_, i) => new PlayerAi(i, new Rng(hashSeed(`ia-${this.seed}-${i}`))));
     this.passPose = this.world.players.map(() => 0);
 
@@ -364,7 +417,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.registry.get('inputBlocked')) this.setBlocked(true);
 
     // Le HUD lit ces clés à son lancement, puis suit leurs changements.
-    this.score = { home, away, homeScore: 0, awayScore: 0, period: 1, clock: '', shotClock: 0, note: `PREMIER À ${this.target}` };
+    this.score = { home, away, homeScore: 0, awayScore: 0, period: '', clock: '', shotClock: null, note: n === 5 ? undefined : `PREMIER À ${this.target}` };
     this.registry.set(HUD_KEYS.score, this.score);
     this.registry.set(HUD_KEYS.card, this.cardFor(this.world.controlled));
     this.shownControlled = this.world.controlled;
@@ -461,6 +514,7 @@ export class MatchScene extends Phaser.Scene {
     if (prev.shotSpeed !== next.shotSpeed || prev.shotMode !== next.shotMode) {
       this.world.setShotSettings({ mode: next.shotMode, speed: next.shotSpeed });
     }
+    if (prev.quarterMinutes !== next.quarterMinutes) this.world.setQuarterMinutes(next.quarterMinutes);
   }
 
   private setBlocked(blocked: boolean) {
@@ -743,15 +797,23 @@ export class MatchScene extends Phaser.Scene {
       this.seenFoul = foul;
       this.addCallout('tag-foul', foul.defender);
     }
-    // Vols, fautes de main et passes coupées : au-dessus du défenseur.
+    // Vols, fautes de main et passes coupées : au-dessus du défenseur ; violations : au-dessus du fautif.
     for (const event of this.world.events) {
       if (event.id <= this.seenEvent) continue;
       this.seenEvent = event.id;
       this.addCallout(EVENT_TAGS[event.kind], event.by);
     }
+    // Entre-deux : annonce au-dessus du rond central, au premier lancer.
+    const full = this.world.full;
+    if (full?.phase === 'entre-deux' && this.seenToss === null) {
+      this.seenToss = this.world.ball;
+      this.addCallout('tag-tipoff', 'center');
+    } else if (full?.phase !== 'entre-deux') {
+      this.seenToss = null;
+    }
 
     // Chaque message monte de 4 px et s'efface ; ceux d'un même endroit s'empilent.
-    const stack = new Map<number | 'rim', number>();
+    const stack = new Map<number | 'rim' | 'center', number>();
     for (const c of this.callouts) {
       if (!c.image.visible) continue;
       c.clock += deltaMs;
@@ -763,9 +825,12 @@ export class MatchScene extends Phaser.Scene {
       stack.set(c.owner, below + c.image.height + 1);
       const rise = Math.round((TAG_RISE * c.clock) / CALLOUT_MS);
       let at: Point;
-      if (c.owner === 'rim') {
-        const rim = this.world.court.hoops.right.rim;
-        at = rounded(project(rim.x, rim.y, RIM_HEIGHT + 1.4));
+      if (c.owner === 'rim' || c.owner === 'center') {
+        // Au-dessus du panier du dernier tir, ou du rond central.
+        const shot = this.world.lastShot;
+        const rim = shot?.hoop === 'left' ? this.world.court.hoops.left.rim : this.world.court.hoops.right.rim;
+        const spot = c.owner === 'rim' ? rim : { x: this.world.court.length / 2, y: this.world.court.width / 2 };
+        at = rounded(project(spot.x, spot.y, RIM_HEIGHT + 1.4));
         at = { x: at.x, y: at.y - below };
       } else {
         // Au-dessus de la tête, et de l'annonce du tir si elle est sur le même joueur.
@@ -777,7 +842,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Nouveau message (image réutilisée si une est libre). */
-  private addCallout(texture: string, owner: number | 'rim') {
+  private addCallout(texture: string, owner: number | 'rim' | 'center') {
     let callout = this.callouts.find((c) => !c.image.visible);
     if (!callout) {
       callout = { image: this.add.image(0, 0, texture).setOrigin(0.5, 1).setDepth(960), owner, clock: 0 };
@@ -791,24 +856,48 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Tableau de score (toi contre l'IA) et bandeau de fin, publiés seulement quand ils changent. */
+  /**
+   * Tableau de score (et, sur terrain entier, période, chrono et shot clock) et bandeaux : fin de
+   * partie au demi-terrain ; fin de période, mi-temps, prolongation et fin de match sur terrain
+   * entier. Publiés seulement quand ils changent.
+   */
   private updateScore() {
     const [mine, theirs] = this.world.points;
-    const scoreKey = `${mine}-${theirs}`;
+    const full = this.world.full;
+    const shotClock = full && full.clock >= full.shotClock && full.phase !== 'entre-deux' ? Math.ceil(full.shotClock - 1e-9) : null;
+    const next: ScoreboardData = full
+      ? { ...this.score, homeScore: mine, awayScore: theirs, period: periodLabel(full.period), clock: formatClock(full.clock), shotClock }
+      : { ...this.score, homeScore: mine, awayScore: theirs };
+    const scoreKey = `${next.homeScore}-${next.awayScore}-${next.period}-${next.clock}-${next.shotClock}`;
     if (scoreKey !== this.scoreKey) {
       this.scoreKey = scoreKey;
-      this.score = { ...this.score, homeScore: mine, awayScore: theirs };
+      this.score = next;
       this.registry.set(HUD_KEYS.score, this.score);
     }
-    const winner = this.world.rules?.winner ?? null;
-    const banner: HudBanner | null =
-      winner === null
-        ? null
-        : { title: `${winner === USER_TEAM ? 'GAGNÉ' : 'PERDU'} ${mine}-${theirs}`, subtitle: 'NOUVELLE PARTIE À 0-0', won: winner === USER_TEAM };
-    const bannerKey = banner ? banner.title : '';
+    const banner = this.bannerFor(mine, theirs);
+    const bannerKey = banner ? `${banner.title}|${banner.subtitle}` : '';
     if (bannerKey !== this.bannerKey) {
       this.bannerKey = bannerKey;
       this.registry.set(HUD_KEYS.banner, banner);
     }
+  }
+
+  private bannerFor(mine: number, theirs: number): HudBanner | null {
+    const full = this.world.full;
+    if (!full) {
+      const winner = this.world.rules?.winner ?? null;
+      if (winner === null) return null;
+      return { title: `${winner === USER_TEAM ? 'GAGNÉ' : 'PERDU'} ${mine}-${theirs}`, subtitle: 'NOUVELLE PARTIE À 0-0', tone: winner === USER_TEAM ? 'won' : 'lost' };
+    }
+    if (full.phase === 'fin-match' && full.winner !== null) {
+      return { title: `${full.winner === USER_TEAM ? 'GAGNÉ' : 'PERDU'} ${mine}-${theirs}`, subtitle: 'NOUVEAU MATCH', tone: full.winner === USER_TEAM ? 'won' : 'lost' };
+    }
+    if (full.phase !== 'fin-periode') return null;
+    const score = `${mine}-${theirs}`;
+    if (full.period === 2) return { title: 'MI-TEMPS', subtitle: `${score} - CHANGEMENT DE PANIER`, tone: 'info' };
+    if (full.period >= FULL_COURT.periods && mine === theirs) return { title: 'PROLONGATION', subtitle: `ÉGALITÉ ${score}`, tone: 'info' };
+    const ended = full.period > FULL_COURT.periods ? `FIN DE LA PROLONGATION ${full.period - FULL_COURT.periods}` : `FIN DU ${full.period}${full.period === 1 ? 'ER' : 'E'} QT`;
+    return { title: ended, subtitle: score, tone: 'info' };
   }
 
   private updateCamera(me: BodySprite, ball: Point, deltaMs: number) {
@@ -925,6 +1014,23 @@ export class MatchScene extends Phaser.Scene {
     return lines;
   }
 
+  /** Terrain entier : phase, chrono, shot clock, 8 s, remise, dernier toucher, sens d'attaque. */
+  private gameLine(holder: string): string {
+    const full = this.world.full!;
+    const name = (i: number) => this.world.players[i].athlete.lastName;
+    const team = (t: number) => (t === USER_TEAM ? 'ton équipe' : 'l’IA');
+    const parts = [
+      `${periodLabel(full.period)} ${formatClock(full.clock)} · tir ${full.shotClock.toFixed(1)}${full.shotUp ? ' (tir en l’air)' : ''} · phase ${full.phase}`,
+      `ballon ${holder}`,
+    ];
+    if (this.world.possession) parts.push(`8 s : ${full.frontcourt ? 'passé' : full.backcourtTime.toFixed(1)}`);
+    const inbound = full.inbound;
+    if (inbound) parts.push(`remise ${team(inbound.team)}${inbound.thrower !== null ? ` par ${name(inbound.thrower)} (${inbound.timer.toFixed(1)} s)` : ''}`);
+    if (full.lastTouch) parts.push(`dernier toucher ${name(full.lastTouch.player)}`);
+    parts.push(`ton équipe attaque à ${attacksRight(USER_TEAM, full.period) ? 'droite' : 'gauche'}`);
+    return parts.join(' · ');
+  }
+
   /** Texte de debug (affiché avec H) : publié seulement quand il change. */
   private updateDebug() {
     const controlled = this.world.controlled;
@@ -941,8 +1047,10 @@ export class MatchScene extends Phaser.Scene {
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · ${this.perTeam} contre ${this.perTeam} · graine ${this.seed}`,
       `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · vue ${this.bodies[controlled].heading === 'back' ? 'de dos' : 'de profil'}`,
       ...this.aiLines(),
-      `ballon ${holder}${owed.length ? ` · à ressortir : ${owed.join(', ')}` : ''} · premier à ${rules?.target ?? this.target}` +
-        (rules?.restart ? ` · ballon mort (faute), remise à ${this.world.players[rules.restart.shooter].athlete.lastName} dans ${rules.restart.pause.toFixed(1)} s` : ''),
+      this.world.full
+        ? this.gameLine(holder)
+        : `ballon ${holder}${owed.length ? ` · à ressortir : ${owed.join(', ')}` : ''} · premier à ${rules?.target ?? this.target}` +
+          (rules?.restart ? ` · ballon mort (faute), remise à ${this.world.players[rules.restart.shooter].athlete.lastName} dans ${rules.restart.pause.toFixed(1)} s` : ''),
       `${s.level.toUpperCase()} · tir ${s.shotMode === 'timing' ? 'Timing' : 'Real Player %'} ${SPEED_LABELS[s.shotSpeed]}` +
         ` · caméra ${s.camera === 'free' ? 'libre' : 'paliers'} x${this.cam.zoom.toFixed(2)}`,
     ];

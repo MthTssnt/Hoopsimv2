@@ -74,7 +74,7 @@ describe('1 contre 1 : départ', () => {
     expect(world.holder).toBe(0);
     expect(world.points).toEqual([0, 0]);
     expect(world.rules!.mustClear).toEqual([false, false]);
-    expect(world.hoopFor(3).side).toBe('right');
+    expect(world.hoopFor(1).side).toBe('right');
   });
 });
 

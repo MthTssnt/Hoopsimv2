@@ -291,6 +291,22 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   effacement en 1,5 s, pile). Pose provisoire du geste de vol : l'image 14 (bras tendu) pendant
   0,25 s, de profil, tournée vers le ballon ; une vraie pose viendra en phase 3. Le déséquilibre
   après un vol raté (0,3 s) n'a pas encore de pose : il se voit au ralentissement.
+- **Terrain entier (incrément 10)** :
+  - **tableau de score vivant** : période (QT1 à QT4, puis P1, P2… en prolongation), chrono
+    (« 2:47 », puis « 45.3 » sous la minute) et shot clock (« TIR 14 ») ;
+    - le shot clock passe en `red` sous 5 s et disparaît quand il ne compte plus (pendant
+      l'entre-deux, ou si le chrono restant est plus court) ;
+  - **bandeaux de période** au centre du HUD, en `silver` : « FIN DU 1ER QT », « MI-TEMPS »
+    (avec « CHANGEMENT DE PANIER »), « PROLONGATION » (avec « ÉGALITÉ 61-61 ») ;
+  - **fin de match** : « GAGNÉ 66-63 » (`yellow`) ou « PERDU » (`red`), sous-titre « NOUVEAU
+    MATCH » ;
+  - **violations** en `orange`, au-dessus du fautif : « SORTIE », « 8 SECONDES », « RETOUR EN
+    ZONE », « 24 SECONDES », « 5 SECONDES », et « VIOLATION » pour un entre-deux touché en
+    montée ;
+  - « ENTRE-DEUX » (`chalk`) au-dessus du rond central au lancer, sans arbitre dessiné (il
+    viendra en phase 3) ;
+  - **remise** : le lanceur se tient hors des lignes, sur le tablier de l'arène ; s'il est de ton
+    équipe, il a l'anneau.
 
 ## 9. Liste de contrôle d'originalité (avant chaque nouvel asset)
 1. Dessiné par nous (ou pack sous licence noté dans `src/assets/CREDITS.md`) ?
