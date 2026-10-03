@@ -29,9 +29,11 @@ export interface ScoreboardData {
   away: TeamLook;
   homeScore: number;
   awayScore: number;
-  period: number;
+  /** Période affichée (QT1… QT4, P1… en prolongation). */
+  period: string;
   clock: string;
-  shotClock: number;
+  /** Shot clock (s, entier) ; null quand il ne compte plus (moins de temps au chrono). */
+  shotClock: number | null;
   /** Ligne du bas à la place de la période et des horloges (ex. « PREMIER À 11 » en 1 contre 1). */
   note?: string;
 }
@@ -52,10 +54,12 @@ export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: num
     drawText(g, d.note, x + 4, y + 15);
     return;
   }
-  drawText(g, `QT${d.period}`, x + 4, y + 15);
+  drawText(g, d.period, x + 4, y + 15);
   g.fillStyle(PALETTE.yellow);
   drawText(g, d.clock, x + 30, y + 15);
-  g.fillStyle(PALETTE.silver);
+  if (d.shotClock === null) return;
+  // Les 5 dernières secondes du shot clock en rouge.
+  g.fillStyle(d.shotClock <= 5 ? PALETTE.red : PALETTE.silver);
   const shot = `TIR ${d.shotClock}`;
   drawText(g, shot, x + w - 4 - textWidth(shot), y + 15);
 }

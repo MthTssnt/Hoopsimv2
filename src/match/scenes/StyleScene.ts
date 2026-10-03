@@ -381,7 +381,7 @@ export class StyleScene extends Phaser.Scene {
 
     // HUD.
     const hud = this.add.graphics().setDepth(1500);
-    drawScoreboard(hud, 4, 4, { home: this.home, away: this.away, homeScore: 48, awayScore: 37, period: 3, clock: '1:35', shotClock: 14 });
+    drawScoreboard(hud, 4, 4, { home: this.home, away: this.away, homeScore: 48, awayScore: 37, period: 'QT3', clock: '1:35', shotClock: 14 });
     const lead = players[0];
     drawPlayerCard(hud, 4, ART_VIEW.height - 32, {
       look: looks[0],

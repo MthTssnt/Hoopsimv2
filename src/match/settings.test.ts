@@ -27,6 +27,10 @@ describe('paramètres du match', () => {
     // Réglages sauvegardés avant la passe : les nouvelles touches prennent leur valeur par défaut.
     expect(s.bindings.pass).toEqual(DEFAULT_BINDINGS.pass);
     expect(s.bindings.steal).toEqual(DEFAULT_BINDINGS.steal);
+    // Sauvegarde d'avant le 5 contre 5 : quart-temps de 3 min ; une durée hors liste aussi.
+    expect(s.quarterMinutes).toBe(3);
+    expect(parseSettings(JSON.stringify({ quarterMinutes: 5 })).quarterMinutes).toBe(5);
+    expect(parseSettings(JSON.stringify({ quarterMinutes: 7 })).quarterMinutes).toBe(3);
   });
 
   it('ZQSD + Espace par défaut, E passe, A interception', () => {

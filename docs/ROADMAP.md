@@ -32,7 +32,7 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Décisions de Matheo (contrôle, durée 4 × 3 min, fatigue + coach auto, lancers à la jauge, règles, touches E/A, Live Sim)
 - ✅ 8. 3 contre 3 sur un panier : passes, coéquipiers IA (écartement, coupes, passes), défense d'équipe (duels, aide), changement de joueur contrôlé (`?court`, `&format=1|2|3`)
 - ✅ 9. Interception : vol sur le porteur avec A (faute de main trop près, déséquilibre si raté), passes interceptées ou déviées dans la ligne (au sol, bras allongé avec A, en sautant), pertes de balle notées ; IA qui tente des vols, coupe les lignes et évite les lignes occupées ; messages VOL / INTERCEPTION / DÉVIÉE
-- ⬜ 10. 5 contre 5 sur terrain entier : chrono, shot clock, 8 s, retour en zone, hors-jeu, remises en jeu, entre-deux, mi-temps
+- ✅ 10. 5 contre 5 sur terrain entier (`?court`, demi-terrain avec `&format=1|2|3`) : entre-deux au saut, quart-temps (durée réglable), mi-temps et changement de panier, prolongation, chrono arrêté sur ballon mort, shot clock, sorties et remises (E), 8 s, retour en zone, 5 s, 24 s ; IA qui monte le ballon, se place à 5, revient en défense, défend par poste ; tableau de score vivant et bandeaux
 - ⬜ 11. Fautes d'équipe, bonus, 6 fautes, lancers francs à la jauge
 - ⬜ 12. Fatigue, remplacements automatiques, box score en direct, menu pause
 - ⬜ 13. Match joué dans le GM (« Jouer », « Regarder », « Simuler »), enregistré par `simSeason`

@@ -14,8 +14,11 @@ export interface HudDebug {
 export interface HudBanner {
   title: string;
   subtitle: string;
-  won: boolean;
+  /** Gagné (jaune), perdu (rouge), ou annonce neutre (fin de période, mi-temps : gris clair). */
+  tone: 'won' | 'lost' | 'info';
 }
+
+const BANNER_COLORS = { won: PALETTE.yellow, lost: PALETTE.red, info: PALETTE.silver } as const;
 
 /**
  * Clés du registre lues par le HUD. Le match les écrit avant de lancer cette scène : Phaser
@@ -94,7 +97,7 @@ export class HudScene extends Phaser.Scene {
 
   private showBanner(data: HudBanner | null) {
     this.banner.clear();
-    if (data) drawBanner(this.banner, VIEW_WIDTH / 2, BANNER_Y, data.title, data.subtitle, data.won ? PALETTE.yellow : PALETTE.red);
+    if (data) drawBanner(this.banner, VIEW_WIDTH / 2, BANNER_Y, data.title, data.subtitle, BANNER_COLORS[data.tone]);
   }
 
   private showDebug(content: HudDebug) {

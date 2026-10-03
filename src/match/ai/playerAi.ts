@@ -1,12 +1,15 @@
+import { reach } from '../../engine/athletics';
 import type { Rng } from '../../engine/rng';
 import { canDunk, shotSkill, type ShotZone } from '../../engine/shot';
 import type { Tendencies } from '../../engine/types';
+import { BALL_PHYSICS } from '../physics/ball';
 import { isThreePoint, type Court, type Hoop } from '../physics/court';
+import { attacksRight, inFrontcourt, type Inbound } from '../world/fullCourt';
 import type { MatchWorld, WorldInput } from '../world/MatchWorld';
 import { attacksRim } from '../world/shooting';
 import { ballExposure, measureSteal, STEAL_FLOW } from '../world/steal';
 
-/** IA des joueurs non contrôlés, du 1 contre 1 au 3 contre 3 (valeurs provisoires, réglables à l'œil). */
+/** IA des joueurs non contrôlés, du 1 contre 1 au 5 contre 5 (valeurs provisoires, réglables à l'œil). */
 export const AI_TUNING = {
   /** Défense : distance à l'attaquant, sur la ligne attaquant → cercle (m). */
   guardGap: 1.1,
@@ -88,10 +91,51 @@ export const AI_TUNING = {
   laneClear: [0.25, 0.7],
   /** La ligne se juge à partir de (m) devant le passeur : son défenseur collé à côté ne la bouche pas. */
   laneFrom: 0.9,
+  // --- Terrain entier (incrément 10) ---
+  /** Montée de balle : vise ce point de la moitié avant (m au-delà de la ligne médiane). */
+  bringUpDepth: 3,
+  /** Montée : passe en avant à un démarqué déjà devant au-delà de (s) dans sa moitié arrière (ou serré). */
+  advanceAfter: 2.5,
+  /** Shot clock (ou chrono) : plus de passe sous (s) ; le porteur tire dès que possible. */
+  shotClockLate: 6,
+  /** Remise : le lanceur passe au plus démarqué après (s), à n'importe qui après (s). */
+  inboundWait: [0.5, 1.5],
+  inboundForce: 3.5,
+  /** Le receveur de la remise vient à (m) dans le terrain et (m) de côté ; le défenseur du lanceur se met à (m) devant lui. */
+  inboundMeet: 3,
+  inboundSide: 2.5,
+  inboundGuard: 1.2,
+  /** Terrain entier : tire au plus tard après (s) avec le ballon dans sa moitié avant. */
+  shootAfterFull: 5,
+  /** Porteur dans sa moitié arrière : son défenseur recule à (m) devant lui. */
+  backcourtGap: 3,
+  /** Retour en défense : on attend son joueur à au plus (m) de son cercle (au pas de course au-delà de `sprintFrom` m). */
+  retreatDepth: 9,
+  sprintFrom: 4,
+  /** Pivot : poste bas à (m) du cercle vers le terrain, et (m) de côté, côté ballon. */
+  postOut: 1.6,
+  postSide: 1.7,
+  /** Entre-deux : écart-type de l'erreur de saut (s), du pire (détente et QI à 25) au meilleur (99). */
+  tipSd: { worst: 0.12, best: 0.04 },
+  /** Tir de son équipe en l'air : les deux arrières repartent, à (m) de la ligne médiane dans leur moitié. */
+  safetyDepth: 4,
 } as const;
 
 export type AiPlan = 'rim' | 'mid' | 'three';
-export type AiMode = 'attaque' | 'ressortie' | 'défense' | 'aide' | 'écartement' | 'coupe' | 'réception' | 'rebond' | 'pause';
+export type AiMode =
+  | 'attaque'
+  | 'montée'
+  | 'ressortie'
+  | 'remise'
+  | 'défense'
+  | 'aide'
+  | 'repli'
+  | 'écartement'
+  | 'coupe'
+  | 'réception'
+  | 'rebond'
+  | 'entre-deux'
+  | 'pause';
 
 type Point = { x: number; y: number };
 
@@ -114,12 +158,12 @@ export function timingSd(skill: number): number {
 }
 
 /** Place de défense : sur la ligne attaquant → cercle, à `guardGap` de l'attaquant (au plus à mi-chemin). */
-export function guardSpot(attacker: Point, hoop: Hoop): Point {
+export function guardSpot(attacker: Point, hoop: Hoop, gapWanted: number = AI_TUNING.guardGap): Point {
   const dx = hoop.rim.x - attacker.x;
   const dy = hoop.rim.y - attacker.y;
   const d = Math.hypot(dx, dy);
   if (d < 1e-6) return { ...attacker };
-  const gap = Math.min(AI_TUNING.guardGap, d / 2);
+  const gap = Math.min(gapWanted, d / 2);
   return { x: attacker.x + (dx / d) * gap, y: attacker.y + (dy / d) * gap };
 }
 
@@ -163,6 +207,15 @@ function spotAround(court: Court, hoop: Hoop, radius: number, angle: number): Po
 export function assignMarks(world: MatchWorld): Map<number, number> {
   const a = world.membersOf(0);
   const b = world.membersOf(1);
+  // Terrain entier : duels par poste (meneur contre meneur… pivot contre pivot).
+  if (world.full && world.lineup.length === 2 && world.lineup[0].length === world.lineup[1].length) {
+    const byPost = new Map<number, number>();
+    world.lineup[0].forEach((i, k) => {
+      byPost.set(i, world.lineup[1][k]);
+      byPost.set(world.lineup[1][k], i);
+    });
+    return byPost;
+  }
   const pairs: { i: number; j: number; d: number }[] = [];
   for (const i of a) for (const j of b) pairs.push({ i, j, d: Math.hypot(world.players[i].pos.x - world.players[j].pos.x, world.players[i].pos.y - world.players[j].pos.y) });
   pairs.sort((p, q) => p.d - q.d || p.i - q.i || p.j - q.j);
@@ -188,18 +241,25 @@ export function openness(world: MatchWorld, i: number): number {
  * aux joueurs sans ballon de `team`, au plus près.
  */
 export function spacingSpots(world: MatchWorld, team: number): Map<number, Point> {
-  const hoop = world.court.hoops.right;
+  const hoop = world.attackHoop(team);
   const radius = world.court.threeArc + AI_TUNING.threeOut;
   const ball = world.holder !== null ? world.players[world.holder].pos : world.pass ? world.pass.target : world.ball.pos;
   const spots = AI_TUNING.spacingAngles
     .map((deg) => spotAround(world.court, hoop, radius, (deg * Math.PI) / 180))
     .filter((p) => Math.hypot(p.x - ball.x, p.y - ball.y) > AI_TUNING.spacingClear);
-  const off = world.membersOf(team).filter((i) => i !== world.holder && i !== world.pass?.receiver);
+  let off = world.membersOf(team).filter((i) => i !== world.holder && i !== world.pass?.receiver);
+  const result = new Map<number, Point>();
+  // Terrain entier : le pivot au poste bas, côté ballon ; les autres autour de l'arc.
+  const center = world.full ? world.lineup[team]?.at(-1) : undefined;
+  if (center !== undefined && off.includes(center)) {
+    const side = Math.sign(ball.y - hoop.rim.y) || 1;
+    result.set(center, { x: hoop.rim.x + hoop.toCourt * AI_TUNING.postOut, y: hoop.rim.y + side * AI_TUNING.postSide });
+    off = off.filter((i) => i !== center);
+  }
   const pairs: { i: number; k: number; d: number }[] = [];
   for (const i of off) spots.forEach((p, k) => pairs.push({ i, k, d: Math.hypot(world.players[i].pos.x - p.x, world.players[i].pos.y - p.y) }));
   pairs.sort((p, q) => p.d - q.d || p.i - q.i || p.k - q.k);
   const taken = new Set<number>();
-  const result = new Map<number, Point>();
   for (const { i, k } of pairs) {
     if (result.has(i) || taken.has(k)) continue;
     result.set(i, spots[k]);
@@ -262,6 +322,14 @@ export class PlayerAi {
   /** Prochaine coupe possible, et fin de la coupe en cours (temps de l'IA, s). */
   private nextCutAt: number;
   private cutUntil = -1;
+  /** Remise en cours déjà vue, et délai choisi avant de passer (s). */
+  private seenInbound: Inbound | null = null;
+  private inboundWait = 0;
+  /** Lancer de l'entre-deux déjà vu, et erreur de saut tirée pour lui (s). */
+  private seenToss: object | null = null;
+  private tipError = 0;
+  /** Le porteur était déjà dans sa moitié avant au pas précédent (terrain entier). */
+  private wasFront = false;
 
   constructor(index: number, rng: Rng) {
     this.index = index;
@@ -273,7 +341,7 @@ export class PlayerAi {
   reaction(world: MatchWorld): number {
     const me = world.players[this.index].athlete;
     const other = world.players[this.mark ?? this.index];
-    const hoop = world.hoopFor(other.pos.x);
+    const hoop = world.defendHoop(world.team[this.index]);
     const near = Math.hypot(other.pos.x - hoop.rim.x, other.pos.y - hoop.rim.y) < AI_TUNING.interiorRange;
     return reactionTime(near ? me.attrs.interiorDef : me.attrs.perimeterDef);
   }
@@ -287,11 +355,14 @@ export class PlayerAi {
       while (this.history.length > 2 && this.history[1].t < this.clock - 0.6) this.history.shift();
     }
 
-    // Fin de partie, ou ballon mort après une faute : on ne bouge pas.
-    if ((world.rules?.winner !== null && world.rules?.winner !== undefined) || world.rules?.restart) {
+    // Fin de partie (ou de période), ou ballon mort après une faute au demi-terrain : on ne bouge pas.
+    const full = world.full;
+    const halted = full?.phase === 'fin-periode' || full?.phase === 'fin-match';
+    if ((world.rules?.winner !== null && world.rules?.winner !== undefined) || world.rules?.restart || halted) {
       this.mode = 'pause';
       return { x: 0, y: 0, jump: false };
     }
+    if (full?.phase === 'entre-deux') return this.tipOff(world);
     const shot = world.shot;
     if (shot && shot.shooter === this.index) {
       // En l'air : on lâche au moment prévu (pas de lâcher pour un dunk).
@@ -302,7 +373,7 @@ export class PlayerAi {
     const holding = world.holder === this.index;
     if (holding && !this.hadBall) this.newPossession(world);
     this.hadBall = holding;
-    if (holding) return this.attack(world, dt);
+    if (holding) return full?.phase === 'remise' ? this.inbound(world) : this.attack(world, dt);
 
     const myTeam = world.team[this.index];
     const pass = world.pass;
@@ -313,9 +384,97 @@ export class PlayerAi {
       return holder === this.mark ? this.defend(world) : this.help(world);
     }
     if (pass) return pass.team === myTeam ? this.offBall(world) : this.help(world);
+    // Ballon mort avant une remise : chacun se replace, l'équipe qui remet en attaque.
+    if (full?.phase === 'mort') return full.inbound?.team === myTeam ? this.offBall(world) : this.help(world);
     // Ballon libre : les plus proches de chaque équipe y vont, les autres reprennent leur place.
     if (this.isRebounder(world)) return this.chase(world);
+    // Tir de son équipe en l'air : les deux arrières repartent en défense.
+    const slot = world.lineup[myTeam]?.indexOf(this.index) ?? -1;
+    if (full?.shotUp && world.possession?.team === myTeam && slot >= 0 && slot <= 1) return this.safety(world);
     return world.possession?.team === myTeam ? this.offBall(world) : this.help(world);
+  }
+
+  /**
+   * Entre-deux : le sauteur saute pour avoir la main au plus haut quand le ballon y redescend, avec
+   * une erreur tirée à chaque lancer (plus petite avec la détente et le QI). Les autres attendent.
+   */
+  private tipOff(world: MatchWorld): WorldInput {
+    this.mode = 'entre-deux';
+    this.target = null;
+    const idle = { x: 0, y: 0, jump: false };
+    const tip = world.full!.tip;
+    const body = world.players[this.index];
+    if (!tip || !tip.jumpers.includes(this.index) || body.airborne) return idle;
+    if (this.seenToss !== world.ball) {
+      this.seenToss = world.ball;
+      const a = body.athlete.attrs;
+      this.tipError = gaussian(this.rng) * lerp(AI_TUNING.tipSd.worst, AI_TUNING.tipSd.best, ratingT((a.vertical + a.iq) / 2));
+    }
+    // Temps avant que le ballon, en redescendant, passe à la hauteur de la main au sommet du saut.
+    const g = BALL_PHYSICS.gravity;
+    const hand = body.jumpHeight + reach(body.athlete);
+    const { z } = world.ball.pos;
+    const vz = world.ball.vel.z;
+    const disc = vz * vz + 2 * g * (z - hand);
+    if (disc < 0) return idle;
+    const arrive = (vz + Math.sqrt(disc)) / g;
+    return arrive - body.timeToApex <= this.tipError ? { x: 0, y: 0, jump: true } : idle;
+  }
+
+  /**
+   * Remise : le lanceur attend un peu (le temps que les siens se placent), passe au plus démarqué,
+   * puis à n'importe qui avant les 5 s.
+   */
+  private inbound(world: MatchWorld): WorldInput {
+    this.mode = 'remise';
+    this.target = null;
+    const inbound = world.full!.inbound!;
+    if (this.seenInbound !== inbound) {
+      this.seenInbound = inbound;
+      this.inboundWait = this.rng.range(AI_TUNING.inboundWait[0], AI_TUNING.inboundWait[1]);
+    }
+    const idle = { x: 0, y: 0, jump: false };
+    if (inbound.timer < this.inboundWait) return idle;
+    let mate = this.openMate(world);
+    if (mate === null && inbound.timer >= AI_TUNING.inboundForce) mate = this.leastCovered(world);
+    if (mate === null) return idle;
+    const out = this.passTo(world, mate);
+    this.mode = 'remise';
+    return out;
+  }
+
+  /** Coéquipier le moins couvert à portée de passe : le plus loin de tout adversaire, corps et ligne de passe compris. */
+  private leastCovered(world: MatchWorld): number | null {
+    const me = world.players[this.index].pos;
+    let best: number | null = null;
+    let bestRoom = -Infinity;
+    for (const j of world.teammatesOf(this.index)) {
+      const p = world.players[j].pos;
+      if (Math.hypot(p.x - me.x, p.y - me.y) > AI_TUNING.maxPass) continue;
+      const room = Math.min(...world.opponentsOf(this.index).map((o) => segmentDistance(world.players[o].pos, me, p)));
+      if (room > bestRoom) {
+        bestRoom = room;
+        best = j;
+      }
+    }
+    return best;
+  }
+
+  /** Receveur désigné d'une remise de son équipe : le meneur, ou l'arrière si c'est le meneur qui remet. */
+  private inboundReceiver(world: MatchWorld, team: number): number | null {
+    const inbound = world.full?.inbound;
+    if (!inbound || inbound.team !== team) return null;
+    const order = world.lineup[team] ?? [];
+    return order.find((i) => i !== inbound.thrower) ?? null;
+  }
+
+  /** Tir de son équipe en l'air : repli dans sa moitié, au milieu (anti contre-attaque). */
+  private safety(world: MatchWorld): WorldInput {
+    this.mode = 'repli';
+    const full = world.full!;
+    const dir = attacksRight(world.team[this.index], full.period) ? 1 : -1;
+    this.target = { x: world.court.length / 2 - dir * AI_TUNING.safetyDepth, y: world.court.width / 2 };
+    return this.moveTo(world, this.target, true);
   }
 
   /** Duels recalculés à chaque nouvelle possession. */
@@ -338,6 +497,7 @@ export class PlayerAi {
 
   private newPossession(world: MatchWorld): void {
     this.possessionTime = 0;
+    this.wasFront = world.full?.frontcourt ?? false;
     this.stuck = 0;
     this.decideClock = 0;
     this.tightShotDecided = false;
@@ -347,7 +507,7 @@ export class PlayerAi {
 
   /** Place visée pour un plan : derrière l'arc, à mi-distance, ou le cercle. */
   private spotFor(world: MatchWorld, plan: AiPlan): Point {
-    const hoop = world.hoopFor(world.players[this.index].pos.x);
+    const hoop = world.hoopFor(this.index);
     const angle = ((this.rng.range(-1, 1) * AI_TUNING.spotAngle) / 180) * Math.PI;
     if (plan === 'rim') return { x: hoop.rim.x, y: hoop.rim.y };
     if (plan === 'mid') return spotAround(world.court, hoop, this.rng.range(AI_TUNING.midRange[0], AI_TUNING.midRange[1]), angle);
@@ -380,16 +540,21 @@ export class PlayerAi {
    * Coéquipier démarqué à portée de passe : le plus démarqué, ou pour ressortir le plus proche
    * derrière l'arc (`beyondArc`).
    */
-  private openMate(world: MatchWorld, beyondArc = false): number | null {
+  private openMate(world: MatchWorld, beyondArc = false, frontOnly = false): number | null {
     let best: number | null = null;
     let bestScore = -Infinity;
-    const hoop = world.court.hoops.right;
+    const team = world.team[this.index];
+    const hoop = world.attackHoop(team);
     const me = world.players[this.index].pos;
+    const full = world.full;
+    // Une fois le ballon amené devant, jamais de passe vers sa moitié arrière (retour en zone).
+    const front = full && (frontOnly || (full.frontcourt && full.phase === 'jeu'));
     for (const j of world.teammatesOf(this.index)) {
       const p = world.players[j].pos;
       const d = Math.hypot(p.x - me.x, p.y - me.y);
       if (d > AI_TUNING.maxPass) continue;
       if (beyondArc && !isThreePoint(world.court, hoop, p.x, p.y)) continue;
+      if (front && !inFrontcourt(world.court, team, full.period, p.x)) continue;
       const open = openness(world, j);
       if (open <= AI_TUNING.openRange) continue;
       // Ligne de passe occupée : un adversaire trop près de la trajectoire (un QI bas s'y risque).
@@ -408,7 +573,7 @@ export class PlayerAi {
 
   private attack(world: MatchWorld, dt: number): WorldInput {
     const body = world.players[this.index];
-    const hoop = world.hoopFor(body.pos.x);
+    const hoop = world.hoopFor(this.index);
     const team = world.team[this.index];
     const hasMates = world.teammatesOf(this.index).length > 0;
     // Ressortie d'abord : passe à un coéquipier démarqué derrière l'arc, sinon le point le plus proche derrière l'arc.
@@ -427,10 +592,26 @@ export class PlayerAi {
     }
     this.mode = 'attaque';
     this.possessionTime += dt;
-    // Passe : serré, ou trop longtemps avec le ballon, vers un coéquipier démarqué.
-    const teamLate = world.possession !== null && world.clock - world.possession.since > AI_TUNING.teamShootAfter;
     const a = body.athlete;
     const passChance = lerp(AI_TUNING.passChance[0], AI_TUNING.passChance[1], ratingT((a.attrs.passing + a.attrs.iq) / 2));
+    const full = world.full;
+    // Terrain entier : d'abord monter le ballon dans sa moitié avant.
+    if (full) {
+      const front = full.frontcourt;
+      if (front && !this.wasFront) {
+        // Arrivé devant : la possession placée commence.
+        this.possessionTime = 0;
+        this.stuck = 0;
+      }
+      this.wasFront = front;
+      if (!front) return this.bringUp(world, dt, passChance);
+    }
+    // Passe : serré, ou trop longtemps avec le ballon, vers un coéquipier démarqué. Fin de shot clock
+    // (ou de période) : plus de passe, on tire.
+    const remaining = full ? (full.clock < full.shotClock ? full.clock : full.shotClock) : Infinity;
+    const teamLate = full
+      ? remaining <= AI_TUNING.shotClockLate
+      : world.possession !== null && world.clock - world.possession.since > AI_TUNING.teamShootAfter;
     if (hasMates) {
       this.decideClock += dt;
       if (this.decideClock >= AI_TUNING.decideEvery) {
@@ -460,7 +641,7 @@ export class PlayerAi {
       this.plan = this.plan === 'rim' ? 'mid' : this.plan;
       this.spot = this.spotFor(world, this.plan ?? 'mid');
     }
-    const late = this.possessionTime >= AI_TUNING.shootAfter || teamLate;
+    const late = this.possessionTime >= (full ? AI_TUNING.shootAfterFull : AI_TUNING.shootAfter) || teamLate;
     if (this.plan === 'rim') {
       const toRim = Math.hypot(hoop.rim.x - body.pos.x, hoop.rim.y - body.pos.y);
       if (canDunk(world.dunkContext(this.index))) return this.shoot(world, 'rim');
@@ -471,6 +652,50 @@ export class PlayerAi {
     this.target = this.spot;
     if (toSpot <= AI_TUNING.reachTolerance || late) return passInstead() ?? this.shoot(world, this.plan ?? 'mid');
     return this.moveTo(world, this.spot!);
+  }
+
+  /**
+   * Montée de balle : vers la moitié avant par le milieu. Un intérieur donne au meneur démarqué ;
+   * le porteur passe en avant à un démarqué déjà devant s'il traîne ou s'il est serré. Sans
+   * défenseur entre lui et le cercle : contre-attaque.
+   */
+  private bringUp(world: MatchWorld, dt: number, passChance: number): WorldInput {
+    this.mode = 'montée';
+    const full = world.full!;
+    const body = world.players[this.index];
+    const team = world.team[this.index];
+    const hoop = world.hoopFor(this.index);
+    const toRim = Math.hypot(hoop.rim.x - body.pos.x, hoop.rim.y - body.pos.y);
+    const ahead = world.opponentsOf(this.index).some((o) => {
+      const p = world.players[o].pos;
+      return Math.hypot(hoop.rim.x - p.x, hoop.rim.y - p.y) < toRim;
+    });
+    if (!ahead) {
+      // Contre-attaque : droit au cercle.
+      this.plan = 'rim';
+      this.spot = { x: hoop.rim.x, y: hoop.rim.y };
+      this.target = this.spot;
+      return this.moveTo(world, this.target, true);
+    }
+    this.decideClock += dt;
+    if (this.decideClock >= AI_TUNING.decideEvery && world.teammatesOf(this.index).length > 0) {
+      this.decideClock = 0;
+      const slot = world.lineup[team]?.indexOf(this.index) ?? 0;
+      const pressured = openness(world, this.index) < AI_TUNING.pressureRange;
+      if (slot >= 2) {
+        // Un intérieur ne monte pas le ballon : il le donne à un arrière démarqué.
+        const guard = this.openMate(world);
+        if (guard !== null && (world.lineup[team]?.indexOf(guard) ?? 9) <= 1) return this.passTo(world, guard);
+      }
+      if (full.backcourtTime > AI_TUNING.advanceAfter || pressured) {
+        const mate = this.openMate(world, false, true);
+        if (mate !== null && this.rng.chance(passChance)) return this.passTo(world, mate);
+      }
+    }
+    const dir = attacksRight(team, full.period) ? 1 : -1;
+    const w = world.court.width;
+    this.target = { x: world.court.length / 2 + dir * AI_TUNING.bringUpDepth, y: Math.min(w * 0.7, Math.max(w * 0.3, body.pos.y)) };
+    return this.moveTo(world, this.target, true);
   }
 
   /** Appui sur Tir ; le lâcher est prévu au sommet plus une erreur selon la stat de la zone. */
@@ -494,12 +719,30 @@ export class PlayerAi {
   private offBall(world: MatchWorld): WorldInput {
     const team = world.team[this.index];
     const body = world.players[this.index];
-    const hoop = world.court.hoops.right;
+    const hoop = world.attackHoop(team);
+    const full = world.full;
+    // Remise de son équipe : le receveur vient au-devant du lanceur.
+    if (full && (full.phase === 'remise' || full.phase === 'mort') && this.inboundReceiver(world, team) === this.index) {
+      this.mode = 'réception';
+      const spot = full.inbound!.spot;
+      // Dans le terrain et de côté : jamais juste derrière le défenseur planté devant le lanceur.
+      const sideline = spot.y < 0 || spot.y > world.court.width;
+      const back = attacksRight(team, full.period) ? -1 : 1;
+      const t = AI_TUNING;
+      this.target = sideline
+        ? { x: spot.x + back * t.inboundSide, y: spot.y + (spot.y < 0 ? t.inboundMeet : -t.inboundMeet) }
+        : { x: spot.x + (spot.x < 0 ? t.inboundMeet : -t.inboundMeet), y: spot.y + (spot.y > world.court.width / 2 ? t.inboundSide : -t.inboundSide) };
+      this.target.x = Math.min(world.court.length - 0.8, Math.max(0.8, this.target.x));
+      this.target.y = Math.min(world.court.width - 0.8, Math.max(0.8, this.target.y));
+      return this.moveTo(world, this.target, true);
+    }
     const spot = spacingSpots(world, team).get(this.index) ?? { x: body.pos.x, y: body.pos.y };
-    if (world.rules?.mustClear[team]) {
+    const far = Math.hypot(spot.x - body.pos.x, spot.y - body.pos.y) > AI_TUNING.sprintFrom;
+    // Ressortie due (demi-terrain) ou ballon pas encore amené devant (terrain entier) : à sa place, sans couper.
+    if (world.rules?.mustClear[team] || (full && (!full.frontcourt || full.phase !== 'jeu'))) {
       this.mode = 'écartement';
       this.target = spot;
-      return this.moveTo(world, spot);
+      return this.moveTo(world, spot, far);
     }
     if (this.clock < this.cutUntil) {
       this.mode = 'coupe';
@@ -529,7 +772,7 @@ export class PlayerAi {
     const reaction = this.reaction(world);
     const body = world.players[this.index];
     const seen = anticipatedPosition(this.history, this.clock, reaction);
-    const hoop = world.hoopFor(seen.x);
+    const hoop = world.defendHoop(world.team[this.index]);
     const shot = world.shot;
     // Le tireur décolle près de nous : on saute pour contester, après le temps de réaction.
     if (shot && shot.shooter === other && this.contested !== shot && shot.airTime >= reaction) {
@@ -544,7 +787,21 @@ export class PlayerAi {
       this.target = { x: body.pos.x, y: body.pos.y };
       return { x: 0, y: 0, jump: false };
     }
-    this.target = guardSpot(seen, hoop);
+    const full = world.full;
+    if (full?.phase === 'remise' && full.inbound?.thrower === other) {
+      // Lanceur d'une remise : on se met devant lui, sur le terrain.
+      const spot = full.inbound.spot;
+      const inside = { x: Math.min(world.court.length - 0.5, Math.max(0.5, spot.x)), y: Math.min(world.court.width - 0.5, Math.max(0.5, spot.y)) };
+      const dx = inside.x - spot.x;
+      const dy = inside.y - spot.y;
+      const d = Math.hypot(dx, dy) || 1;
+      this.target = { x: spot.x + (dx / d) * AI_TUNING.inboundGuard, y: spot.y + (dy / d) * AI_TUNING.inboundGuard };
+      return this.moveTo(world, this.target);
+    }
+    // Porteur encore dans sa moitié arrière : on recule devant lui (on le prend à la ligne médiane).
+    const sag = full && !full.frontcourt && !inFrontcourt(world.court, world.team[other], full.period, seen.x);
+    this.target = guardSpot(seen, hoop, sag ? AI_TUNING.backcourtGap : AI_TUNING.guardGap);
+    if (sag) return this.moveTo(world, this.target, Math.hypot(this.target.x - body.pos.x, this.target.y - body.pos.y) > AI_TUNING.sprintFrom);
     // Attaquant déjà sur nous : on tient notre place au lieu d'avancer vers lui (on ne lui rentre
     // pas dedans parce qu'on le voit avec du retard).
     const now = world.players[other].pos;
@@ -604,14 +861,23 @@ export class PlayerAi {
     this.mode = 'aide';
     if (this.mark === null) return { x: 0, y: 0, jump: false };
     const seen = delayedPosition(this.history, this.clock, this.reaction(world));
-    const hoop = world.court.hoops.right;
+    const hoop = world.defendHoop(world.team[this.index]);
     const ball = world.holder !== null ? world.players[world.holder].pos : world.ball.pos;
     const spot = helpSpot(seen, hoop, ball);
     // Un bon intercepteur se décale vers la ligne de passe vers son joueur.
     const deny = lerp(AI_TUNING.deny[0], AI_TUNING.deny[1], ratingT(world.players[this.index].athlete.attrs.steal));
     const lane = { x: ball.x + (seen.x - ball.x) * AI_TUNING.denyAt, y: ball.y + (seen.y - ball.y) * AI_TUNING.denyAt };
-    this.target = { x: spot.x + (lane.x - spot.x) * deny, y: spot.y + (lane.y - spot.y) * deny };
-    return this.moveTo(world, this.target);
+    let target = { x: spot.x + (lane.x - spot.x) * deny, y: spot.y + (lane.y - spot.y) * deny };
+    // Retour en défense : on attend son joueur à `retreatDepth` m de son cercle au plus.
+    const fromRim = Math.hypot(target.x - hoop.rim.x, target.y - hoop.rim.y);
+    if (world.full && fromRim > AI_TUNING.retreatDepth) {
+      const k = AI_TUNING.retreatDepth / fromRim;
+      target = { x: hoop.rim.x + (target.x - hoop.rim.x) * k, y: hoop.rim.y + (target.y - hoop.rim.y) * k };
+      this.mode = 'repli';
+    }
+    this.target = target;
+    const me = world.players[this.index].pos;
+    return this.moveTo(world, target, !!world.full && Math.hypot(target.x - me.x, target.y - me.y) > AI_TUNING.sprintFrom);
   }
 
   private chase(world: MatchWorld): WorldInput {
