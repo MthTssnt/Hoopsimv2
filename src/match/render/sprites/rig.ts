@@ -2,29 +2,29 @@ import { HEAD_GRID, type Expression } from '../../../assets/sprites/heads';
 import { heightClass } from './appearance';
 
 /**
- * Cadre d'un sprite de joueur (480×270) : pieds au milieu du bord bas, la rangée du sol est le
+ * Cadre d'un sprite de joueur (640×360) : pieds au milieu du bord bas, la rangée du sol est le
  * contour sous la semelle.
  */
-export const FRAME = { width: 40, height: 48, centerX: 20, groundY: 47 } as const;
-/** Tête, cheveux compris, sans le contour (14×14 avec). */
+export const FRAME = { width: 56, height: 64, centerX: 28, groundY: 63 } as const;
+/** Tête, cheveux compris, sans le contour (18×18 avec). */
 export const HEAD_SIZE = HEAD_GRID;
 export const NECK_ROWS = 1;
-export const SHORTS_ROWS = 3;
-export const SHOE_ROWS = 2;
+export const SHORTS_ROWS = 4;
+export const SHOE_ROWS = 3;
 
 /**
  * Gabarits (docs/ART_DIRECTION.md) : la tête ne change jamais, ni la longueur des bras. Le
- * pivot gagne 3 rangées (torse + jambes) et une colonne ; le meneur en perd 2.
+ * pivot gagne 3 rangées (torse + jambes) et une colonne ; le meneur en perd 3.
  */
 export const BUILDS = {
-  meneur: { torso: 7, legs: 3, extraWidth: 0 },
-  ailier: { torso: 8, legs: 4, extraWidth: 0 },
-  pivot: { torso: 10, legs: 5, extraWidth: 1 },
+  meneur: { torso: 9, legs: 5, extraWidth: 0 },
+  ailier: { torso: 11, legs: 6, extraWidth: 0 },
+  pivot: { torso: 13, legs: 7, extraWidth: 1 },
 } as const;
 export type Build = keyof typeof BUILDS;
 
 /** Largeur du torse d'un ailier léger (px, sans contour). */
-const BASE_TORSO_WIDTH = 10;
+const BASE_TORSO_WIDTH = 11;
 
 export function buildFor(heightCm: number): Build {
   const size = heightClass(heightCm);
@@ -98,38 +98,38 @@ export interface LegPose {
 }
 
 const ARMS = {
-  hang: { elbow: [0, 3], hand: [0, 7] },
-  swingFwd: { elbow: [1, 3], hand: [-2, 5] },
-  swingBack: { elbow: [1, 3], hand: [2, 6] },
+  hang: { elbow: [0, 4], hand: [0, 10] },
+  swingFwd: { elbow: [1, 4], hand: [-3, 7] },
+  swingBack: { elbow: [1, 4], hand: [3, 8] },
   // Dribble de profil : la main revient devant le corps, le ballon rebondit devant les jambes.
-  dribbleHigh: { elbow: [1, 3], hand: [-2, 6] },
-  dribbleLow: { elbow: [1, 4], hand: [-2, 8] },
-  guard: { elbow: [2, 2], hand: [3, -1] },
-  chest: { elbow: [0, 3], hand: [-4, 3] },
-  raise: { elbow: [1, -3], hand: [0, -7] },
-  guide: { elbow: [2, -2], hand: [1, -6] },
-  release: { elbow: [1, -4], hand: [1, -8] },
-  reach: { elbow: [0, -4], hand: [0, -8] },
+  dribbleHigh: { elbow: [1, 4], hand: [-2, 8] },
+  dribbleLow: { elbow: [1, 6], hand: [-2, 11] },
+  guard: { elbow: [3, 3], hand: [4, -1] },
+  chest: { elbow: [0, 4], hand: [-6, 4] },
+  raise: { elbow: [1, -4], hand: [0, -10] },
+  guide: { elbow: [3, -3], hand: [1, -8] },
+  release: { elbow: [1, -6], hand: [1, -11] },
+  reach: { elbow: [0, -6], hand: [0, -11] },
   // Vue de dos : bras qui pompent (vers l'avant, la main remonte), dribble sur le côté.
-  pumpFwd: { elbow: [1, 3], hand: [0, 5] },
-  pumpBack: { elbow: [0, 3], hand: [1, 7] },
-  dribbleSide: { elbow: [1, 3], hand: [2, 6] },
-  dribbleSideLow: { elbow: [1, 4], hand: [2, 8] },
+  pumpFwd: { elbow: [1, 4], hand: [0, 7] },
+  pumpBack: { elbow: [0, 4], hand: [1, 10] },
+  dribbleSide: { elbow: [1, 4], hand: [3, 8] },
+  dribbleSideLow: { elbow: [1, 6], hand: [3, 11] },
 } satisfies Record<string, ArmPose>;
 
 const LEGS = {
   stand: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 0 } },
-  strideA: { back: { knee: 1, foot: 2, lift: 2 }, front: { knee: 2, foot: 3, lift: 0 } },
+  strideA: { back: { knee: 1, foot: 3, lift: 3 }, front: { knee: 3, foot: 4, lift: 0 } },
   passA: { back: { knee: 0, foot: 1, lift: 1 }, front: { knee: 1, foot: 0, lift: 0 } },
-  strideB: { back: { knee: 2, foot: 3, lift: 0 }, front: { knee: 1, foot: 2, lift: 2 } },
+  strideB: { back: { knee: 3, foot: 4, lift: 0 }, front: { knee: 1, foot: 3, lift: 3 } },
   passB: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 0, foot: 1, lift: 1 } },
-  crouch: { back: { knee: 2, foot: 1, lift: 0 }, front: { knee: 2, foot: 1, lift: 0 } },
-  air: { back: { knee: 1, foot: 0, lift: 2 }, front: { knee: 2, foot: 1, lift: 3 } },
-  dunkAir: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 2, foot: 1, lift: 4 } },
+  crouch: { back: { knee: 3, foot: 1, lift: 0 }, front: { knee: 3, foot: 1, lift: 0 } },
+  air: { back: { knee: 1, foot: 0, lift: 3 }, front: { knee: 3, foot: 1, lift: 4 } },
+  dunkAir: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 3, foot: 1, lift: 6 } },
   dangle: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 0, foot: 1, lift: 1 } },
   // Course vue de dos : jambes côte à côte, un pied levé à chaque foulée.
-  stepLeft: { back: { knee: 1, foot: 0, lift: 2 }, front: { knee: 1, foot: 0, lift: 0 } },
-  stepRight: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 2 } },
+  stepLeft: { back: { knee: 1, foot: 0, lift: 3 }, front: { knee: 1, foot: 0, lift: 0 } },
+  stepRight: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 3 } },
 } satisfies Record<string, { back: LegPose; front: LegPose }>;
 
 /** Où dessiner le ballon tenu : main de dribble, au rebond, à la poitrine ou au-dessus de la main. */
@@ -179,11 +179,11 @@ export const FRAMES: readonly FrameDef[] = [
   f('stand', 'dribbleHigh', 'guard', 0, 'hand'),
   f('stand', 'dribbleLow', 'guard', 1, 'dribbleLow'),
   // 12-14 saut / tir (visage concentré)
-  f('crouch', 'chest', 'chest', 2, 'chest', 'concentree'),
+  f('crouch', 'chest', 'chest', 3, 'chest', 'concentree'),
   f('air', 'raise', 'guide', 0, 'overhead', 'concentree'),
   f('air', 'release', 'guide', 0, undefined, 'concentree'),
   // 15-17 dunk
-  f('crouch', 'chest', 'chest', 2, 'chest', 'concentree'),
+  f('crouch', 'chest', 'chest', 3, 'chest', 'concentree'),
   f('dunkAir', 'reach', 'swingBack', 0, 'overhead', 'concentree'),
   f('dangle', 'reach', 'reach', 0, undefined, 'concentree'),
   // 18 contre : deux bras tendus vers le haut, jambes du saut (contre, contestation, rebond)

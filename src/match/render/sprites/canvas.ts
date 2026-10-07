@@ -1,13 +1,13 @@
 /**
  * Emplacements de couleur d'un sprite. Les grilles et le rig dessinent avec ces symboles ;
  * la couleur réelle n'est choisie qu'au moment de la cuisson (peau, cheveux, équipe…).
- *   o contour · 1/2/3 peau claire/base/ombre · h/H cheveux base/ombre
+ *   o contour · 1/2/3 peau claire/base/ombre · r/h/H cheveux reflet/base/ombre
  *   p/P/q équipe primaire claire/base/sombre · s/S/t équipe secondaire claire/base/sombre
  *   k encre (chaussures) · w craie (semelles, chaussettes, blanc des yeux) · n pupille
  */
-export type Slot = 'o' | '1' | '2' | '3' | 'h' | 'H' | 'p' | 'P' | 'q' | 's' | 'S' | 't' | 'k' | 'w' | 'n';
+export type Slot = 'o' | '1' | '2' | '3' | 'r' | 'h' | 'H' | 'p' | 'P' | 'q' | 's' | 'S' | 't' | 'k' | 'w' | 'n';
 
-const SLOTS = new Set<string>(['o', '1', '2', '3', 'h', 'H', 'p', 'P', 'q', 's', 'S', 't', 'k', 'w', 'n']);
+const SLOTS = new Set<string>(['o', '1', '2', '3', 'r', 'h', 'H', 'p', 'P', 'q', 's', 'S', 't', 'k', 'w', 'n']);
 
 /** Lit un caractère de grille : « . » (ou espace) = transparent ; « e » = blanc de l'œil (w). */
 export function slotOf(char: string): Slot | null {

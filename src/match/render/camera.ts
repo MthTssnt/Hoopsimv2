@@ -9,7 +9,7 @@ export const CAMERA_TUNING = {
   /** Marge pour quitter un palier vers un zoom plus large : évite les allers-retours. */
   stepHysteresis: 0.06,
   /** Marges autour du joueur et du ballon (px du monde). */
-  margin: { x: 48, top: 18, bottom: 12 },
+  margin: { x: 64, top: 24, bottom: 16 },
   /** Lissage de la position et du zoom continu (fraction par image à 60 i/s). */
   followLerp: 0.12,
   zoomLerp: 0.06,

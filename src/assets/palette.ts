@@ -67,6 +67,9 @@ export const HAIR_COLORS: [number, number][] = [
   [PALETTE.silver, PALETTE.slate],
 ];
 
+/** Reflet de chaque couleur de cheveux (même ordre que `HAIR_COLORS`), pris dans la palette. */
+export const HAIR_HIGHLIGHTS: number[] = [PALETTE.slate, PALETTE.woodDark, PALETTE.woodLight, PALETTE.orangeDark, PALETTE.mist];
+
 /** Rampe d'équipe : clair, base, sombre. */
 export type TeamRamp = [number, number, number];
 

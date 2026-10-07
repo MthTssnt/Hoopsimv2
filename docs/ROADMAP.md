@@ -37,9 +37,17 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ 12. Fatigue et rotation à l'échelle du match (énergie et coach de la simulation sortis dans `engine/rotation.ts`, `calibrate` identique), changements automatiques aux ballons morts (le remplaçant prend le corps et le contrôle), fautes d'équipe par période, bonus (2 lancers dès la 6e faute), élimination à 6 fautes, box score en direct (minutes, tirs, lancers, rebonds, passes décisives, interceptions, contres, pertes, fautes, +/-), carte du joueur vivante (énergie, PTS REB PD), messages BONUS / 6 FAUTES / CHANGEMENT, menu pause (Échap, P ou bouton) avec le box score
 - ✅ 13. Match joué dans le GM : « Jouer », « Regarder » (×1, ×2, ×4) ou « Simuler » le match de ton équipe, en saison régulière et en playoffs ; `playGame` = `simulateGame` + `recordGame` (`calibrate` identique), le match joué enregistré par les mêmes fonctions (classement, stats, blessures, feuille) ; « Simuler la fin » (IA contre IA en accéléré, depuis l'état du match) ; arène du club qui reçoit, tenue extérieure quand les couleurs sont proches
 
-## Phase 3 — DA et ressenti ⬜
+## Phase 3 — DA et ressenti 🔄
 - ✅ Direction artistique et sprites de base (chantier style S1–S4, voir phase 1)
-- ⬜ Animations complètes, caméra, HUD final, sons
+- ✅ Décisions de Matheo : redesign des joueurs d'abord, puis poses et arbitre, sons synthétisés en code, caméra et HUD ; coach du match joué réglé pour moins de changements ; gestes avancés dans une phase à part
+- 🔄 14. Redesign des joueurs et du ballon en 640×360 à 30 px/m sur `?style` (joueur standard de 43 px, tête 16×16, visage et coiffures redessinés, corps plus mince, ballon 8×8, vue avant / après) : à valider par Matheo
+- ⬜ 15. Application au match en 640×360 (cadrage, ombres, anneau, étiquettes, messages, HUD, cuisson du banc)
+- ⬜ 16. Poses complètes (passe, réception, vol, déséquilibre, défense, lancer, réception au sol, remise, célébration, déçu), arbitre, célébrations, coach du match joué
+- ⬜ 17. Sons synthétisés en code (ballon, cercle, filet, planche, chaussures, sifflet, sirène, public), volume et coupure
+- ⬜ 18. Caméra et HUD final (cadrage, transitions, tableau de score final, aides de touches, « remplir l'écran »)
+
+## Phase 3 bis — Gestes avancés ⬜
+- ⬜ Step back, euro step, floater, spin, alley-oop, self-lob, dunk 360 (touches à choisir avec Matheo)
 
 ## Phase 4 — Gestion étendue ⬜
 - ⬜ Agents libres, trades, college et recrutement

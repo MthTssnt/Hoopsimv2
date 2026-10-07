@@ -1,4 +1,4 @@
-import { HAIR_COLORS, PALETTE, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
+import { HAIR_COLORS, HAIR_HIGHLIGHTS, PALETTE, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
 import { SHOES, SHOES_BACK, SHORTS, TORSOS, TORSOS_BACK, stretch, widen } from '../../../assets/sprites/body';
 import { EXPRESSIONS, HAIRS, HEADS, type Expression } from '../../../assets/sprites/heads';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
@@ -43,8 +43,8 @@ function refereeRemap(slot: Slot, x: number): Slot {
   return JERSEY.has(slot) ? (x % 2 === 0 ? 'w' : 'k') : slot;
 }
 
-/** Rangée du haut du numéro : la rangée 0 est le col, la 1 reste libre. */
-export const NUMBER_TOP = 2;
+/** Rangée du haut du numéro : les rangées 0 et 1 sont le col, la 2 reste libre. */
+export const NUMBER_TOP = 3;
 
 /** Zone du numéro sur le torse (colonnes relatives) : toute la poitrine, hors bords. */
 export function numberZone(torsoWidth: number): { left: number; width: number } {
@@ -73,13 +73,24 @@ function arm(shoulder: Point, pose: ArmPose, side: 1 | -1, skin: Slot): { layer:
   return { layer: limb([shoulder, at(pose.elbow), hand], 2, skin), hand };
 }
 
-/** Jambe : hanche → genou → chaussette, puis chaussure. `side` = -1 à gauche, +1 à droite. */
+/** Ton d'ombre de la peau, pour marquer le genou. */
+const SKIN_SHADE: Partial<Record<Slot, Slot>> = { '1': '2', '2': '3' };
+
+/**
+ * Jambe : hanche → genou → chaussette, puis chaussure. `side` = -1 à gauche, +1 à droite.
+ * Genou à 1 px de l'aplomb (arrêt, passages, pas de dos) : jambe droite et genou marqué d'un
+ * pixel d'ombre côté extérieur. Le coude d'1 px élargissait l'entrejambe sur une seule rangée,
+ * ce qui dessinait une croix sombre entre les jambes.
+ */
 function leg(hip: Point, pose: LegPose, side: 1 | -1, dims: BodyDims, shoeTop: number, skin: Slot, heading: Heading): SlotCanvas {
   const sockY = shoeTop - 1 - pose.lift;
-  const knee = { x: hip.x + side * pose.knee, y: Math.round((hip.y + sockY) / 2) };
+  const plumb = pose.knee === 1 && pose.foot === 0;
+  const knee = { x: hip.x + side * (plumb ? 0 : pose.knee), y: Math.round((hip.y + sockY) / 2) };
   const foot = { x: hip.x + side * pose.foot, y: sockY };
   const off = Math.floor((dims.limb - 1) / 2);
   return limb([hip, knee, foot], dims.limb, skin, (c) => {
+    const shade = SKIN_SHADE[skin];
+    if (plumb && shade) c.set(side > 0 ? knee.x - off + dims.limb - 1 : knee.x - off, knee.y, shade);
     c.rect(foot.x - off, sockY, dims.limb, 1, 'w');
     c.stamp((heading === 'back' ? SHOES_BACK : SHOES)[dims.heavy || dims.build === 'pivot' ? 'heavy' : 'light'], foot.x - off, sockY + 1);
   });
@@ -123,10 +134,10 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
   const W = dims.torsoWidth;
   const cx = FRAME.centerX;
 
-  // Jambes : hanches sous le short, 2 px d'écart entre les deux.
+  // Jambes : hanches sous le short, centrées sur le corps, séparées par leurs contours.
   const off = Math.floor((dims.limb - 1) / 2);
-  const backHip = { x: cx - 2 - (dims.limb - off), y: L.shortsBottom };
-  const frontHip = { x: cx + 1 + off, y: L.shortsBottom };
+  const backHip = { x: cx - 1 - (dims.limb - off), y: L.shortsBottom };
+  const frontHip = { x: cx + 2 + off, y: L.shortsBottom };
   const backShoulder = { x: L.torsoLeft - 3, y: L.torsoTop };
   const frontShoulder = { x: L.torsoRight + 2, y: L.torsoTop };
 
@@ -171,14 +182,15 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
   // dos, sur le côté de la hanche. Au rebond, il touche le sol même pendant une foulée.
   let ball: ComposedFrame['ball'] = null;
   const hand = { x: frontArm.hand.x, y: frontArm.hand.y - rise };
-  const out = back ? 2 : 0;
-  const floorY = FRAME.groundY - 3;
+  const out = back ? 3 : 0;
+  // Ballon de 8 px (10 avec le contour) : au sol, son centre est 4 px au-dessus du sol.
+  const floorY = FRAME.groundY - 4;
   switch (frame.ball) {
     case 'hand':
-      ball = { x: hand.x + out, y: hand.y + 4 };
+      ball = { x: hand.x + out, y: hand.y + 5 };
       break;
     case 'dribbleMid':
-      ball = { x: hand.x + out + 1, y: Math.round((hand.y + 4 + floorY) / 2) };
+      ball = { x: hand.x + out + 1, y: Math.round((hand.y + 5 + floorY) / 2) };
       break;
     case 'dribbleLow':
       ball = { x: hand.x + out + 1, y: floorY };
@@ -187,7 +199,7 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
       ball = { x: Math.round((hand.x + backArm.hand.x) / 2) + 1, y: hand.y + 1 };
       break;
     case 'overhead':
-      ball = { x: hand.x + 1, y: hand.y - 3 };
+      ball = { x: hand.x + 1, y: hand.y - 4 };
       break;
   }
   if (ball && mirror) ball = { x: FRAME.width - 1 - ball.x, y: ball.y };
@@ -197,13 +209,15 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
 /** Couleurs réelles d'un joueur : peau, cheveux et rampes de son équipe. */
 export interface SlotColors {
   skin: readonly [number, number, number];
-  hair: readonly [number, number];
+  /** Cheveux : reflet, base, ombre. */
+  hair: readonly [number, number, number];
   primary: TeamRamp;
   secondary: TeamRamp;
 }
 
 export function colorsFor(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
-  return { skin: SKIN_TONES[look.skin], hair: HAIR_COLORS[look.hairColor], primary, secondary };
+  const [base, shadow] = HAIR_COLORS[look.hairColor];
+  return { skin: SKIN_TONES[look.skin], hair: [HAIR_HIGHLIGHTS[look.hairColor], base, shadow], primary, secondary };
 }
 
 export function slotColor(slot: Slot, colors: SlotColors): number {
@@ -221,10 +235,12 @@ export function slotColor(slot: Slot, colors: SlotColors): number {
       return colors.skin[1];
     case '3':
       return colors.skin[2];
-    case 'h':
+    case 'r':
       return colors.hair[0];
-    case 'H':
+    case 'h':
       return colors.hair[1];
+    case 'H':
+      return colors.hair[2];
     case 'p':
       return colors.primary[0];
     case 'P':

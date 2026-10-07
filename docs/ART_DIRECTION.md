@@ -13,69 +13,82 @@ Ce qu'on ne reprend **jamais** : sprites, palette, police, logos, mise en page d
 personnages, noms d'équipes ou de joueurs, décors précis de Hoop Land ou d'un autre jeu.
 Tout est dessiné par nous (en code pour l'instant), avec notre palette et notre police.
 
-## 2. Résolution et cadrage (validé)
+## 2. Résolution et cadrage
 
-Cadrage validé par Matheo : celui de 384×216 à 18 px/m (21,3 m visibles, toute la profondeur).
-Avec les règles chiffrées des sprites (joueur standard d'environ 32 px), la résolution
-retenue est **480×270**. Le passage par 640×360 est abandonné.
+Cadrage validé par Matheo : 21,3 m de terrain visibles en largeur et toute la profondeur (celui
+de 384×216 à 18 px/m). Depuis l'incrément 14 (redesign des joueurs), la résolution interne passe
+à **640×360 à 30 px/m** : même cadrage, un tiers de pixels en plus partout, pour des joueurs
+mieux définis (et plus minces) sans les grossir à l'écran.
 
 | Réglage | Valeur | Pourquoi |
 | --- | --- | --- |
-| Résolution interne | **480×270** | Celle du match ; mise à l'échelle entière : ×4 en 1080p plein écran, ×3 dans une fenêtre de navigateur, ×2 sur un portable 1366×768 |
+| Résolution interne | **640×360** | Mise à l'échelle entière : ×3 en 1080p plein écran, ×2 dans une fenêtre de navigateur 1080p et sur un portable 1366×768, ×4 en 1440p, ×6 en 4K |
 | Mise à l'échelle | entière uniquement (`Scale.NONE` + zoom entier, recalculé au redimensionnement) | Pixels nets, jamais de pixel étiré |
-| Échelle du terrain | **22,5 px/m** en longueur | ~21,3 m de terrain visibles en largeur |
+| Échelle du terrain | **30 px/m** en longueur | ~21,3 m de terrain visibles en largeur |
 | Vue 3/4 | profondeur ×0,66, hauteur ×0,68 | Toute la profondeur du terrain à l'écran |
 
 La touche **F** passe en plein écran. Les épaisseurs du décor (lattes, public, poteau,
 poutre, panneaux) sont proportionnelles à l'échelle (`artPx`) : elles suivent la résolution.
+En fenêtre 1080p, le jeu passe de ×3 (480×270) à ×2 (1280×720) ; l'option « remplir l'écran »
+(incrément 18) rattrapera la fenêtre.
 
-Ordres de grandeur à 22,5 px/m :
+Ordres de grandeur à 30 px/m :
 
 | Élément | Taille à l'écran |
 | --- | --- |
-| Profondeur du terrain (15,24 m) | ~226 px, soit 84 % de la hauteur de l'écran |
-| Hauteur du cercle (3,05 m) | ~47 px au-dessus du sol |
-| Joueur standard (ailier) | 32 px, contour compris |
+| Profondeur du terrain (15,24 m) | ~302 px, soit 84 % de la hauteur de l'écran |
+| Hauteur du cercle (3,05 m) | ~62 px au-dessus du sol |
+| Joueur standard (ailier) | 43 px, contour compris |
 
-## 3. Règles chiffrées des personnages (font foi)
+## 3. Règles chiffrées des personnages (font foi une fois validées)
 
-Les sprites ont leurs propres règles en pixels, données par Matheo. La physique garde les
+Les sprites ont leurs propres règles en pixels. Celles de l'incrément 14 (redesign) reprennent
+les proportions données par Matheo en S3d, avec plus de pixels et une silhouette plus mince ;
+elles sont à valider sur `?style` (vues gros plan et avant / après). La physique garde les
 vraies tailles : seul le dessin suit ces règles.
 
-**Joueur standard (ailier), 32 px contour compris, ~2,5 têtes de haut** :
+**Joueur standard (ailier), 43 px contour compris, même taille par rapport au terrain qu'en
+480×270, tête ~40 % de la hauteur** :
 
 | Partie | Taille |
 | --- | --- |
-| Tête, cheveux compris | 13 rangées de haut (contour du haut + 12), 14 de large avec le contour, soit ~40 % de la hauteur |
+| Tête, cheveux compris | 17 rangées de haut (contour du haut + 16), 18 de large avec le contour |
 | Cou | 1 rangée |
-| Torse (maillot) | 8 rangées |
-| Short | 3 rangées |
-| Jambes (chaussette comprise) | 4 rangées |
-| Chaussures | 2 rangées, puis le contour au sol |
+| Torse (maillot) | 11 rangées, 11 px de large (26 % de la hauteur : plus mince qu'avant) |
+| Short | 4 rangées |
+| Jambes (chaussette comprise) | 6 rangées |
+| Chaussures | 3 rangées (dessus `ink` sur 2, semelle `chalk`), puis le contour au sol |
 
-- **Bras** : 2 px de remplissage et un contour de chaque côté, jamais 1 px. Ils mesurent 9 px
+- **Bras** : 2 px de remplissage et un contour de chaque côté, jamais 1 px. Ils mesurent 12 px
   de l'épaule à la main, quel que soit le gabarit. La main (le bout de 2×2) arrive au niveau
   de la taille.
-- **Jambes** : 3 px de large (4 px chez les pivots et les lourds), plus le contour. Elles sont
-  écartées, genoux fléchis vers l'extérieur.
+- **Jambes** : 3 px de large (4 px chez les pivots et les lourds), plus le contour, séparées
+  par leurs contours.
+  - À l'arrêt, elles sont droites, et l'entrejambe reste un trait droit (pas de croix sombre).
+    Le genou de la jambe avant est marqué d'un pixel d'ombre côté extérieur.
+  - Les genoux ne se plient vraiment qu'en course, en flexion et en l'air.
 - **Membres dans leur propre calque** : chaque bras et chaque jambe a son contour. Un bras
   qui passe devant le maillot en reste séparé par un trait sombre.
+- **Largeur** : 19 px au plus pour l'ailier à l'arrêt, bras compris (18 avant, pour 32 px de
+  haut).
 
 **Gabarits** (taille de la tête et longueur des bras identiques, membres jamais allongés) :
 
 | Gabarit | Taille du joueur | Torse | Jambes | Hauteur | Largeur du torse |
 | --- | --- | --- | --- | --- | --- |
-| Meneur | < 1,93 m | 7 | 3 | 30 px (−2) | 10 px |
-| Ailier | 1,93–2,05 m | 8 | 4 | 32 px | 10 px |
-| Pivot | > 2,05 m | 10 | 5 | 35 px (+3) | 11 px (+1) |
+| Meneur | < 1,93 m | 9 | 5 | 40 px (−3) | 11 px |
+| Ailier | 1,93–2,05 m | 11 | 6 | 43 px | 11 px |
+| Pivot | > 2,05 m | 13 | 7 | 46 px (+3) | 12 px (+1) |
 
 Corpulence lourde : +1 colonne au torse et au short.
 
-- **Ballon** : 6×6. Le ballon tenu est dessiné à la main du sprite (point d'accroche de chaque
-  image). Au lâcher, il rejoindra sa position physique en ~80 ms.
-- **Cadre des sprites** : 40×48 px, pieds au milieu du bord bas.
+- **Ballon** : 8×8 (10×10 avec le contour), deux coutures `ink`, un reflet en haut à gauche,
+  l'ombre en bas à droite. Le ballon tenu est dessiné à la main du sprite (point d'accroche de
+  chaque image). Au lâcher, il rejoint sa position physique en ~80 ms.
+- **Cadre des sprites** : 56×64 px, pieds au milieu du bord bas.
 - **Contrôle** : la vue gros plan de `?style` (touche V) affiche les trois gabarits ×2 avec une
-  règle par rangée. Les tests de `sprites.test.ts` mesurent chaque règle.
+  règle par rangée ; la vue avant / après montre l'ailier de 480×270 (×4) et celui de 640×360
+  (×3) à la même taille à l'écran. Les tests de `sprites.test.ts` mesurent chaque règle.
 
 ## 4. Palette maîtresse (32 couleurs, la nôtre)
 
@@ -122,11 +135,11 @@ Règles :
 ## 5. Personnages
 
 ### Visage (de face, symétrique)
-- **Yeux** : 2×2 de blanc, avec une colonne d'iris sombre côté intérieur ; 2 px d'écart entre
-  les deux yeux, sur la même rangée.
-- **Sourcils** : une rangée sombre de 3 px au-dessus de chaque œil. C'est ce qui donne
+- **Yeux** : 2×3 de blanc, avec une colonne d'iris sombre côté intérieur ; 2 px d'écart entre
+  les deux yeux, sur les mêmes rangées. Le visage est exactement symétrique.
+- **Sourcils** : une rangée sombre de 4 px au-dessus de chaque œil. C'est ce qui donne
   l'expression.
-- **Nez** : 1 px d'ombre de peau, décalé d'un pixel vers la droite : très léger trois-quarts.
+- **Nez** : 2 px d'ombre de peau, au centre.
 - **Bouche** : ligne fermée de 4 px. Un grand sourire seulement pour « joyeuse » ; jamais de
   bouche ouverte au repos.
 - **Ombrage** : un ton plus foncé sur un seul côté (le droit, lumière en haut à gauche).
@@ -146,7 +159,7 @@ Règles :
   torse. À l'arrêt, le joueur garde sa dernière vue.
 - Tournés vers la gauche, les joueurs ont leurs propres images, de profil comme de dos : le
   dessin est retourné, puis le numéro est reposé à l'endroit. La feuille compte 4 blocs de
-  18 images.
+  19 images.
 - **Ballon au dribble** : de profil, la main revient devant le corps et le ballon rebondit
   devant les jambes, un peu en avant dans le sens de la course, dessiné par-dessus elles. De
   dos, il rebondit sur le côté de la hanche.
@@ -160,7 +173,9 @@ Tout est tiré de l'identifiant du joueur, déterministe :
 - 4 teintes de peau ;
 - 5 formes de tête ;
 - 10 coiffures (ras, court, afro, tresses, chignon, bandeau, chauve, frange, dégradé, barbe),
-  toutes dans la boîte de la tête ;
+  toutes dans la boîte de la tête (16×16), de face et de dos, avec un ton de reflet (gris
+  ardoise sur les cheveux noirs, bois clair ou foncé sur les blonds et les bruns, orange sombre
+  sur les roux, brume sur les gris) ;
 - 5 couleurs de cheveux ;
 - gabarit et numéro de maillot.
 
@@ -171,11 +186,11 @@ plus une variante d'identité : c'est un état.
 - **Maillot et short** : rampe primaire de l'équipe (clair, base, sombre) ; ceinture du
   short sombre.
 - **Col, emmanchures, bande latérale du short, liseré du bas et numéro** : rampe secondaire.
-- **Numéro** : police de chiffres dédiée (`jerseyDigits.ts`), 5 rangées, « 1 » étroit de
-  2 px, 0/6/8/9 arrondis pour ne pas se confondre. Il commence une rangée sous le col rond et
-  se centre sur la poitrine. Il ne peint que le maillot encore visible : un bras qui passe
+- **Numéro** : police de chiffres dédiée (`jerseyDigits.ts`), 6 rangées, « 1 » étroit de
+  2 px, 0/6/8/9 arrondis pour ne pas se confondre. Il commence une rangée sous le col rond (sur
+  2 rangées) et se centre sur la poitrine. Il ne peint que le maillot encore visible : un bras qui passe
   devant le cache.
-- **Chaussures** : `ink` avec semelle `chalk`.
+- **Chaussures** : `ink` sur 2 rangées avec semelle `chalk`.
 - **Équipe à l'extérieur** : rampes inversées (maillot clair) si les deux équipes sont trop
   proches.
 - **1 contre 1 de test (7a)** : tes trois joueurs (1-3) portent la tenue de l'équipe à

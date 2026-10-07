@@ -15,7 +15,12 @@ import { appearanceFor, appearanceSignature, type Appearance } from '../render/s
 import type { SlotCanvas } from '../render/sprites/canvas';
 import { colorsFor, headLayer, sheetIndex, slotColor, type Heading } from '../render/sprites/compose';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
+import { LEGACY_AILIER, LEGACY_LOOK } from '../render/sprites/legacy';
 import { ANIMATIONS, bodyDims, bodyLayout, FRAME, FRAMES, SHOE_ROWS, type AnimationName } from '../render/sprites/rig';
+import { composeFrame } from '../render/sprites/compose';
+import { BALL } from '../../assets/sprites/arena';
+import { drawGrid } from '../render/arena/draw';
+import { slotOf } from '../render/sprites/canvas';
 import type { Expression } from '../../assets/sprites/heads';
 
 const ANIM_ORDER: AnimationName[] = ['idle', 'run', 'dribble', 'dribbleIdle', 'shoot', 'dunk'];
@@ -50,9 +55,12 @@ const POSE_GROUPS = [
   { label: 'CONTRE', from: 18, to: 18 },
 ];
 
-/** Vues de la scène : terrain, gros plan des gabarits, planches des poses de profil et de dos (touche V ou `?style&vue=`). */
-type View = 'terrain' | 'gros-plan' | 'poses' | 'dos';
-const VIEWS: View[] = ['terrain', 'gros-plan', 'poses', 'dos'];
+/**
+ * Vues de la scène : terrain, gros plan des gabarits, avant / après le redesign du 14, planches
+ * des poses de profil et de dos (touche V ou `?style&vue=`).
+ */
+type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos';
+const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos'];
 
 interface Actor {
   sprite: Phaser.GameObjects.Sprite;
@@ -86,8 +94,9 @@ function pickVaried(players: Player[], count: number, rng: Rng): Player[] {
 /**
  * Scène `?style` : planche de validation de la direction artistique (docs/ART_DIRECTION.md).
  * Vue terrain : 10 joueurs variés animés, arbitre, panier, bout de terrain, public,
- * photographes, HUD, en 480×270 à 22,5 px/m. Vue gros plan : meneur, ailier et pivot ×2 avec
- * une règle des proportions et les 3 expressions. Vue poses : toutes les images des gabarits.
+ * photographes, HUD, en 640×360 à 30 px/m. Vue gros plan : meneur, ailier et pivot ×2 avec
+ * une règle des proportions et les 3 expressions. Vue avant / après : l'ailier de 480×270 et
+ * celui de 640×360 à la même taille à l'écran. Vue poses : toutes les images des gabarits.
  */
 export class StyleScene extends Phaser.Scene {
   private seed = 0;
@@ -117,8 +126,8 @@ export class StyleScene extends Phaser.Scene {
   }
 
   create() {
-    // Ligne de fond de droite à 440 px, ligne de touche du fond à 41 px.
-    this.proj = makeProjection(440 - COURT_LENGTH * ART_PPM, 41);
+    // Ligne de fond de droite à 587 px, ligne de touche du fond à 55 px (le cadrage de 480×270, ×4/3).
+    this.proj = makeProjection(587 - COURT_LENGTH * ART_PPM, 55);
     createBallTextures(this);
 
     this.debug = this.add.text(4, 34, '', { fontFamily: 'monospace', fontSize: '8px', color: '#f6f2ea', backgroundColor: '#18203acc' });
@@ -167,6 +176,7 @@ export class StyleScene extends Phaser.Scene {
     this.actors.forEach((o) => o.destroy());
     this.actors = [];
     if (this.view === 'gros-plan') this.buildCloseup();
+    else if (this.view === 'avant-apres') this.buildBeforeAfter();
     else if (this.view === 'poses') this.buildPoseSheet('side');
     else if (this.view === 'dos') this.buildPoseSheet('back');
     else {
@@ -210,8 +220,8 @@ export class StyleScene extends Phaser.Scene {
       const dims = bodyDims(spec.heightCm, look.heavy);
       const baked = bakePlayer(this, `closeup-${j}`, look, { primary: this.home.primary, secondary: this.home.secondary });
       const L = bodyLayout(dims);
-      const colX = j * 160;
-      const spriteX = colX + 56;
+      const colX = j * 210;
+      const spriteX = colX + 70;
       const sprite = this.add.image(spriteX, top, baked.key, 0).setOrigin(0).setScale(scale).setDepth(2);
       this.statics.push(sprite);
       const headTopRow = L.headTop - 1;
@@ -250,11 +260,57 @@ export class StyleScene extends Phaser.Scene {
     g.fillStyle(PALETTE.silver);
     drawSmallText(g, 'EXPRESSIONS X3', 4, exprY);
     EXPRESSION_LIST.forEach(({ expression, label }, k) => {
-      const x = 40 + k * 150;
-      this.drawCanvas(g, headLayer(look, expression, 1, 1, 16, 16), look, x, exprY + 8, 3);
+      const x = 40 + k * 200;
+      this.drawCanvas(g, headLayer(look, expression, 1, 1, 20, 20), look, x, exprY + 8, 3);
       g.fillStyle(PALETTE.chalk);
-      drawSmallText(g, label, x + 54, exprY + 30);
+      drawSmallText(g, label, x + 66, exprY + 36);
     });
+  }
+
+  /**
+   * Avant / après : l'ailier de 480×270 (32 px) affiché ×4 et celui de 640×360 (43 px) affiché
+   * ×3, comme en 1080p plein écran : même taille à l'écran, plus de pixels et une silhouette plus
+   * mince après. À l'arrêt et au dribble, avec le ballon de chaque version.
+   */
+  private buildBeforeAfter() {
+    const g = this.studyBackground('AVANT / APRES : MEME TAILLE A L ECRAN (1080P PLEIN ECRAN)');
+    const legacyColors = colorsFor({ ...this.specimenLook(SPECIMENS[1]), skin: LEGACY_LOOK.skin, hairColor: LEGACY_LOOK.hairColor }, this.home.primary, this.home.secondary);
+    const look: Appearance = { ...this.specimenLook(SPECIMENS[1]), skin: LEGACY_LOOK.skin, hairColor: LEGACY_LOOK.hairColor, head: 0, hair: 1, number: 23, heightCm: 200, heavy: false };
+    const groundY = 300;
+    const drawGridScaled = (grid: readonly string[], x: number, y: number, scale: number) => {
+      grid.forEach((row, gy) => {
+        for (let gx = 0; gx < row.length; gx++) {
+          const slot = slotOf(row[gx]);
+          if (slot) g.fillStyle(slotColor(slot, legacyColors)).fillRect(x + gx * scale, y + gy * scale, scale, scale);
+        }
+      });
+    };
+    // Avant : grilles recopiées de l'ancien rig, ×4.
+    const before = [LEGACY_AILIER.idle, LEGACY_AILIER.dribble];
+    before.forEach((grid, k) => drawGridScaled(grid, 40 + k * 100, groundY - grid.length * 4, 4));
+    // Après : le nouveau rig, ×3.
+    const dims = bodyDims(200, false);
+    [0, 10].forEach((frame, k) => {
+      const composed = composeFrame(look, FRAMES[frame], dims);
+      const b = composed.canvas.bounds()!;
+      const x = 360 + k * 110 - b.left * 3;
+      const y = groundY - (b.bottom + 1) * 3;
+      this.drawCanvas(g, composed.canvas, look, x, y, 3);
+    });
+    // Ballons : l'ancien 6×6 ×4, le nouveau 8×8 ×3.
+    const ballColors: Record<string, number> = { b: PALETTE.orange, B: PALETTE.orangeDark, n: PALETTE.ink, l: PALETTE.woodLight };
+    const ballLayer = this.add.graphics().setDepth(3);
+    ballLayer.setScale(4);
+    drawGrid(ballLayer, LEGACY_AILIER.ball, 63, 58, (c) => ballColors[c] ?? null);
+    const newBall = this.add.graphics().setDepth(3).setScale(3);
+    drawGrid(newBall, BALL, 192, 77, (c) => ballColors[c] ?? null);
+    this.statics.push(ballLayer, newBall);
+    g.fillStyle(PALETTE.chalk);
+    drawSmallText(g, 'AVANT : 480X270, AILIER DE 32 PX, AFFICHE X4', 24, groundY + 14);
+    drawSmallText(g, 'APRES : 640X360, AILIER DE 43 PX, AFFICHE X3', 344, groundY + 14);
+    g.fillStyle(PALETTE.silver);
+    drawSmallText(g, 'BALLON 6X6 X4', 236, 266);
+    drawSmallText(g, 'BALLON 8X8 X3', 560, 266);
   }
 
   /**
@@ -264,8 +320,8 @@ export class StyleScene extends Phaser.Scene {
   private buildPoseSheet(heading: Heading) {
     const back = heading === 'back';
     const g = this.studyBackground(back ? 'PLANCHE DES POSES DE DOS (ECHELLE DU JEU)' : 'PLANCHE DES POSES (ECHELLE DU JEU)');
-    const cell = 24;
-    const left = 6;
+    const cell = 32;
+    const left = 8;
     POSE_GROUPS.forEach((group) => {
       g.fillStyle(PALETTE.silver);
       drawSmallText(g, group.label, left + group.from * cell, 12);
@@ -275,7 +331,7 @@ export class StyleScene extends Phaser.Scene {
     rows.forEach(({ spec, facing }, r) => {
       const look = this.specimenLook(spec);
       const baked = bakePlayer(this, `poses-${r}`, look, { primary: this.home.primary, secondary: this.home.secondary });
-      const y = 22 + r * 61;
+      const y = 22 + r * 82;
       g.fillStyle(PALETTE.chalk);
       drawSmallText(g, `${spec.name}${back ? ' DE DOS' : ''}${facing === 'left' ? ' VERS LA GAUCHE' : ''}`, left, y);
       FRAMES.forEach((_, i) => {
@@ -322,8 +378,8 @@ export class StyleScene extends Phaser.Scene {
     const feet = this.proj.project(x, depth);
     const fx = Math.round(feet.x);
     const fy = Math.round(feet.y);
-    const shadowW = look.heavy ? 20 : 16;
-    bakeShadow(this, `style-shadow-${shadowW}`, shadowW, 4);
+    const shadowW = look.heavy ? 26 : 20;
+    bakeShadow(this, `style-shadow-${shadowW}`, shadowW, 5);
     this.actors.push(this.add.image(fx, fy - 1, `style-shadow-${shadowW}`).setDepth(fy - 0.4));
     // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
     const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setDepth(fy);
@@ -358,7 +414,7 @@ export class StyleScene extends Phaser.Scene {
       const feet = this.proj.project(x, depth);
       const controlled = i === 0;
       if (controlled) {
-        createControlRing(this, 'style-ring', 22, 7);
+        createControlRing(this, 'style-ring', 28, 9);
         this.actors.push(this.add.image(Math.round(feet.x), Math.round(feet.y) - 1, 'style-ring').setDepth(feet.y - 0.3));
       }
       // Nom de famille seul, en entier : l'étiquette prend la largeur du nom.

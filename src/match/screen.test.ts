@@ -4,10 +4,11 @@ import { integerZoom } from './screen';
 
 describe('mise à l’échelle entière', () => {
   it('prend le plus grand facteur entier qui tient dans la fenêtre', () => {
-    expect(integerZoom(1920, 1080, VIEW_WIDTH, VIEW_HEIGHT)).toBe(4); // 1080p plein écran
-    expect(integerZoom(1920, 950, VIEW_WIDTH, VIEW_HEIGHT)).toBe(3); // fenêtre de navigateur en 1080p
+    expect(integerZoom(1920, 1080, VIEW_WIDTH, VIEW_HEIGHT)).toBe(3); // 1080p plein écran
+    expect(integerZoom(1920, 950, VIEW_WIDTH, VIEW_HEIGHT)).toBe(2); // fenêtre de navigateur en 1080p
     expect(integerZoom(1366, 768, VIEW_WIDTH, VIEW_HEIGHT)).toBe(2); // portable
-    expect(integerZoom(3840, 2160, VIEW_WIDTH, VIEW_HEIGHT)).toBe(8); // 4K
+    expect(integerZoom(2560, 1440, VIEW_WIDTH, VIEW_HEIGHT)).toBe(4); // 1440p
+    expect(integerZoom(3840, 2160, VIEW_WIDTH, VIEW_HEIGHT)).toBe(6); // 4K
   });
 
   it('ne descend jamais sous ×1', () => {

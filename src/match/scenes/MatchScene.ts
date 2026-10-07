@@ -94,8 +94,8 @@ const TAG_RISE = 4;
 const CALLOUT_MS = 1500;
 /** Dunk réussi : secousse de caméra en pixels entiers (le pixel-art reste net). */
 const SHAKE = { ms: 150, px: 2 } as const;
-/** Cadrage validé dans `?style` : ligne de touche du fond à 41 px du haut de l'écran (la ligne proche tombe vers 267). */
-const FAR_LINE_ON_SCREEN = 41;
+/** Cadrage validé dans `?style` : ligne de touche du fond à 55 px du haut de l'écran (la ligne proche tombe vers 357). */
+const FAR_LINE_ON_SCREEN = 55;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 /** Ton équipe dans le monde (l'autre est l'IA). */
 const USER_TEAM = 0;
@@ -425,7 +425,7 @@ export class MatchScene extends Phaser.Scene {
       });
     }
     createBallTextures(this);
-    createControlRing(this, 'control-ring', 22, 7);
+    createControlRing(this, 'control-ring', 28, 9);
     createShotMarker(this, 'shot-marker');
     for (const [grade, tag] of Object.entries(GRADE_TAGS)) createTag(this, `grade-${grade}`, tag.text, tag.color);
     createTag(this, 'tag-dunk', 'DUNK', PALETTE.yellow);
@@ -602,9 +602,9 @@ export class MatchScene extends Phaser.Scene {
   private bakeCastMember(player: Player, key: string, team: TeamLook): CastMember {
     const look = appearanceFor(player);
     const baked = bakePlayer(this, key, look, { primary: team.primary, secondary: team.secondary });
-    const shadowWidth = look.heavy ? 20 : 16;
+    const shadowWidth = look.heavy ? 26 : 20;
     const shadow = `player-shadow-${shadowWidth}`;
-    bakeShadow(this, shadow, shadowWidth, 4);
+    bakeShadow(this, shadow, shadowWidth, 5);
     const label = `label-${key}`;
     const labelOn = `label-${key}-on`;
     // Nom de famille seul, en entier : l'étiquette prend la largeur du nom ; soulignée quand tu le contrôles.
