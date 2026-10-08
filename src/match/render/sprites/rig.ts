@@ -132,6 +132,14 @@ const LEGS = {
   stepRight: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 3 } },
 } satisfies Record<string, { back: LegPose; front: LegPose }>;
 
+/**
+ * Haut de la main levée (pose `reach` : dunk, accroche au cercle, contre), en rangée du cadre.
+ * L'épaule est à la hauteur du haut du torse. Sert à poser les mains sur le cercle pendant un dunk.
+ */
+export function raisedHandTop(dims: BodyDims): number {
+  return bodyLayout(dims).torsoTop + ARMS.reach.hand[1];
+}
+
 /** Où dessiner le ballon tenu : main de dribble, au rebond, à la poitrine ou au-dessus de la main. */
 export type BallSpot = 'hand' | 'dribbleMid' | 'dribbleLow' | 'chest' | 'overhead';
 

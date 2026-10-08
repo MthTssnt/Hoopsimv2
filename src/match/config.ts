@@ -1,15 +1,15 @@
 import { COURT_LENGTH, COURT_WIDTH } from './physics/court';
 import { ART_DEPTH_SCALE, ART_HEIGHT_SCALE, ART_PPM, ART_VIEW } from './render/artConfig';
 
-// Résolution interne du rendu pixel-art, mise à l'échelle entière (×4 en 1080p plein écran).
+// Résolution interne du rendu pixel-art, mise à l'échelle entière (×3 en 1080p plein écran).
 export const VIEW_WIDTH = ART_VIEW.width;
 export const VIEW_HEIGHT = ART_VIEW.height;
 
 /**
  * Projection du monde 3D (mètres) vers l'écran (pixels du monde) : vue plongeante de 3/4,
  * validée dans `?style` (voir `docs/ART_DIRECTION.md`). La profondeur (y) et la hauteur (z) sont
- * écrasées d'environ 2/3 par rapport à la longueur (x). À 22,5 px/m, les 480 px de large
- * couvrent ~21 m et toute la profondeur du terrain tient à l'écran (~226 px).
+ * écrasées d'environ 2/3 par rapport à la longueur (x). À 30 px/m, les 640 px de large
+ * couvrent ~21 m et toute la profondeur du terrain tient à l'écran (~302 px).
  */
 export const PIXELS_PER_METER = ART_PPM;
 /** Écrasement de la profondeur (y) à l'écran. */

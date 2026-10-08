@@ -24,9 +24,9 @@ import { normalizeText } from '../render/pixelFont';
 import { AIR_FRAMES, animTimeScale, blendBall, dunkLift, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
-import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
+import { animationKey, BakeQueue, bakePlayer, bakeShadow, SheetBaker, type BakedPlayer, type Clock } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/compose';
-import { bodyLayout, FRAME } from '../render/sprites/rig';
+import { bodyLayout, FRAME, raisedHandTop } from '../render/sprites/rig';
 import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
@@ -87,13 +87,32 @@ function smooth(current: number, target: number, rate: number, deltaMs: number):
 const SPEED_LABELS = { slow: 'lente', normal: 'normale', fast: 'rapide' } as const;
 const ZONE_LABELS: Record<ShotZone, string> = { rim: 'près du cercle', mid: 'mi-distance', three: '3 pts' };
 const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: 'vert', early: 'tôt', late: 'tard' };
-/** Annonce au-dessus d'une tête (note du lâcher, DUNK) : durée (ms) et montée (px). */
+/**
+ * Distances à l'écran du rendu du match (px, en 640×360 à 30 px/m) : celles de 480×270 × 4/3,
+ * arrondies. Le HUD garde ses propres tailles (repris à l'incrément 18).
+ */
+const MATCH_PX = {
+  /** Étiquette du nom : sous les pieds. */
+  labelBelowFeet: 4,
+  /** Annonces et messages : au-dessus de la tête. */
+  overHead: 4,
+  /** Montée d'une annonce (PARFAIT, BON…) pendant son affichage. */
+  tagRise: 5,
+  /** Jauge du tir : écart au corps et hauteur de son bas au-dessus du sol. */
+  gaugeSide: 13,
+  gaugeAbove: 40,
+  /** Boîte suivie par la caméra : demi-largeur autour du joueur, sous ses pieds (étiquette). */
+  followHalfWidth: 13,
+  followBelow: 16,
+  /** Ballon suivi seul (Regarder, sans porteur) : hauteur gardée au-dessus de lui. */
+  ballAbove: 40,
+} as const;
+/** Annonce au-dessus d'une tête (note du lâcher, DUNK) : durée (ms). */
 const TAG_MS = 900;
-const TAG_RISE = 4;
 /** Messages de la défense et des règles (CONTRE, FAUTE, VOL, INTERCEPTION…), plus longs à lire. */
 const CALLOUT_MS = 1500;
 /** Dunk réussi : secousse de caméra en pixels entiers (le pixel-art reste net). */
-const SHAKE = { ms: 150, px: 2 } as const;
+const SHAKE = { ms: 150, px: 3 } as const;
 /** Cadrage validé dans `?style` : ligne de touche du fond à 55 px du haut de l'écran (la ligne proche tombe vers 357). */
 const FAR_LINE_ON_SCREEN = 55;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
@@ -183,6 +202,19 @@ interface CastMember {
   height: number;
 }
 
+/** Remplaçant en file de cuisson (tâche de fond) : sa feuille en cours, et de quoi finir son habillage. */
+interface PendingCast {
+  sheet: SheetBaker;
+  player: Player;
+  team: TeamLook;
+  step(budgetMs: number, clock?: Clock): boolean;
+}
+
+/** Budget de cuisson du banc par image (ms) : la feuille d'un joueur (~110 ms) s'étale sur ~30 images. */
+const BENCH_BAKE_MS = 4;
+/** Fenêtre de la plus longue image affichée en debug (ms). */
+const FRAME_WINDOW_MS = 5000;
+
 /** Message qui monte et s'efface au-dessus d'un joueur ou du panier ; empilé avec ses voisins. */
 interface Callout {
   image: Phaser.GameObjects.Image;
@@ -246,9 +278,18 @@ export class MatchScene extends Phaser.Scene {
   private reported = false;
   private homeCast: CastMember[] = [];
   private awayCast: CastMember[] = [];
-  /** Terrain entier : joueurs déjà cuits (un remplaçant l'est à sa première entrée), et durée de la dernière cuisson (ms). */
+  /**
+   * Terrain entier : joueurs déjà cuits. Les dix du départ le sont à la création de la scène, le
+   * banc en tâche de fond (`benchQueue`) ; un remplaçant pas encore prêt est fini d'un trait à son
+   * entrée (`lastBakeMs`).
+   */
   private castCache = new Map<string, CastMember>();
+  private benchQueue = new BakeQueue<PendingCast>();
   private lastBakeMs = 0;
+  /** Mesures publiques (debug H et captures) : cuisson moyenne d'un titulaire et chargement des dix (ms). */
+  bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0 };
+  /** Durées des images récentes, pour la plus longue des 5 dernières secondes. */
+  private frameTimes: { at: number; ms: number }[] = [];
   private homeLook!: TeamLook;
   private awayLook!: TeamLook;
   /** Carte du joueur contrôlé déjà publiée (énergie et stats changent pendant le match). */
@@ -378,7 +419,10 @@ export class MatchScene extends Phaser.Scene {
     this.homeCast = [];
     this.awayCast = [];
     this.castCache = new Map();
+    this.benchQueue = new BakeQueue<PendingCast>();
     this.lastBakeMs = 0;
+    this.bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0 };
+    this.frameTimes = [];
     this.cardKey = '';
     this.paused = false;
     this.bodies = [];
@@ -470,10 +514,16 @@ export class MatchScene extends Phaser.Scene {
     if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
     else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     // En 1 contre 1, un seul joueur de chaque côté (les autres servent aux touches 1-3).
+    const bakeStart = performance.now();
     const onCourt =
       n === 5
         ? this.world.players.map((_, i) => this.castFor(this.world.team[i], this.world.memberOf(i)!.player))
         : [...this.homeCast.slice(0, n), ...this.awayCast.slice(0, n)];
+    if (n === 5) {
+      this.bakeStats.startersMs = performance.now() - bakeStart;
+      this.bakeStats.starterMs = this.bakeStats.startersMs / onCourt.length;
+      this.queueBench();
+    }
     this.bodies = onCourt.map((member) => this.createBodySprite(member));
     this.ballShadow = this.add.image(0, 0, BALL_SHADOW_TEXTURE).setDepth(1);
     this.ballImage = this.add.image(0, 0, BALL_TEXTURE);
@@ -528,6 +578,8 @@ export class MatchScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number) {
+    this.trackFrame(deltaMs);
+    this.bakeBench();
     // « Simuler la fin » : le monde avance à l'IA par tranches, sans entrées, jusqu'à la fin.
     if (this.finishing) {
       const start = performance.now();
@@ -599,9 +651,9 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private bakeCastMember(player: Player, key: string, team: TeamLook): CastMember {
+  private bakeCastMember(player: Player, key: string, team: TeamLook, sheet?: SheetBaker): CastMember {
     const look = appearanceFor(player);
-    const baked = bakePlayer(this, key, look, { primary: team.primary, secondary: team.secondary });
+    const baked = sheet ? sheet.finish(this) : bakePlayer(this, key, look, { primary: team.primary, secondary: team.secondary });
     const shadowWidth = look.heavy ? 26 : 20;
     const shadow = `player-shadow-${shadowWidth}`;
     bakeShadow(this, shadow, shadowWidth, 5);
@@ -626,17 +678,59 @@ export class MatchScene extends Phaser.Scene {
     };
   }
 
-  /** Terrain entier : joueur cuit (sprites, ombre, étiquettes) ; un remplaçant l'est à sa première entrée. */
+  private castKey(team: number, player: Player): string {
+    return `${team === USER_TEAM ? 'player' : 'rival'}-${player.id}`;
+  }
+
+  /**
+   * Terrain entier : joueur cuit (sprites, ombre, étiquettes). Un remplaçant encore en file (ou
+   * jamais vu) est fini d'un trait à son entrée : le seul cas d'à-coup, mesuré dans `lastBakeMs`.
+   */
   private castFor(team: number, player: Player): CastMember {
-    const key = `${team === USER_TEAM ? 'player' : 'rival'}-${player.id}`;
+    const key = this.castKey(team, player);
     let member = this.castCache.get(key);
     if (!member) {
       const start = performance.now();
-      member = this.bakeCastMember(player, key, team === USER_TEAM ? this.homeLook : this.awayLook);
+      const pending = this.benchQueue.take(key);
+      member = this.bakeCastMember(player, key, team === USER_TEAM ? this.homeLook : this.awayLook, pending?.sheet);
       this.lastBakeMs = performance.now() - start;
+      if (this.bodies.length > 0) this.bakeStats.syncEntries++;
       this.castCache.set(key, member);
     }
     return member;
+  }
+
+  /** Met le banc des deux équipes en file de cuisson (tâche de fond), dans l'ordre des rotations. */
+  private queueBench() {
+    for (const squad of this.world.squads ?? []) {
+      const look = squad.team === USER_TEAM ? this.homeLook : this.awayLook;
+      for (const { player } of squad.members) {
+        const key = this.castKey(squad.team, player);
+        if (this.castCache.has(key)) continue;
+        const sheet = new SheetBaker(key, appearanceFor(player), { primary: look.primary, secondary: look.secondary });
+        this.benchQueue.add(key, { sheet, player, team: look, step: (budget, clock) => sheet.step(budget, clock) });
+      }
+    }
+  }
+
+  /** Avance la cuisson du banc dans le budget de l'image ; un joueur fini rejoint le cache. */
+  private bakeBench() {
+    if (this.benchQueue.size === 0) return;
+    for (const { id, baker } of this.benchQueue.step(BENCH_BAKE_MS)) {
+      this.castCache.set(id, this.bakeCastMember(baker.player, id, baker.team, baker.sheet));
+    }
+  }
+
+  /** Garde la durée des images des 5 dernières secondes (debug H, mesures). */
+  private trackFrame(deltaMs: number) {
+    const at = this.time.now;
+    this.frameTimes.push({ at, ms: deltaMs });
+    while (this.frameTimes.length > 0 && at - this.frameTimes[0].at > FRAME_WINDOW_MS) this.frameTimes.shift();
+  }
+
+  /** Plus longue image des 5 dernières secondes (ms). */
+  get worstFrameMs(): number {
+    return this.frameTimes.reduce((worst, f) => Math.max(worst, f.ms), 0);
   }
 
   /** Terrain entier : un corps dont le joueur a changé (remplaçant entré) prend ses sprites et son étiquette. */
@@ -801,7 +895,7 @@ export class MatchScene extends Phaser.Scene {
     this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
-    const boxes = this.bodies.map((b) => ({ x: b.ground.x, y: b.ground.y + 3, width: b.label.width, height: b.label.height }));
+    const boxes = this.bodies.map((b) => ({ x: b.ground.x, y: b.ground.y + MATCH_PX.labelBelowFeet, width: b.label.width, height: b.label.height }));
     spreadLabels(boxes);
     this.bodies.forEach((b, i) => b.label.setPosition(boxes[i].x, boxes[i].y));
     const me = this.bodies[this.world.controlled];
@@ -849,7 +943,7 @@ export class MatchScene extends Phaser.Scene {
     const lifted = rounded(project(pos.x, pos.y, pos.z));
     let lift = 0;
     if (shot?.dunk) {
-      const handY = lifted.y + 1 - FRAME.height + bodyLayout(view.member.baked.dims).torsoTop - 9;
+      const handY = lifted.y + 1 - FRAME.height + raisedHandTop(view.member.baked.dims);
       lift = dunkLift(handY, project(pos.x, pos.y, RIM_HEIGHT).y, pos.z / shot.dunk.apex);
     }
     view.feet = { x: lifted.x, y: lifted.y - lift };
@@ -990,8 +1084,8 @@ export class MatchScene extends Phaser.Scene {
         const elapsed = mine ? mine.airTime : aim !== null ? aim : (g.release ?? 0);
         const view = gaugeView(elapsed, g.timeToApex, g.window);
         const release = g.release === null ? null : gaugeView(g.release, g.timeToApex, g.window).fill;
-        const left = g.side > 0 ? ground.x + 10 : ground.x - 10 - (GAUGE.width + 2);
-        drawGauge(this.gauge, left, ground.y - 30, view, release);
+        const left = g.side > 0 ? ground.x + MATCH_PX.gaugeSide : ground.x - MATCH_PX.gaugeSide - (GAUGE.width + 2);
+        drawGauge(this.gauge, left, ground.y - MATCH_PX.gaugeAbove, view, release);
       }
     }
 
@@ -999,8 +1093,8 @@ export class MatchScene extends Phaser.Scene {
     const showTag = this.tagClock < TAG_MS;
     this.tag.setVisible(showTag);
     if (showTag) {
-      const rise = Math.round((TAG_RISE * this.tagClock) / TAG_MS);
-      const at = this.overHead(this.tagOwner, 3 + rise);
+      const rise = Math.round((MATCH_PX.tagRise * this.tagClock) / TAG_MS);
+      const at = this.overHead(this.tagOwner, MATCH_PX.overHead + rise);
       this.tag.setPosition(at.x, at.y).setAlpha(Math.min(1, (TAG_MS - this.tagClock) / 300));
     }
   }
@@ -1020,7 +1114,7 @@ export class MatchScene extends Phaser.Scene {
     if (mustClear && holder !== null) {
       // Au-dessus de l'annonce du tir si elle est encore là.
       const stacked = this.tag.visible && this.tagOwner === holder ? this.tag.height + 1 : 0;
-      const at = this.overHead(holder, 3 + stacked);
+      const at = this.overHead(holder, MATCH_PX.overHead + stacked);
       this.clearTag.setPosition(at.x, at.y);
     }
 
@@ -1071,7 +1165,7 @@ export class MatchScene extends Phaser.Scene {
       }
       const below = stack.get(c.owner) ?? 0;
       stack.set(c.owner, below + c.image.height + 1);
-      const rise = Math.round((TAG_RISE * c.clock) / CALLOUT_MS);
+      const rise = Math.round((MATCH_PX.tagRise * c.clock) / CALLOUT_MS);
       let at: Point;
       if (c.owner === 'rim' || c.owner === 'center') {
         // Au-dessus du panier du dernier tir, ou du rond central.
@@ -1083,7 +1177,7 @@ export class MatchScene extends Phaser.Scene {
       } else {
         // Au-dessus de la tête, et de l'annonce du tir si elle est sur le même joueur.
         const tag = this.tag.visible && this.tagOwner === c.owner ? this.tag.height + 1 : 0;
-        at = this.overHead(c.owner, 3 + tag + below);
+        at = this.overHead(c.owner, MATCH_PX.overHead + tag + below);
       }
       c.image.setPosition(at.x, at.y - rise).setAlpha(Math.min(1, (CALLOUT_MS - c.clock) / 300));
     }
@@ -1162,14 +1256,24 @@ export class MatchScene extends Phaser.Scene {
     const holder = this.world.holder;
     const followed = this.watching ? (holder !== null ? this.bodies[holder] : null) : me;
     const playerBox = followed
-      ? { left: followed.feet.x - 10, right: followed.feet.x + 10, top: followed.feet.y - followed.member.height, bottom: followed.ground.y + 12 }
-      : { left: ball.x - 10, right: ball.x + 10, top: ball.y - 30, bottom: ball.y + 12 };
+      ? {
+          left: followed.feet.x - MATCH_PX.followHalfWidth,
+          right: followed.feet.x + MATCH_PX.followHalfWidth,
+          top: followed.feet.y - followed.member.height,
+          bottom: followed.ground.y + MATCH_PX.followBelow,
+        }
+      : {
+          left: ball.x - MATCH_PX.followHalfWidth,
+          right: ball.x + MATCH_PX.followHalfWidth,
+          top: ball.y - MATCH_PX.ballAbove,
+          bottom: ball.y + MATCH_PX.followBelow,
+        };
     const target = targetFraming(playerBox, ball, this.anchorY, this.settings.camera, this.cam.zoom, VIEW_WIDTH, VIEW_HEIGHT);
     this.cam.zoom =
       this.settings.camera === 'steps' ? target.zoom : smooth(this.cam.zoom, target.zoom, CAMERA_TUNING.zoomLerp, deltaMs);
     this.cam.x = smooth(this.cam.x, target.centerX, CAMERA_TUNING.followLerp, deltaMs);
     this.cam.y = smooth(this.cam.y, target.centerY, CAMERA_TUNING.followLerp, deltaMs);
-    // Secousse d'un dunk : décalage de ±2 px entiers, une image sur deux.
+    // Secousse d'un dunk : décalage de ±3 px entiers, une image sur deux.
     this.shakeMs = Math.max(0, this.shakeMs - deltaMs);
     const flip = Math.floor(this.time.now / 33) % 2 === 0 ? 1 : -1;
     const shake = this.shakeMs > 0 ? SHAKE.px * flip : 0;
@@ -1294,7 +1398,7 @@ export class MatchScene extends Phaser.Scene {
     return parts.join(' · ');
   }
 
-  /** Terrain entier : ton énergie, fautes d'équipe, prochain contrôle du coach, dernière cuisson d'un remplaçant. */
+  /** Terrain entier : ton énergie, fautes d'équipe, prochain contrôle du coach, banc. */
   private rotationLine(): string | null {
     const squads = this.world.squads;
     if (!squads) return null;
@@ -1304,7 +1408,17 @@ export class MatchScene extends Phaser.Scene {
     const bench = squads[USER_TEAM].members.filter((m) => m.body === null).map((m) => `${m.player.lastName} ${Math.round(m.energy)}`);
     return (
       `Énergie ${me ? Math.round(me.energy) : '-'} % · notes ×${me ? (this.world.players[this.world.controlled].athlete.attrs.speed / me.player.attrs.speed).toFixed(2) : '1'} · ` +
-      `fautes d'équipe ${fouls} · coach dans ${next} · banc : ${bench.join(', ')} · cuisson ${this.lastBakeMs.toFixed(0)} ms`
+      `fautes d'équipe ${fouls} · coach dans ${next} · banc : ${bench.join(', ')}`
+    );
+  }
+
+  /** Terrain entier : cuisson des titulaires, banc encore en file, entrées cuites d'un trait, plus longue image. */
+  private bakeLine(): string {
+    const sync = this.bakeStats.syncEntries ? ` (dernière ${this.lastBakeMs.toFixed(0)} ms)` : '';
+    return (
+      `Cuisson : titulaire ${this.bakeStats.starterMs.toFixed(0)} ms (les dix ${this.bakeStats.startersMs.toFixed(0)} ms) · ` +
+      `banc en file ${this.benchQueue.size} · entrées cuites d'un trait ${this.bakeStats.syncEntries}${sync} · ` +
+      `plus longue image ${this.worstFrameMs.toFixed(0)} ms`
     );
   }
 
@@ -1324,7 +1438,7 @@ export class MatchScene extends Phaser.Scene {
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · ${this.perTeam} contre ${this.perTeam} · graine ${this.seed}`,
       `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · vue ${this.bodies[controlled].heading === 'back' ? 'de dos' : 'de profil'}`,
       ...this.aiLines(),
-      ...(this.rotationLine() ? [this.rotationLine()!] : []),
+      ...(this.rotationLine() ? [this.rotationLine()!, this.bakeLine()] : []),
       this.world.full
         ? this.gameLine(holder)
         : `ballon ${holder}${owed.length ? ` · à ressortir : ${owed.join(', ')}` : ''} · premier à ${rules?.target ?? this.target}` +

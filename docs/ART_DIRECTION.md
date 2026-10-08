@@ -246,6 +246,12 @@ Notre mise en page, différente de la référence : tableau de score compact **e
 gauche**, carte du joueur **en bas à gauche**. La police HoopSim fait 5×7, et les panneaux
 sont `navy` avec un liseré `ink`.
 
+Depuis le passage à 640×360 (incrément 15), le HUD, les étiquettes et les messages gardent
+leurs tailles en pixels : ils paraissent ~25 % plus petits à l'écran et laissent plus de place
+au jeu, jusqu'à la reprise du HUD (incrément 18). Les distances du rendu autour des joueurs
+(étiquette sous les pieds, messages au-dessus de la tête, jauge, secousse, boîte suivie par la
+caméra) sont, elles, passées à l'échelle (× 4/3, `MATCH_PX` dans `MatchScene`).
+
 ```
 Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 px)
 +------------------------------+          +--------------------------------+
@@ -262,8 +268,9 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   au sol.
 - **Texte de debug** : masqué par défaut, affiché par une touche ; la bande des 32 couleurs de
   la palette n'apparaît qu'avec lui.
-- **Jauge de tir** : barre verticale de 4×20 px cernée de `outline`, à côté du tireur, du côté
-  opposé au panier, posée à hauteur du torse et sur le sol (elle ne suit pas le saut).
+- **Jauge de tir** : barre verticale de 5×27 px cernée de `outline` (4×20 en 480×270), à côté du
+  tireur, du côté opposé au panier, posée à hauteur du torse et sur le sol (elle ne suit pas le
+  saut).
   - Fond `navy`, zone verte `green` sur toute la largeur, remplissage `chalk` au centre (le
     vert reste visible sur les bords), trait `yellow` au lâcher.
   - Le sommet du saut est à ~70 % de la hauteur.
@@ -335,8 +342,11 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     l'adversaire aux lancers ; « 6 FAUTES » (`red`) au-dessus de l'éliminé ; « CHANGEMENT »
     (`chalk`) au-dessus de chaque joueur qui entre. Mêmes règles que les autres messages
     (montée, effacement en 1,5 s, pile) ;
-  - **remplaçants** : cuits à leur première entrée (sprites, ombre, étiquette), pendant le
-    ballon mort ; le corps garde sa place, seuls le sprite et l'étiquette changent ;
+  - **remplaçants** : le corps garde sa place, seuls le sprite et l'étiquette changent. Une
+    feuille coûte ~110 ms en 640×360 : les dix titulaires sont cuits au chargement (~1,1 s), le
+    banc en tâche de fond (~4 ms par image, ~3 s pour dix joueurs). Un remplaçant pas encore
+    prêt serait fini d'un trait à son entrée (le debug H compte ces cas et affiche la plus
+    longue image des 5 dernières secondes) ;
   - **menu pause** (React, superposé au match comme le panneau des réglages, qui reste
     accessible) : score par période et fautes d'équipe (avec « bonus »), puis un tableau par
     équipe (MIN, PTS, REB, OFF/DÉF, PD, INT, CTR, BP, F, TIRS, 3 PTS, LF, +/-, énergie), titulaires

@@ -31,57 +31,148 @@ export function animationKey(key: string, name: AnimationName, facing: Facing, h
   return `${key}:${name}${heading === 'back' ? ':back' : ''}${facing === 'left' ? ':left' : ''}`;
 }
 
+/** Nombre d'images d'une feuille : 19 images dans chacune des 4 vues. */
+const SHEET_FRAMES = FRAMES.length * SHEET_VIEWS.length;
+
+/** Horloge en millisecondes (injectée dans les tests). */
+export type Clock = () => number;
+const now: Clock = () => performance.now();
+
 /**
- * Cuit toutes les images d'un joueur dans une texture canvas (une image par colonne), dans les
- * deux orientations, puis enregistre ses animations. Les couleurs (peau, cheveux, équipe) sont
- * posées ici.
+ * Feuille d'un joueur en cours de cuisson. Les images sont composées une par une dans un tampon
+ * de pixels RGBA (pur, sans Phaser) : `step` en compose dans un budget de temps, pour cuire le banc
+ * en tâche de fond sans faire sauter d'image ; `finish` termine d'un trait, puis crée la texture
+ * (une image par colonne) et les animations. Les couleurs (peau, cheveux, équipe) sont posées ici.
  */
-export function bakePlayer(scene: Phaser.Scene, key: string, look: Appearance, options: BakeOptions): BakedPlayer {
-  const dims = bodyDims(look.heightCm, look.heavy);
-  const colors: SlotColors = colorsFor(look, options.primary, options.secondary);
-  const count = FRAMES.length * SHEET_VIEWS.length;
-  const width = FRAME.width * count;
+export class SheetBaker {
+  readonly key: string;
+  readonly look: Appearance;
+  readonly options: BakeOptions;
+  readonly dims: BodyDims;
+  readonly width = FRAME.width * SHEET_FRAMES;
+  readonly pixels: Uint8ClampedArray;
+  readonly anchors: BakedPlayer['anchors'] = [];
+  private readonly colors: SlotColors;
+  private next = 0;
 
-  if (scene.textures.exists(key)) scene.textures.remove(key);
-  const texture = scene.textures.createCanvas(key, width, FRAME.height)!;
-  const image = texture.context.createImageData(width, FRAME.height);
-  const anchors: BakedPlayer['anchors'] = [];
-  SHEET_VIEWS.forEach(({ facing, heading }, v) => {
-    (heading === 'back' ? BACK_FRAMES : FRAMES).forEach((frame, i) => {
-      const column = v * FRAMES.length + i;
-      const { canvas, ball } = composeFrame(look, frame, dims, options.kit, facing, heading);
-      canvas.forEach((x, y, slot) => {
-        const color = slotColor(slot, colors);
-        const k = (y * width + column * FRAME.width + x) * 4;
-        image.data[k] = (color >> 16) & 0xff;
-        image.data[k + 1] = (color >> 8) & 0xff;
-        image.data[k + 2] = color & 0xff;
-        image.data[k + 3] = 255;
-      });
-      anchors.push(ball);
-    });
-  });
-  texture.putData(image, 0, 0);
-  texture.refresh();
-  for (let i = 0; i < count; i++) texture.add(i, 0, i * FRAME.width, 0, FRAME.width, FRAME.height);
-
-  for (const [name, def] of Object.entries(ANIMATIONS) as [AnimationName, (typeof ANIMATIONS)[AnimationName]][]) {
-    SHEET_VIEWS.forEach(({ facing, heading }, v) => {
-      const animKey = animationKey(key, name, facing, heading);
-      if (scene.anims.exists(animKey)) scene.anims.remove(animKey);
-      // Durée de base = la plus courte ; les images plus longues ajoutent leur différence
-      // (dans Phaser, la durée d'une image s'ajoute à la durée de base).
-      const base = Math.min(...def.durations);
-      scene.anims.create({
-        key: animKey,
-        frames: def.frames.map((frame, j) => ({ key, frame: v * FRAMES.length + frame, duration: def.durations[j] - base })),
-        frameRate: 1000 / base,
-        repeat: def.loop || options.loopAll ? -1 : 0,
-        repeatDelay: def.loop ? 0 : 400,
-      });
-    });
+  constructor(key: string, look: Appearance, options: BakeOptions) {
+    this.key = key;
+    this.look = look;
+    this.options = options;
+    this.dims = bodyDims(look.heightCm, look.heavy);
+    this.colors = colorsFor(look, options.primary, options.secondary);
+    this.pixels = new Uint8ClampedArray(this.width * FRAME.height * 4);
   }
-  return { key, anchors, dims };
+
+  get done(): boolean {
+    return this.next >= SHEET_FRAMES;
+  }
+
+  /** Compose des images tant que le budget (ms) n'est pas épuisé, au moins une ; vrai quand la feuille est complète. */
+  step(budgetMs: number, clock: Clock = now): boolean {
+    const start = clock();
+    do this.composeNext();
+    while (!this.done && clock() - start < budgetMs);
+    return this.done;
+  }
+
+  private composeNext(): void {
+    if (this.done) return;
+    const column = this.next++;
+    const view = SHEET_VIEWS[Math.floor(column / FRAMES.length)];
+    const frame = (view.heading === 'back' ? BACK_FRAMES : FRAMES)[column % FRAMES.length];
+    const { canvas, ball } = composeFrame(this.look, frame, this.dims, this.options.kit, view.facing, view.heading);
+    canvas.forEach((x, y, slot) => {
+      const color = slotColor(slot, this.colors);
+      const k = (y * this.width + column * FRAME.width + x) * 4;
+      this.pixels[k] = (color >> 16) & 0xff;
+      this.pixels[k + 1] = (color >> 8) & 0xff;
+      this.pixels[k + 2] = color & 0xff;
+      this.pixels[k + 3] = 255;
+    });
+    this.anchors.push(ball);
+  }
+
+  /** Termine la feuille d'un trait, puis crée la texture et les animations du joueur. */
+  finish(scene: Phaser.Scene): BakedPlayer {
+    while (!this.done) this.composeNext();
+    const { key } = this;
+    if (scene.textures.exists(key)) scene.textures.remove(key);
+    const texture = scene.textures.createCanvas(key, this.width, FRAME.height)!;
+    const image = texture.context.createImageData(this.width, FRAME.height);
+    image.data.set(this.pixels);
+    texture.putData(image, 0, 0);
+    texture.refresh();
+    for (let i = 0; i < SHEET_FRAMES; i++) texture.add(i, 0, i * FRAME.width, 0, FRAME.width, FRAME.height);
+
+    for (const [name, def] of Object.entries(ANIMATIONS) as [AnimationName, (typeof ANIMATIONS)[AnimationName]][]) {
+      SHEET_VIEWS.forEach(({ facing, heading }, v) => {
+        const animKey = animationKey(key, name, facing, heading);
+        if (scene.anims.exists(animKey)) scene.anims.remove(animKey);
+        // Durée de base = la plus courte ; les images plus longues ajoutent leur différence
+        // (dans Phaser, la durée d'une image s'ajoute à la durée de base).
+        const base = Math.min(...def.durations);
+        scene.anims.create({
+          key: animKey,
+          frames: def.frames.map((frame, j) => ({ key, frame: v * FRAMES.length + frame, duration: def.durations[j] - base })),
+          frameRate: 1000 / base,
+          repeat: def.loop || this.options.loopAll ? -1 : 0,
+          repeatDelay: def.loop ? 0 : 400,
+        });
+      });
+    }
+    return { key, anchors: this.anchors, dims: this.dims };
+  }
+}
+
+/** Cuit toutes les images d'un joueur d'un trait (feuille, puis animations). */
+export function bakePlayer(scene: Phaser.Scene, key: string, look: Appearance, options: BakeOptions): BakedPlayer {
+  return new SheetBaker(key, look, options).finish(scene);
+}
+
+/** Ce qu'une file de cuisson fait avancer (une `SheetBaker`, ou un double dans les tests). */
+export interface Stepper {
+  step(budgetMs: number, clock?: Clock): boolean;
+}
+
+/**
+ * File de cuisson en tâche de fond : un joueur après l'autre, dans un budget par image. `take`
+ * sort un joueur de la file (fini ou non) pour le terminer d'un trait quand il entre en jeu.
+ */
+export class BakeQueue<T extends Stepper> {
+  private items: { id: string; baker: T }[] = [];
+
+  get size(): number {
+    return this.items.length;
+  }
+
+  has(id: string): boolean {
+    return this.items.some((item) => item.id === id);
+  }
+
+  add(id: string, baker: T): void {
+    if (!this.has(id)) this.items.push({ id, baker });
+  }
+
+  /** Retire `id` de la file et rend sa cuisson (à terminer d'un trait), ou null s'il n'y est pas. */
+  take(id: string): T | null {
+    const index = this.items.findIndex((item) => item.id === id);
+    return index < 0 ? null : this.items.splice(index, 1)[0].baker;
+  }
+
+  /** Fait avancer la file dans le budget (ms) ; rend les cuissons terminées, dans l'ordre. */
+  step(budgetMs: number, clock: Clock = now): { id: string; baker: T }[] {
+    const start = clock();
+    const finished: { id: string; baker: T }[] = [];
+    while (this.items.length > 0) {
+      const left = budgetMs - (clock() - start);
+      if (left <= 0) break;
+      const item = this.items[0];
+      if (!item.baker.step(left, clock)) break;
+      finished.push(this.items.shift()!);
+    }
+    return finished;
+  }
 }
 
 /** Ombre ovale au sol, à la largeur du joueur. */

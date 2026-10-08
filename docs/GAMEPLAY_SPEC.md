@@ -13,10 +13,11 @@
   - toute la profondeur du terrain tient à l'écran, avec ~22 à 26 m de long visibles ;
   - joueurs à grosse tête, à leur taille réelle ;
   - nom sous les joueurs, marqueur au sol sous le joueur contrôlé.
-- Vue retenue (validée dans `?style`, appliquée au match en S4) : 480×270 à 22,5 px/m, soit
-  ~21 m de long visibles et toute la profondeur du terrain ; mise à l'échelle entière (pixels
-  nets), F pour le plein écran. Les joueurs ont la taille de leur gabarit (meneur ~30 px,
-  ailier ~32 px, pivot ~35 px) ; la physique garde les vraies tailles.
+- Vue retenue (validée dans `?style`, appliquée au match en S4, puis passée à 640×360 aux
+  incréments 14-15) : 640×360 à 30 px/m, soit ~21 m de long visibles et toute la profondeur du
+  terrain ; mise à l'échelle entière (pixels nets), F pour le plein écran. Les joueurs ont la
+  taille de leur gabarit (meneur 40 px, ailier 43 px, pivot 46 px) ; la physique garde les
+  vraies tailles.
 - Caméra (suit le ballon ?, zoom ?) : ?
 - Nombre de joueurs à l'écran / taille relative : ?
 - Durée : réglable. On règle la durée totale du match, en 2 mi-temps ou 4 quart-temps

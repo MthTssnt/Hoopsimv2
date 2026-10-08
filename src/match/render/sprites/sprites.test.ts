@@ -8,7 +8,7 @@ import { colorDistance, teamLook } from '../arena/draw';
 import { appearanceFor, appearanceSignature, type Appearance } from './appearance';
 import type { Slot } from './canvas';
 import { colorsFor, composeFrame, NUMBER_MIN_TORSO, NUMBER_TOP, numberZone, SHEET_VIEWS, slotColor, type Heading } from './compose';
-import { BACK_FRAMES, BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, HEAD_SIZE, NECK_ROWS, SHOE_ROWS, SHORTS_ROWS } from './rig';
+import { BACK_FRAMES, BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, HEAD_SIZE, NECK_ROWS, raisedHandTop, SHOE_ROWS, SHORTS_ROWS } from './rig';
 import { WORLD_TUNING } from '../../world/MatchWorld';
 import { ART_PPM } from '../artConfig';
 
@@ -113,6 +113,23 @@ describe('sprites des joueurs : règles générales', () => {
           }
         });
         expect(gaps).toEqual([]);
+      }
+    }
+  });
+
+  it('lèvent la main au cercle à la rangée de raisedHandTop (montée du dunk et accroche)', () => {
+    for (const heightCm of Object.values(SPECIMENS)) {
+      for (const heavy of [false, true]) {
+        const dims = bodyDims(heightCm, heavy);
+        for (const i of [16, 17]) {
+          const c = composeFrame(specimen(heightCm, heavy), FRAMES[i], dims).canvas;
+          // Bras avant, à droite de la tête : sa rangée de peau la plus haute est la main.
+          let top: number = FRAME.height;
+          c.forEach((x, y, slot) => {
+            if (x >= FRAME.centerX + HEAD_SIZE / 2 && SKIN.has(slot)) top = Math.min(top, y);
+          });
+          expect(top).toBe(raisedHandTop(dims));
+        }
       }
     }
   });
