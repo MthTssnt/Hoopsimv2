@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { teamRamp } from '../../../assets/palette';
 import type { Appearance } from './appearance';
-import { BakeQueue, SheetBaker, type Clock, type Stepper } from './bake';
+import { BakeQueue, SHEET_SIZE, SheetBaker, sheetCell, type Clock, type Stepper } from './bake';
+import { SHEET_VIEWS } from './compose';
+import { FRAME, FRAMES } from './rig';
+
+/** Images d'une feuille : 19 par bloc, 8 blocs (4 vues, 2 orientations). */
+const SHEET = FRAMES.length * SHEET_VIEWS.length;
 
 const look: Appearance = { heightCm: 200, heavy: false, heightClass: 'moyen', skin: 2, head: 0, hair: 1, hairColor: 0, number: 23 };
 const options = { primary: teamRamp('#1d4ed8'), secondary: teamRamp('#f59e0b') };
@@ -12,6 +17,22 @@ function ticking(): Clock {
   return () => t++;
 }
 
+describe('feuille de sprites', () => {
+  it('tient dans une texture de 4 096 px de côté : une rangée par bloc, sans chevauchement', () => {
+    expect(SHEET_SIZE.width).toBeLessThanOrEqual(4096);
+    expect(SHEET_SIZE.height).toBeLessThanOrEqual(4096);
+    const cells = new Set<string>();
+    for (let i = 0; i < SHEET; i++) {
+      const { x, y } = sheetCell(i);
+      expect(x + FRAME.width).toBeLessThanOrEqual(SHEET_SIZE.width);
+      expect(y + FRAME.height).toBeLessThanOrEqual(SHEET_SIZE.height);
+      expect(y).toBeLessThan(SHEET_SIZE.height);
+      cells.add(`${x},${y}`);
+    }
+    expect(cells.size).toBe(SHEET);
+  });
+});
+
 describe('cuisson pas à pas (SheetBaker)', () => {
   it('donne les mêmes pixels et les mêmes ancres, cuite d’un trait ou image par image', () => {
     const whole = new SheetBaker('a', look, options);
@@ -21,10 +42,12 @@ describe('cuisson pas à pas (SheetBaker)', () => {
     const clock = ticking();
     let steps = 1;
     while (!sliced.step(0.5, clock)) steps++;
-    // Budget minuscule : une image par pas, 4 vues de 19 images.
-    expect(steps).toBe(76);
+    // Budget minuscule : une image par pas.
+    expect(steps).toBe(SHEET);
     expect(sliced.anchors).toEqual(whole.anchors);
-    expect(sliced.pixels).toEqual(whole.pixels);
+    // Comparaison en une passe : `toEqual` sur ~2 millions de valeurs est trop lent.
+    expect(sliced.pixels.length).toBe(whole.pixels.length);
+    expect(sliced.pixels.every((v, i) => v === whole.pixels[i])).toBe(true);
     expect(sliced.pixels.some((v) => v !== 0)).toBe(true);
   });
 
@@ -35,7 +58,7 @@ describe('cuisson pas à pas (SheetBaker)', () => {
     baker.step(Infinity);
     expect(baker.done).toBe(true);
     expect(baker.step(10)).toBe(true);
-    expect(baker.anchors).toHaveLength(76);
+    expect(baker.anchors).toHaveLength(SHEET);
   });
 });
 

@@ -7,7 +7,10 @@
  */
 export type Slot = 'o' | '1' | '2' | '3' | 'r' | 'h' | 'H' | 'p' | 'P' | 'q' | 's' | 'S' | 't' | 'k' | 'w' | 'n';
 
-const SLOTS = new Set<string>(['o', '1', '2', '3', 'r', 'h', 'H', 'p', 'P', 'q', 's', 'S', 't', 'k', 'w', 'n']);
+const SLOT_LIST: readonly Slot[] = ['o', '1', '2', '3', 'r', 'h', 'H', 'p', 'P', 'q', 's', 'S', 't', 'k', 'w', 'n'];
+const SLOTS = new Set<string>(SLOT_LIST);
+/** Code d'un emplacement dans le tampon (0 = transparent). */
+const CODE = Object.fromEntries(SLOT_LIST.map((slot, i) => [slot, i + 1])) as Record<Slot, number>;
 
 /** Lit un caractère de grille : « . » (ou espace) = transparent ; « e » = blanc de l'œil (w). */
 export function slotOf(char: string): Slot | null {
@@ -24,16 +27,25 @@ export interface StampOptions {
   remap?: (slot: Slot, x: number, y: number) => Slot;
 }
 
-/** Tampon de pixels indexé sur les emplacements de couleur. */
+/**
+ * Tampon de pixels indexé sur les emplacements de couleur. Il garde la boîte de ses pixels
+ * peints : contour, recopie et parcours ne visitent qu'elle (un calque de bras ne parcourt pas
+ * tout le cadre).
+ */
 export class SlotCanvas {
   readonly width: number;
   readonly height: number;
-  private readonly px: (Slot | null)[];
+  private readonly px: Uint8Array;
+  // Boîte des pixels peints (jamais rétrécie : un pixel effacé la laisse telle quelle).
+  private left = Infinity;
+  private right = -1;
+  private top = Infinity;
+  private bottom = -1;
 
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
-    this.px = Array.from({ length: width * height }, () => null);
+    this.px = new Uint8Array(width * height);
   }
 
   inside(x: number, y: number): boolean {
@@ -41,11 +53,22 @@ export class SlotCanvas {
   }
 
   get(x: number, y: number): Slot | null {
-    return this.inside(x, y) ? this.px[y * this.width + x] : null;
+    if (!this.inside(x, y)) return null;
+    const code = this.px[y * this.width + x];
+    return code ? SLOT_LIST[code - 1] : null;
   }
 
   set(x: number, y: number, slot: Slot | null): void {
-    if (this.inside(x, y)) this.px[y * this.width + x] = slot;
+    if (!this.inside(x, y)) return;
+    if (slot === null) {
+      this.px[y * this.width + x] = 0;
+      return;
+    }
+    this.px[y * this.width + x] = CODE[slot];
+    if (x < this.left) this.left = x;
+    if (x > this.right) this.right = x;
+    if (y < this.top) this.top = y;
+    if (y > this.bottom) this.bottom = y;
   }
 
   rect(x: number, y: number, w: number, h: number, slot: Slot): void {
@@ -98,18 +121,21 @@ export class SlotCanvas {
    * sont pas entourés à leur tour : un calque déjà cerné ne prend pas un second trait.
    */
   outline(slot: Slot = 'o'): void {
-    const edges: number[] = [];
+    if (this.right < 0) return;
+    const edges: [number, number][] = [];
     const fill = (x: number, y: number) => {
       const v = this.get(x, y);
       return v !== null && v !== slot;
     };
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        if (this.get(x, y)) continue;
-        if (fill(x - 1, y) || fill(x + 1, y) || fill(x, y - 1) || fill(x, y + 1)) edges.push(y * this.width + x);
+    const x1 = Math.min(this.width - 1, this.right + 1);
+    const y1 = Math.min(this.height - 1, this.bottom + 1);
+    for (let y = Math.max(0, this.top - 1); y <= y1; y++) {
+      for (let x = Math.max(0, this.left - 1); x <= x1; x++) {
+        if (this.px[y * this.width + x]) continue;
+        if (fill(x - 1, y) || fill(x + 1, y) || fill(x, y - 1) || fill(x, y + 1)) edges.push([x, y]);
       }
     }
-    for (const k of edges) this.px[k] = slot;
+    for (const [x, y] of edges) this.set(x, y, slot);
   }
 
   /** Recopie par-dessus les pixels peints d'un autre tampon de même taille (calque). */
@@ -146,10 +172,13 @@ export class SlotCanvas {
     return left === Infinity ? null : { left, right, top, bottom };
   }
 
-  /** Parcourt les pixels peints. */
+  /** Parcourt les pixels peints, rangée par rangée. */
   forEach(fn: (x: number, y: number, slot: Slot) => void): void {
-    this.px.forEach((slot, k) => {
-      if (slot) fn(k % this.width, Math.floor(k / this.width), slot);
-    });
+    for (let y = Math.max(0, this.top); y <= this.bottom; y++) {
+      for (let x = Math.max(0, this.left); x <= this.right; x++) {
+        const code = this.px[y * this.width + x];
+        if (code) fn(x, y, SLOT_LIST[code - 1]);
+      }
+    }
   }
 }

@@ -1,24 +1,30 @@
 import { HAIR_COLORS, HAIR_HIGHLIGHTS, PALETTE, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
-import { SHOES, SHOES_BACK, SHORTS, TORSOS, TORSOS_BACK, stretch, widen } from '../../../assets/sprites/body';
+import { SHOES, SHOES_34, SHOES_BACK, SHOES_BACK_34, SHORTS, TORSOS, TORSOS_34, TORSOS_BACK, TORSOS_BACK_34, stretch, widen } from '../../../assets/sprites/body';
 import { EXPRESSIONS, HAIRS, HEADS, type Expression } from '../../../assets/sprites/heads';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
 import type { Appearance } from './appearance';
 import { SlotCanvas, type Slot } from './canvas';
-import { bodyLayout, FRAME, FRAMES, HEAD_SIZE, type ArmPose, type BodyDims, type FrameDef, type LegPose } from './rig';
+import { bodyLayout, FRAME, FRAMES, HEAD_SIZE, seenFromBehind, type ArmPose, type BodyDims, type FrameDef, type Heading, type LegPose } from './rig';
+
+export type { Heading } from './rig';
 
 /** Tenue : celle de l'équipe, ou le maillot rayé (générique) de l'arbitre. */
 export type Kit = 'team' | 'referee';
 /** Orientation du joueur à l'écran. */
 export type Facing = 'right' | 'left';
-/** Vue : de profil (visage vers la caméra, course de côté) ou de dos (le joueur monte). */
-export type Heading = 'side' | 'back';
-
-/** Blocs de la feuille de sprites, dans l'ordre : profil droite, profil gauche, dos droite, dos gauche. */
+/**
+ * Blocs de la feuille de sprites, dans l'ordre : profil, dos, 3/4 face, 3/4 dos, chacun vers la
+ * droite puis vers la gauche (19 images par bloc).
+ */
 export const SHEET_VIEWS: readonly { facing: Facing; heading: Heading }[] = [
   { facing: 'right', heading: 'side' },
   { facing: 'left', heading: 'side' },
   { facing: 'right', heading: 'back' },
   { facing: 'left', heading: 'back' },
+  { facing: 'right', heading: 'front34' },
+  { facing: 'left', heading: 'front34' },
+  { facing: 'right', heading: 'back34' },
+  { facing: 'left', heading: 'back34' },
 ];
 
 /** Indice d'une image dans la feuille de sprites cuite. */
@@ -83,7 +89,7 @@ const SKIN_SHADE: Partial<Record<Slot, Slot>> = { '1': '2', '2': '3' };
  * ce qui dessinait une croix sombre entre les jambes.
  */
 function leg(hip: Point, pose: LegPose, side: 1 | -1, dims: BodyDims, shoeTop: number, skin: Slot, heading: Heading): SlotCanvas {
-  const sockY = shoeTop - 1 - pose.lift;
+  const sockY = shoeTop - 1 - pose.lift - (pose.depth ?? 0);
   const plumb = pose.knee === 1 && pose.foot === 0;
   const knee = { x: hip.x + side * (plumb ? 0 : pose.knee), y: Math.round((hip.y + sockY) / 2) };
   const foot = { x: hip.x + side * pose.foot, y: sockY };
@@ -92,27 +98,50 @@ function leg(hip: Point, pose: LegPose, side: 1 | -1, dims: BodyDims, shoeTop: n
     const shade = SKIN_SHADE[skin];
     if (plumb && shade) c.set(side > 0 ? knee.x - off + dims.limb - 1 : knee.x - off, knee.y, shade);
     c.rect(foot.x - off, sockY, dims.limb, 1, 'w');
-    c.stamp((heading === 'back' ? SHOES_BACK : SHOES)[dims.heavy || dims.build === 'pivot' ? 'heavy' : 'light'], foot.x - off, sockY + 1);
+    const shoes = heading === 'back' ? SHOES_BACK : heading === 'back34' ? SHOES_BACK_34 : heading === 'front34' ? SHOES_34 : SHOES;
+    c.stamp(shoes[dims.heavy || dims.build === 'pivot' ? 'heavy' : 'light'], foot.x - off, sockY + 1);
   });
 }
 
-/** Tête complète (forme, cheveux, expression) dans son calque, avec son contour fermé. */
-export function headLayer(look: Appearance, expression: Expression, left: number, top: number, width: number = FRAME.width, height: number = FRAME.height): SlotCanvas {
+/**
+ * Tête complète (forme, cheveux, expression) dans son calque, avec son contour fermé. En 3/4 face,
+ * le visage est décalé de `faceShift` colonnes dans le sens de la course.
+ */
+export function headLayer(
+  look: Appearance,
+  expression: Expression,
+  left: number,
+  top: number,
+  width: number = FRAME.width,
+  height: number = FRAME.height,
+  faceShift = 0,
+): SlotCanvas {
   const c = new SlotCanvas(width, height);
   c.stamp(HEADS[look.head], left, top);
   const hair = HAIRS[look.hair];
   c.stamp(hair.grid, left, top, { clip: hair.clip });
-  c.stamp(EXPRESSIONS[expression], left, top);
+  c.stamp(EXPRESSIONS[expression], left + faceShift, top);
   c.outline('o');
   return c;
 }
 
-/** Tête vue de dos : forme et coiffure de dos, sans visage, avec son contour fermé. */
-export function backHeadLayer(look: Appearance, left: number, top: number): SlotCanvas {
+/** Rangées de la joue et de l'oreille vues de 3/4 dos (l'oreille au milieu, au ton d'ombre). */
+export const CHEEK_ROWS = [6, 7, 8, 9, 10] as const;
+
+/**
+ * Tête vue de dos : forme et coiffure de dos, sans visage, avec son contour fermé. De 3/4 dos
+ * (`cheek`), la joue et l'oreille du côté de la course (à droite) dépassent des cheveux.
+ */
+export function backHeadLayer(look: Appearance, left: number, top: number, cheek = false): SlotCanvas {
   const c = new SlotCanvas(FRAME.width, FRAME.height);
   c.stamp(HEADS[look.head], left, top);
   const hair = HAIRS[look.hair];
   c.stamp(hair.back, left, top, { clip: hair.clip });
+  if (cheek) {
+    const edge = left + HEAD_SIZE - 1;
+    for (const row of CHEEK_ROWS) c.set(edge, top + row, row === 8 ? '3' : '2');
+    c.set(edge - 1, top + 8, '2');
+  }
   c.outline('o');
   return c;
 }
@@ -129,7 +158,7 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
   let c = new SlotCanvas(FRAME.width, FRAME.height);
   const weight = dims.heavy ? 'heavy' : 'light';
   const remap = kit === 'referee' ? refereeRemap : undefined;
-  const back = heading === 'back';
+  const back = seenFromBehind(heading);
   const L = bodyLayout(dims, frame.bob);
   const W = dims.torsoWidth;
   const cx = FRAME.centerX;
@@ -150,9 +179,13 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
   c.composite(leg(frontHip, frame.legs.front, 1, dims, L.shoeTop, '2', heading));
   const shortsRows = widen(stretch(SHORTS[weight], SHORTS[weight].rows.length), SHORTS[weight].stretchCol, W);
   c.stamp(shortsRows, cx - Math.floor(shortsRows[0].length / 2), L.shortsTop, { remap: kit === 'referee' ? () => 'k' : undefined });
-  const torso = (back ? TORSOS_BACK : TORSOS)[weight];
+  const torso = (heading === 'back' ? TORSOS_BACK : heading === 'back34' ? TORSOS_BACK_34 : heading === 'front34' ? TORSOS_34 : TORSOS)[weight];
   c.stamp(widen(stretch(torso, dims.torso), torso.stretchCol, W), L.torsoLeft, L.torsoTop, { remap });
-  c.composite(back ? backHeadLayer(look, cx - HEAD_SIZE / 2, L.headTop) : headLayer(look, frame.expression, cx - HEAD_SIZE / 2, L.headTop));
+  c.composite(
+    back
+      ? backHeadLayer(look, cx - HEAD_SIZE / 2, L.headTop, heading === 'back34')
+      : headLayer(look, frame.expression, cx - HEAD_SIZE / 2, L.headTop, FRAME.width, FRAME.height, heading === 'front34' ? 1 : 0),
+  );
   // Cou : une rangée de peau entre le menton (ou la nuque) et le col, par-dessus le contour.
   c.rect(cx - 2, L.neckY, 4, 1, '3');
   if (!back) c.composite(frontArm.layer);
@@ -167,8 +200,11 @@ export function composeFrame(look: Appearance, frame: FrameDef, dims: BodyDims, 
   if (mirror) c = c.mirrored();
   let numberAt: ComposedFrame['numberAt'] = null;
   if (kit === 'team') {
+    // En 3/4, le numéro suit le col : vers le sens de la course de face, vers l'arrière de dos.
     const zone = numberZone(W);
-    const zoneLeft = mirror ? FRAME.width - 1 - (L.torsoLeft + zone.left + zone.width - 1) : L.torsoLeft + zone.left;
+    const turn = heading === 'front34' ? 1 : heading === 'back34' ? -1 : 0;
+    const zoneStart = L.torsoLeft + zone.left + turn;
+    const zoneLeft = mirror ? FRAME.width - 1 - (zoneStart + zone.width - 1) : zoneStart;
     const x = zoneLeft + Math.floor((zone.width - jerseyNumberWidth(look.number)) / 2);
     const y = L.torsoTop + NUMBER_TOP - rise;
     numberAt = { x, y };

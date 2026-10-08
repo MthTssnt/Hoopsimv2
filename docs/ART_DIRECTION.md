@@ -151,15 +151,51 @@ Règles :
   - joyeuse (sourire avec dents), pour les célébrations, à brancher dans le match.
 
 ### Orientation et sol
+Quatre vues (incrément 15 bis, décision de Matheo), choisies sur l'angle de la course au sol en
+8 secteurs de 45° :
+
+| Vue | Déplacement |
+| --- | --- |
+| profil | à moins de 22,5° de l'horizontale |
+| 3/4 dos | en montant, entre 22,5° et 67,5° |
+| dos | en montant, au-delà de 67,5° |
+| 3/4 face | en descendant dès 22,5°, descente tout droit comprise |
+
+- **Changement de vue** :
+  - pour quitter une vue, il faut dépasser sa frontière de 6° : pas de clignotement près d'une
+    diagonale ;
+  - à l'arrêt et en l'air, le joueur garde sa dernière vue ;
+  - le tireur (tir, layup, dunk, lancer franc) fait face au panier, dans la vue du secteur de la
+    direction du cercle : profil de face au panier, 3/4 dos depuis l'aile proche, 3/4 face
+    depuis l'aile du fond, dos sous le cercle côté caméra.
 - **De profil** : corps vu de face, légèrement penché dans le sens du jeu par les poses.
-  C'est la vue en course vers la gauche ou la droite, et en descendant.
-- **De dos** : dès que le joueur monte (diagonales comprises). La tête est vue de dos (chaque
-  coiffure a sa grille de dos, la nuque en peau, pas de visage), le col est droit, le numéro
-  est dans le dos, les chaussures sont vues du talon et les deux bras passent derrière le
-  torse. À l'arrêt, le joueur garde sa dernière vue.
-- Tournés vers la gauche, les joueurs ont leurs propres images, de profil comme de dos : le
-  dessin est retourné, puis le numéro est reposé à l'endroit. La feuille compte 4 blocs de
-  19 images.
+- **De dos** : la tête est vue de dos (chaque coiffure a sa grille de dos, la nuque en peau, pas
+  de visage), le col est droit, le numéro est dans le dos, les chaussures sont vues du talon et
+  les deux bras passent derrière le torse.
+- **3/4 face** :
+  - le visage (yeux, sourcils, nez, bouche) est décalé d'une colonne dans le sens de la course,
+    le col et le numéro aussi ;
+  - le flanc qui s'éloigne est au ton d'ombre ;
+  - les foulées sont deux fois moins larges qu'au profil, et le balancier des bras va vers la
+    caméra ;
+  - la jambe du côté de la course est la plus éloignée : son pied est dessiné 2 px plus haut ;
+  - chaussures de 3/4, pointe plus courte (5 px) ;
+  - le ballon du dribble rebondit devant les jambes, dessiné devant le corps.
+- **3/4 dos** :
+  - tête et coiffure de dos, avec la joue et l'oreille (une colonne de peau, l'oreille au ton
+    d'ombre) du côté de la course ;
+  - col et numéro décalés d'une colonne vers l'arrière, flanc du côté de la course au ton
+    d'ombre ;
+  - bras derrière le torse ;
+  - la jambe arrière est la plus éloignée (pied 2 px plus haut) ;
+  - chaussures vues du talon avec un bout de pointe ;
+  - le ballon du dribble rebondit sur le côté de la hanche, derrière le corps.
+- Tir, dunk et contre gardent leurs poses dans toutes les vues, avec la tête, le torse, les
+  jambes et les chaussures de la vue.
+- Tournés vers la gauche, les joueurs ont leurs propres images dans chaque vue : le dessin est
+  retourné, puis le numéro est reposé à l'endroit.
+- **Feuille** : 8 blocs (4 vues × 2 orientations) de 19 images, rangés en grille (une rangée par
+  bloc, 1 064×512 px). En une seule bande, elle dépasserait la taille maximale d'une texture.
 - **Ballon au dribble** : de profil, la main revient devant le corps et le ballon rebondit
   devant les jambes, un peu en avant dans le sens de la course, dessiné par-dessus elles. De
   dos, il rebondit sur le côté de la hanche.
@@ -207,8 +243,11 @@ plus une variante d'identité : c'est un état.
 | Dunk | 3 | élan, bras tendu vers le cercle, accroché ~0,3 s au cercle (deux bras) | Visage concentré ; en match, sprite monté pour que les mains touchent le cercle |
 | Contre (image 18) | 1 | tout le saut sans le ballon | Deux bras tendus vers le haut, jambes du saut, visage concentré ; contre, contestation, rebond. Après son lâcher, le tireur garde l'image 14 (bras du lâcher) jusqu'au sol |
 
-Planche complète : vue « poses » de `?style` (touche V), les 19 images des trois gabarits et
-vers la gauche ; vue « dos » pour les mêmes images vues de dos.
+Planches complètes (touche V de `?style`) :
+- vue « poses » : les 19 images des trois gabarits, et vers la gauche ;
+- vue « dos » : les mêmes images vues de dos ;
+- vue « trois-quarts » : l'ailier de 3/4 face et de 3/4 dos, vers la droite et vers la gauche ;
+- vue « directions » : les trois gabarits courent ou dribblent, animés, dans les 8 directions.
 
 ## 6. Panier et terrain
 - **Panier massif** :
@@ -278,7 +317,7 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
 - **Annonce du lâcher** : PARFAIT (`yellow`), BON (`green`), TÔT / TARD (`silver`), en petite
   police sur fond sombre, au-dessus de la tête ; elle monte de 4 px et s'efface en 0,9 s.
 - **Pose du tir** : ballon levé (tir en suspension) ou bras tendu vers le cercle (layup), visage
-  concentré, toujours de profil tourné vers le panier.
+  concentré, tourné vers le panier dans la vue de son secteur (voir « Orientation et sol »).
 - **Dunk réussi** : annonce « DUNK » (`yellow`, même style que PARFAIT) et secousse de caméra de
   ±2 px entiers pendant 0,15 s (le pixel-art reste net), pour toi comme pour l'IA.
 - **1 contre 1 (7a)** :
@@ -343,8 +382,9 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     (`chalk`) au-dessus de chaque joueur qui entre. Mêmes règles que les autres messages
     (montée, effacement en 1,5 s, pile) ;
   - **remplaçants** : le corps garde sa place, seuls le sprite et l'étiquette changent. Une
-    feuille coûte ~110 ms en 640×360 : les dix titulaires sont cuits au chargement (~1,1 s), le
-    banc en tâche de fond (~4 ms par image, ~3 s pour dix joueurs). Un remplaçant pas encore
+    feuille de 152 images coûte ~40 ms dans le navigateur (composition bornée à la boîte de
+    chaque calque, 15 bis) : les dix titulaires sont cuits au chargement (~0,4 s), le banc en
+    tâche de fond (~4 ms par image). Un remplaçant pas encore
     prêt serait fini d'un trait à son entrée (le debug H compte ces cas et affiche la plus
     longue image des 5 dernières secondes) ;
   - **menu pause** (React, superposé au match comme le panneau des réglages, qui reste

@@ -46,6 +46,41 @@ export const TORSOS_BACK: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
   },
 };
 
+/**
+ * Torse de 3/4 face (le joueur descend vers la droite ; vers la gauche, l'image est retournée) :
+ * col décalé d'une colonne vers le sens de la course, flanc qui s'éloigne (à gauche) au ton
+ * d'ombre ; le numéro est lui aussi décalé (voir `composeFrame`).
+ */
+export const TORSOS_34: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
+  light: {
+    stretchRow: 3,
+    stretchCol: 2,
+    rows: ['sPPPSSSSSPs', 'sPPPPSSSPPs', 'qpPPPPPPPPq', 'qpPPPPPPPPq', 'qpPPPPPPPPq', 'qpPPPPPPPPq', 'qpPPPPPPPPq', 'qpPPPPPPPqq', 'qqPPPPPPPqq'],
+  },
+  heavy: {
+    stretchRow: 3,
+    stretchCol: 2,
+    rows: ['sPPPPSSSSSPs', 'sPPPPPSSSPPs', 'qpPPPPPPPPPq', 'qpPPPPPPPPPq', 'qpPPPPPPPPPq', 'qpPPPPPPPPPq', 'qpPPPPPPPPPq', 'qpPPPPPPPPqq', 'qqPPPPPPPPqq'],
+  },
+};
+
+/**
+ * Torse de 3/4 dos (le joueur monte vers la droite) : col de dos décalé d'une colonne vers
+ * l'arrière, flanc du côté de la course (à droite) au ton d'ombre.
+ */
+export const TORSOS_BACK_34: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
+  light: {
+    stretchRow: 3,
+    stretchCol: 2,
+    rows: ['sPPSSSPPPPs', 'sPPPPPPPPPs', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPqqq', 'qqPPPPPPqqq'],
+  },
+  heavy: {
+    stretchRow: 3,
+    stretchCol: 2,
+    rows: ['sPPPSSSPPPPs', 'sPPPPPPPPPPs', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPqqq', 'qqPPPPPPPqqq'],
+  },
+};
+
 /** Short de 4 rangées : ceinture sombre, bandes latérales, liseré du bas ouvert entre les jambes. */
 export const SHORTS: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
   light: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqqq', 'psPPPPPPPsq', 'psPPPPPPPsq', 'SSSS...SSSS'] },
@@ -62,6 +97,18 @@ export const SHOES: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
 export const SHOES_BACK: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
   light: ['kkk', 'kkk', 'www'],
   heavy: ['kkkk', 'kkkk', 'wwww'],
+};
+
+/** Chaussure de 3/4 face : la pointe vers la caméra et le sens de la course, plus courte qu'au profil. */
+export const SHOES_34: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
+  light: ['kkkk.', 'kkkkk', 'wwwww'],
+  heavy: ['kkkkk.', 'kkkkkk', 'wwwwww'],
+};
+
+/** Chaussure de 3/4 dos : vue du talon, avec un bout de pointe du côté de la course. */
+export const SHOES_BACK_34: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
+  light: ['kkk.', 'kkkk', 'wwww'],
+  heavy: ['kkkk.', 'kkkkk', 'wwwww'],
 };
 
 /** Allonge une grille en répétant sa rangée étirable jusqu'à `height` rangées. */

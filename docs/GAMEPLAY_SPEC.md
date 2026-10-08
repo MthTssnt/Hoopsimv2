@@ -230,6 +230,14 @@
     proches ; ton équipe toujours à gauche du tableau de score ;
   - un rechargement de la page pendant le match : rien n'est enregistré, le match reste à jouer.
 
+## Phase 3 — décisions de Matheo
+- **Vues de 3/4 (incrément 15 bis)** : les joueurs ont quatre vues, profil, 3/4 face, 3/4 dos
+  et dos, choisies en 8 directions.
+  - Les diagonales vers le bas et la descente tout droit sont en 3/4 face ; les diagonales vers
+    le haut en 3/4 dos ; la montée tout droit de dos.
+  - Toutes les poses existent dans les quatre vues ; celles du 16 y seront dessinées aussi.
+  - Le tireur fait face au panier dans la vue de son secteur.
+
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques
   secondes).

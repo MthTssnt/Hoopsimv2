@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD_TUNING } from '../world/MatchWorld';
-import { AIR_FRAMES, animTimeScale, dunkLift, blendBall, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor } from './playerView';
+import { AIR_FRAMES, animTimeScale, dunkLift, blendBall, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor } from './playerView';
+import { animationKey } from './sprites/bake';
+import type { Heading } from './sprites/rig';
 import { ANIMATIONS, FRAME, FRAMES } from './sprites/rig';
 
 const ground = { airborne: false, speed: 0, holding: false, facing: 1, heading: 'side' as const };
@@ -28,16 +30,25 @@ describe('image du joueur selon l’état du monde', () => {
     expect(FRAMES[AIR_FRAMES.block].back.hand[1]).toBeLessThan(0);
   });
 
-  it('tourné vers la gauche ou de dos : blocs dédiés de la feuille, jamais de retournement', () => {
+  it('tourné vers la gauche, de dos ou de 3/4 : blocs dédiés de la feuille, jamais de retournement', () => {
     expect(spriteStateFor({ ...ground, facing: -1, speed: 3 })).toEqual({ kind: 'anim', name: 'run', facing: 'left', heading: 'side' });
     expect(spriteStateFor({ ...ground, heading: 'back', speed: 3 })).toMatchObject({ name: 'run', heading: 'back' });
-    const air = (facing: number, heading: 'side' | 'back') => frameIndex(spriteStateFor({ ...ground, airborne: true, facing, heading }) as never);
+    expect(spriteStateFor({ ...ground, heading: 'front34', speed: 3 })).toMatchObject({ name: 'run', heading: 'front34' });
+    const air = (facing: number, heading: Heading) => frameIndex(spriteStateFor({ ...ground, airborne: true, facing, heading }) as never);
     const n = FRAMES.length;
     expect(n).toBe(19);
+    // Blocs : profil, dos, 3/4 face, 3/4 dos ; chacun vers la droite puis vers la gauche.
     expect(air(1, 'side')).toBe(18);
     expect(air(-1, 'side')).toBe(n + 18);
     expect(air(1, 'back')).toBe(2 * n + 18);
     expect(air(-1, 'back')).toBe(3 * n + 18);
+    expect(air(1, 'front34')).toBe(4 * n + 18);
+    expect(air(-1, 'front34')).toBe(5 * n + 18);
+    expect(air(1, 'back34')).toBe(6 * n + 18);
+    expect(air(-1, 'back34')).toBe(7 * n + 18);
+    const keys = (['side', 'back', 'front34', 'back34'] as const).flatMap((h) => [animationKey('p', 'run', 'right', h), animationKey('p', 'run', 'left', h)]);
+    expect(new Set(keys).size).toBe(8);
+    expect(animationKey('p', 'run', 'right', 'side')).toBe('p:run');
   });
 
   it('dribble dessiné au rythme du dribble du monde (cadence de base)', () => {
@@ -47,15 +58,32 @@ describe('image du joueur selon l’état du monde', () => {
   });
 });
 
-describe('vue de dos', () => {
-  it('passe de dos en montant, diagonales comprises, et de profil sinon', () => {
-    expect(nextHeading('side', { x: 0, y: -6 }, false)).toBe('back');
-    expect(nextHeading('side', { x: 4.2, y: -4.2 }, false)).toBe('back');
-    expect(nextHeading('side', { x: -4.2, y: -4.2 }, false)).toBe('back');
-    expect(nextHeading('back', { x: 6, y: 0 }, false)).toBe('side');
-    expect(nextHeading('back', { x: 6, y: -1 }, false)).toBe('side');
-    expect(nextHeading('back', { x: 0, y: 6 }, false)).toBe('side');
-    expect(nextHeading('back', { x: 4, y: 4 }, false)).toBe('side');
+describe('vue selon la direction (8 secteurs)', () => {
+  /** Vitesse de 6 m/s à `deg` degrés au-dessus de l'horizontale (vers le fond), à droite ou à gauche. */
+  const run = (deg: number, right = true) => ({ x: (right ? 6 : -6) * Math.cos((deg * Math.PI) / 180), y: -6 * Math.sin((deg * Math.PI) / 180) });
+
+  it('donne profil, 3/4 dos, dos et 3/4 face selon l’angle, à droite comme à gauche', () => {
+    for (const right of [true, false]) {
+      expect(nextHeading('side', run(0, right), false)).toBe('side');
+      expect(nextHeading('side', run(45, right), false)).toBe('back34');
+      expect(nextHeading('side', run(90, right), false)).toBe('back');
+      expect(nextHeading('side', run(-45, right), false)).toBe('front34');
+      // Descente tout droit : 3/4 face (décision de Matheo).
+      expect(nextHeading('side', run(-90, right), false)).toBe('front34');
+    }
+  });
+
+  it('ne clignote pas près d’une frontière : il faut la dépasser de la marge pour changer de vue', () => {
+    const margin = PLAYER_VIEW_TUNING.hysteresis;
+    expect(headingFor(run(22.5 + margin - 1), 'side')).toBe('side');
+    expect(headingFor(run(22.5 + margin + 1), 'side')).toBe('back34');
+    expect(headingFor(run(22.5 - margin + 1), 'back34')).toBe('back34');
+    expect(headingFor(run(22.5 - margin - 1), 'back34')).toBe('side');
+    expect(headingFor(run(67.5 - margin + 1), 'back')).toBe('back');
+    expect(headingFor(run(-22.5 + margin - 1), 'front34')).toBe('front34');
+    // Hors de toute marge, la vue du secteur l'emporte.
+    expect(headingFor(run(0), 'back')).toBe('side');
+    expect(headingFor(run(-80), 'back34')).toBe('front34');
   });
 
   it('garde la vue précédente à l’arrêt et en l’air', () => {
@@ -67,9 +95,13 @@ describe('vue de dos', () => {
 });
 
 describe('pendant un tir', () => {
-  it('reste de profil, même en montant ou de dos', () => {
-    expect(nextHeading('back', { x: 0, y: -6 }, false, true)).toBe('side');
-    expect(nextHeading('back', { x: 0, y: 0 }, true, true)).toBe('side');
+  it('fait face au panier, dans la vue du secteur vers le cercle, même en l’air', () => {
+    // Panier à droite : de face (même profondeur), depuis le coin proche (le cercle est vers le
+    // fond), depuis l'aile du fond (le cercle est vers la caméra).
+    expect(nextHeading('back', { x: 0, y: -6 }, false, { x: 7, y: 0 })).toBe('side');
+    expect(nextHeading('side', { x: 0, y: 0 }, true, { x: 1.5, y: -6 })).toBe('back');
+    expect(nextHeading('side', { x: 0, y: 0 }, true, { x: 4, y: -4 })).toBe('back34');
+    expect(nextHeading('side', { x: 0, y: 0 }, true, { x: 4, y: 4 })).toBe('front34');
   });
 
   it('montre le ballon levé, le bras tendu du layup, puis les bras après le lâcher', () => {
@@ -85,7 +117,7 @@ describe('pendant un tir', () => {
     expect(spriteStateFor({ ...air, holding: true, shot: 'dunk' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.layup });
     expect(spriteStateFor({ ...air, holding: false, shot: 'dunk' })).toMatchObject({ kind: 'frame', frame: AIR_FRAMES.dunkHang });
     expect(FRAMES[AIR_FRAMES.dunkHang].ball).toBeUndefined();
-    expect(nextHeading('back', { x: 0, y: -3 }, true, true)).toBe('side');
+    expect(nextHeading('back', { x: 0, y: -3 }, true, { x: 3, y: 0 })).toBe('side');
   });
 });
 

@@ -42,7 +42,8 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - ✅ Décisions de Matheo : redesign des joueurs d'abord, puis poses et arbitre, sons synthétisés en code, caméra et HUD ; coach du match joué réglé pour moins de changements ; gestes avancés dans une phase à part
 - ✅ 14. Redesign des joueurs et du ballon en 640×360 à 30 px/m sur `?style` (joueur standard de 43 px, tête 16×16, visage et coiffures redessinés, corps plus mince, jambes droites à l'arrêt, ballon 8×8, vue avant / après), validé par Matheo
 - ✅ 15. Application au match en 640×360 : distances du rendu à l'échelle (`MATCH_PX` : étiquettes, messages, jauge 5×27, secousse, caméra), mains du dunk au cercle d'après le rig, bandeau à 31 % de l'écran, banc cuit en tâche de fond (plus d'à-coup aux changements) ; HUD gardé à ses tailles jusqu'au 18
-- ⬜ 16. Poses complètes (passe, réception, vol, déséquilibre, défense, lancer, réception au sol, remise, célébration, déçu), arbitre, célébrations, coach du match joué
+- ✅ 15 bis. Vue de 3/4 (les quatre diagonales) : quatre vues (profil, 3/4 face, 3/4 dos, dos) en 8 secteurs avec hystérésis, toutes les poses dans les quatre vues, tireur face au panier dans son secteur, feuille de 152 images en grille ; composition 13× plus rapide (calques bornés), empreinte du profil et du dos inchangée ; vues « trois-quarts » et « directions » dans `?style`
+- ⬜ 16. Poses complètes (passe, réception, vol, déséquilibre, défense, lancer, réception au sol, remise, célébration, déçu), dessinées dans les quatre vues, arbitre, célébrations, coach du match joué
 - ⬜ 17. Sons synthétisés en code (ballon, cercle, filet, planche, chaussures, sifflet, sirène, public), volume et coupure
 - ⬜ 18. Caméra et HUD final (cadrage, transitions, tableau de score final, aides de touches, « remplir l'écran »)
 

@@ -21,12 +21,12 @@ import { createControlRing, createNameLabel, createTag, POSITION_SHORT, type Pla
 import { spreadLabels } from '../render/hud/labels';
 import type { Point } from '../render/pixelDraw';
 import { normalizeText } from '../render/pixelFont';
-import { AIR_FRAMES, animTimeScale, blendBall, dunkLift, frameIndex, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
+import { AIR_FRAMES, animTimeScale, blendBall, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, BakeQueue, bakePlayer, bakeShadow, SheetBaker, type BakedPlayer, type Clock } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/compose';
-import { bodyLayout, FRAME, raisedHandTop } from '../render/sprites/rig';
+import { bodyLayout, FRAME, raisedHandTop, seenFromBehind } from '../render/sprites/rig';
 import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
@@ -85,6 +85,7 @@ function smooth(current: number, target: number, rate: number, deltaMs: number):
 }
 
 const SPEED_LABELS = { slow: 'lente', normal: 'normale', fast: 'rapide' } as const;
+const HEADING_LABELS: Record<Heading, string> = { side: 'de profil', front34: 'de 3/4 face', back34: 'de 3/4 dos', back: 'de dos' };
 const ZONE_LABELS: Record<ShotZone, string> = { rim: 'près du cercle', mid: 'mi-distance', three: '3 pts' };
 const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: 'vert', early: 'tôt', late: 'tard' };
 /**
@@ -921,9 +922,11 @@ export class MatchScene extends Phaser.Scene {
     this.ballDrawn = drawn;
     // De dos, le ballon tenu passe derrière le porteur (ballon levé derrière la tête).
     let depth = depthOf(ball.y);
-    if (owner !== null && holder) depth = depthOf(this.world.players[owner].pos.y) + (holder.heading === 'back' ? -0.05 : 0.05);
+    if (owner !== null && holder) depth = depthOf(this.world.players[owner].pos.y) + (seenFromBehind(holder.heading) ? -0.05 : 0.05);
     this.ballImage.setPosition(Math.round(drawn.x), Math.round(drawn.y)).setDepth(depth);
-    const shadow = rounded(project(ball.x, ball.y));
+    // Ballon tenu : son ombre suit le ballon dessiné (dans la main de l'image, quelle que soit la
+    // vue), au sol du porteur ; ballon libre : sous sa position physique.
+    const shadow = holder ? { x: Math.round(drawn.x), y: holder.ground.y } : rounded(project(ball.x, ball.y));
     this.ballShadow.setPosition(shadow.x, shadow.y + 1).setAlpha(Phaser.Math.Clamp(1 - (ball.z - BALL_RADIUS) / 6, 0.35, 1));
 
     this.updateShotFeedback(deltaMs);
@@ -949,7 +952,9 @@ export class MatchScene extends Phaser.Scene {
     view.feet = { x: lifted.x, y: lifted.y - lift };
     view.ground = rounded(project(pos.x, pos.y));
     const speed = Math.hypot(body.vel.x, body.vel.y);
-    view.heading = nextHeading(view.heading, body.vel, body.airborne, shot !== null);
+    // Le tireur fait face au panier, dans la vue du secteur de la direction du cercle.
+    const towardRim = (rim: { x: number; y: number }) => ({ x: rim.x - pos.x, y: rim.y - pos.y });
+    view.heading = nextHeading(view.heading, body.vel, body.airborne, shot ? towardRim(shot.hoop.rim) : null);
     let state = spriteStateFor({
       airborne: body.airborne,
       speed,
@@ -962,20 +967,21 @@ export class MatchScene extends Phaser.Scene {
     // Lancer franc (poses provisoires) : ballon levé pendant la visée, puis le bras du lâcher.
     const ft = this.world.full?.phase === 'lancers' ? this.world.full.freeThrows : null;
     const facing = body.facing < 0 ? 'left' : 'right';
-    if (ft && ft.shooter === index && ft.aim !== null && this.world.holder === index) {
-      view.heading = 'side';
-      state = { kind: 'frame', frame: AIR_FRAMES.withBall, facing, heading: 'side' };
-    } else if (this.freeThrowPose[index] > 0 && !body.airborne && this.world.holder !== index) {
-      view.heading = 'side';
-      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing, heading: 'side' };
+    const aiming = ft && ft.shooter === index && ft.aim !== null && this.world.holder === index;
+    if (aiming || (this.freeThrowPose[index] > 0 && !body.airborne && this.world.holder !== index)) {
+      view.heading = headingFor(towardRim(this.world.hoopFor(index).rim), view.heading);
+      state = { kind: 'frame', frame: aiming ? AIR_FRAMES.withBall : AIR_FRAMES.empty, facing, heading: view.heading };
     }
-    // Passe et geste de vol (poses provisoires) : le bras du lâcher, de profil, au sol ; le vol
-    // tend le bras vers le ballon.
+    // Passe et geste de vol (poses provisoires) : le bras du lâcher, au sol, tourné vers le
+    // receveur ; le vol tend le bras vers le ballon.
     const reaching = this.world.clock < (this.world.reachUntil[index] ?? 0);
     if ((this.passPose[index] > 0 || reaching) && !body.airborne && this.world.holder !== index) {
-      view.heading = 'side';
-      const toward = reaching ? Math.sign(this.world.ball.pos.x - pos.x) || body.facing : body.facing;
-      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing: toward < 0 ? 'left' : 'right', heading: 'side' };
+      const last = this.world.lastPass;
+      const target = reaching ? this.world.ball.pos : last && last.passer === index ? this.world.players[last.receiver].pos : null;
+      const toward = target ? { x: target.x - pos.x, y: target.y - pos.y } : { x: body.facing, y: 0 };
+      view.heading = headingFor(toward, view.heading);
+      const side = Math.sign(toward.x) || body.facing;
+      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing: side < 0 ? 'left' : 'right', heading: view.heading };
     }
     this.applySprite(view.sprite, view.member.baked, state);
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
@@ -1436,7 +1442,7 @@ export class MatchScene extends Phaser.Scene {
     const owed = rules ? rules.mustClear.map((v, team) => (v ? teamName(team) : null)).filter(Boolean) : [];
     const top = [
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · ${this.perTeam} contre ${this.perTeam} · graine ${this.seed}`,
-      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · vue ${this.bodies[controlled].heading === 'back' ? 'de dos' : 'de profil'}`,
+      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · vue ${HEADING_LABELS[this.bodies[controlled].heading]}`,
       ...this.aiLines(),
       ...(this.rotationLine() ? [this.rotationLine()!, this.bakeLine()] : []),
       this.world.full

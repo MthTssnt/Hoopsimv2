@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { Appearance } from './appearance';
 import { colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
-import { ANIMATIONS, BACK_FRAMES, bodyDims, FRAME, FRAMES, type AnimationName, type BodyDims } from './rig';
+import { ANIMATIONS, bodyDims, FRAME, FRAMES, framesFor, type AnimationName, type BodyDims } from './rig';
 import type { TeamRamp } from '../../../assets/palette';
 
 export interface BakedPlayer {
@@ -25,14 +25,25 @@ export interface BakeOptions {
 
 /**
  * Clé d'animation d'un joueur cuit, selon son orientation et sa vue (jamais de retournement : le
- * numéro resterait en miroir) : `${key}:${nom}`, puis `:back` de dos, puis `:left` vers la gauche.
+ * numéro resterait en miroir) : `${key}:${nom}`, puis la vue (`:back`, `:front34`, `:back34` ; rien de profil), puis `:left` vers la gauche.
  */
 export function animationKey(key: string, name: AnimationName, facing: Facing, heading: Heading = 'side'): string {
-  return `${key}:${name}${heading === 'back' ? ':back' : ''}${facing === 'left' ? ':left' : ''}`;
+  return `${key}:${name}${heading === 'side' ? '' : `:${heading}`}${facing === 'left' ? ':left' : ''}`;
 }
 
-/** Nombre d'images d'une feuille : 19 images dans chacune des 4 vues. */
+/** Nombre d'images d'une feuille : 19 images dans chacun des 8 blocs (4 vues, 2 orientations). */
 const SHEET_FRAMES = FRAMES.length * SHEET_VIEWS.length;
+
+/**
+ * Position d'une image dans la texture : une rangée par bloc (19 images), 8 rangées. En une
+ * seule bande, les 152 images feraient 8 512 px de large, au-delà de la taille maximale d'une
+ * texture (souvent 8 192, parfois 4 096 px) : la feuille s'afficherait en noir.
+ */
+export function sheetCell(index: number): { x: number; y: number } {
+  return { x: (index % FRAMES.length) * FRAME.width, y: Math.floor(index / FRAMES.length) * FRAME.height };
+}
+/** Taille de la texture d'une feuille (px). */
+export const SHEET_SIZE = { width: FRAMES.length * FRAME.width, height: SHEET_VIEWS.length * FRAME.height } as const;
 
 /** Horloge en millisecondes (injectée dans les tests). */
 export type Clock = () => number;
@@ -42,14 +53,15 @@ const now: Clock = () => performance.now();
  * Feuille d'un joueur en cours de cuisson. Les images sont composées une par une dans un tampon
  * de pixels RGBA (pur, sans Phaser) : `step` en compose dans un budget de temps, pour cuire le banc
  * en tâche de fond sans faire sauter d'image ; `finish` termine d'un trait, puis crée la texture
- * (une image par colonne) et les animations. Les couleurs (peau, cheveux, équipe) sont posées ici.
+ * (une rangée par bloc, voir `sheetCell`) et les animations. Les couleurs (peau, cheveux, équipe) sont posées ici.
  */
 export class SheetBaker {
   readonly key: string;
   readonly look: Appearance;
   readonly options: BakeOptions;
   readonly dims: BodyDims;
-  readonly width = FRAME.width * SHEET_FRAMES;
+  readonly width = SHEET_SIZE.width;
+  readonly height = SHEET_SIZE.height;
   readonly pixels: Uint8ClampedArray;
   readonly anchors: BakedPlayer['anchors'] = [];
   private readonly colors: SlotColors;
@@ -61,7 +73,7 @@ export class SheetBaker {
     this.options = options;
     this.dims = bodyDims(look.heightCm, look.heavy);
     this.colors = colorsFor(look, options.primary, options.secondary);
-    this.pixels = new Uint8ClampedArray(this.width * FRAME.height * 4);
+    this.pixels = new Uint8ClampedArray(this.width * this.height * 4);
   }
 
   get done(): boolean {
@@ -78,13 +90,14 @@ export class SheetBaker {
 
   private composeNext(): void {
     if (this.done) return;
-    const column = this.next++;
-    const view = SHEET_VIEWS[Math.floor(column / FRAMES.length)];
-    const frame = (view.heading === 'back' ? BACK_FRAMES : FRAMES)[column % FRAMES.length];
+    const index = this.next++;
+    const view = SHEET_VIEWS[Math.floor(index / FRAMES.length)];
+    const frame = framesFor(view.heading)[index % FRAMES.length];
     const { canvas, ball } = composeFrame(this.look, frame, this.dims, this.options.kit, view.facing, view.heading);
+    const cell = sheetCell(index);
     canvas.forEach((x, y, slot) => {
       const color = slotColor(slot, this.colors);
-      const k = (y * this.width + column * FRAME.width + x) * 4;
+      const k = ((cell.y + y) * this.width + cell.x + x) * 4;
       this.pixels[k] = (color >> 16) & 0xff;
       this.pixels[k + 1] = (color >> 8) & 0xff;
       this.pixels[k + 2] = color & 0xff;
@@ -98,12 +111,15 @@ export class SheetBaker {
     while (!this.done) this.composeNext();
     const { key } = this;
     if (scene.textures.exists(key)) scene.textures.remove(key);
-    const texture = scene.textures.createCanvas(key, this.width, FRAME.height)!;
-    const image = texture.context.createImageData(this.width, FRAME.height);
+    const texture = scene.textures.createCanvas(key, this.width, this.height)!;
+    const image = texture.context.createImageData(this.width, this.height);
     image.data.set(this.pixels);
     texture.putData(image, 0, 0);
     texture.refresh();
-    for (let i = 0; i < SHEET_FRAMES; i++) texture.add(i, 0, i * FRAME.width, 0, FRAME.width, FRAME.height);
+    for (let i = 0; i < SHEET_FRAMES; i++) {
+      const cell = sheetCell(i);
+      texture.add(i, 0, cell.x, cell.y, FRAME.width, FRAME.height);
+    }
 
     for (const [name, def] of Object.entries(ANIMATIONS) as [AnimationName, (typeof ANIMATIONS)[AnimationName]][]) {
       SHEET_VIEWS.forEach(({ facing, heading }, v) => {

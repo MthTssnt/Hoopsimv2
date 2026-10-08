@@ -16,7 +16,8 @@ import type { SlotCanvas } from '../render/sprites/canvas';
 import { colorsFor, headLayer, sheetIndex, slotColor, type Heading } from '../render/sprites/compose';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import { LEGACY_AILIER, LEGACY_LOOK } from '../render/sprites/legacy';
-import { ANIMATIONS, bodyDims, bodyLayout, FRAME, FRAMES, SHOE_ROWS, type AnimationName } from '../render/sprites/rig';
+import { ANIMATIONS, bodyDims, bodyLayout, FRAME, FRAMES, seenFromBehind, SHOE_ROWS, type AnimationName } from '../render/sprites/rig';
+import { headingFor } from '../render/playerView';
 import { composeFrame } from '../render/sprites/compose';
 import { BALL } from '../../assets/sprites/arena';
 import { drawGrid } from '../render/arena/draw';
@@ -39,6 +40,14 @@ const SPECIMENS = [
   { id: 'specimen-ailier', name: 'AILIER', heightCm: 200, weightKg: 95, number: 23 },
   { id: 'specimen-pivot', name: 'PIVOT', heightCm: 212, weightKg: 106, number: 16 },
 ] as const;
+/** Une rangée de planche : un joueur type, son orientation et sa vue. */
+interface PoseRow {
+  spec: (typeof SPECIMENS)[number];
+  facing: 'left' | 'right';
+  heading: Heading;
+}
+/** Suffixe du nom de rangée selon la vue. */
+const HEADING_TITLES: Record<Heading, string> = { side: '', back: ' DE DOS', front34: ' DE 3/4 FACE', back34: ' DE 3/4 DOS' };
 const EXPRESSION_LIST: { expression: Expression; label: string }[] = [
   { expression: 'neutre', label: 'NEUTRE' },
   { expression: 'concentree', label: 'CONCENTREE' },
@@ -57,10 +66,14 @@ const POSE_GROUPS = [
 
 /**
  * Vues de la scène : terrain, gros plan des gabarits, avant / après le redesign du 14, planches
- * des poses de profil et de dos (touche V ou `?style&vue=`).
+ * des poses de profil, de dos et de 3/4, rose des 8 directions (touche V ou `?style&vue=`).
  */
-type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos';
-const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos'];
+type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'trois-quarts' | 'directions';
+const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'trois-quarts', 'directions'];
+/** Vue de chaque joueur du terrain (les 3/4 et le dos se mêlent au profil). */
+const COURT_HEADINGS: Heading[] = ['side', 'front34', 'back34', 'side', 'back'];
+/** Rose des directions : angle (degrés au-dessus de l'horizontale, vers la droite). */
+const DIRECTIONS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 interface Actor {
   sprite: Phaser.GameObjects.Sprite;
@@ -177,8 +190,16 @@ export class StyleScene extends Phaser.Scene {
     this.actors = [];
     if (this.view === 'gros-plan') this.buildCloseup();
     else if (this.view === 'avant-apres') this.buildBeforeAfter();
-    else if (this.view === 'poses') this.buildPoseSheet('side');
-    else if (this.view === 'dos') this.buildPoseSheet('back');
+    else if (this.view === 'poses') this.buildPoseSheet('PLANCHE DES POSES (ECHELLE DU JEU)', this.specimenRows('side'));
+    else if (this.view === 'dos') this.buildPoseSheet('PLANCHE DES POSES DE DOS (ECHELLE DU JEU)', this.specimenRows('back'));
+    else if (this.view === 'trois-quarts')
+      this.buildPoseSheet('PLANCHE DES POSES DE 3/4 (ECHELLE DU JEU)', [
+        { spec: SPECIMENS[1], facing: 'right', heading: 'front34' },
+        { spec: SPECIMENS[1], facing: 'left', heading: 'front34' },
+        { spec: SPECIMENS[1], facing: 'right', heading: 'back34' },
+        { spec: SPECIMENS[1], facing: 'left', heading: 'back34' },
+      ]);
+    else if (this.view === 'directions') this.buildDirections();
     else {
       this.buildStatics();
       this.buildActors();
@@ -313,13 +334,14 @@ export class StyleScene extends Phaser.Scene {
     drawSmallText(g, 'BALLON 8X8 X3', 560, 266);
   }
 
-  /**
-   * Planche des poses : les 19 images de chaque gabarit à l'échelle du jeu, plus l'ailier tourné
-   * vers la gauche ; de profil, ou de dos (le joueur monte).
-   */
-  private buildPoseSheet(heading: Heading) {
-    const back = heading === 'back';
-    const g = this.studyBackground(back ? 'PLANCHE DES POSES DE DOS (ECHELLE DU JEU)' : 'PLANCHE DES POSES (ECHELLE DU JEU)');
+  /** Rangées des planches de profil et de dos : les trois gabarits, puis l'ailier vers la gauche. */
+  private specimenRows(heading: Heading): PoseRow[] {
+    return [...SPECIMENS.map((spec) => ({ spec, facing: 'right' as const, heading })), { spec: SPECIMENS[1], facing: 'left' as const, heading }];
+  }
+
+  /** Planche des poses : les 19 images d'un joueur type par rangée, à l'échelle du jeu. */
+  private buildPoseSheet(title: string, rows: PoseRow[]) {
+    const g = this.studyBackground(title);
     const cell = 32;
     const left = 8;
     POSE_GROUPS.forEach((group) => {
@@ -327,23 +349,68 @@ export class StyleScene extends Phaser.Scene {
       drawSmallText(g, group.label, left + group.from * cell, 12);
       g.fillStyle(PALETTE.slate).fillRect(left + group.from * cell, 18, (group.to - group.from + 1) * cell - 3, 1);
     });
-    const rows = [...SPECIMENS.map((spec) => ({ spec, facing: 'right' as const })), { spec: SPECIMENS[1], facing: 'left' as const }];
-    rows.forEach(({ spec, facing }, r) => {
+    rows.forEach(({ spec, facing, heading }, r) => {
       const look = this.specimenLook(spec);
       const baked = bakePlayer(this, `poses-${r}`, look, { primary: this.home.primary, secondary: this.home.secondary });
       const y = 22 + r * 82;
       g.fillStyle(PALETTE.chalk);
-      drawSmallText(g, `${spec.name}${back ? ' DE DOS' : ''}${facing === 'left' ? ' VERS LA GAUCHE' : ''}`, left, y);
+      drawSmallText(g, `${spec.name}${HEADING_TITLES[heading]}${facing === 'left' ? ' VERS LA GAUCHE' : ''}`, left, y);
       FRAMES.forEach((_, i) => {
         const index = sheetIndex(i, facing, heading);
         const cx = left + i * cell + cell / 2;
         const baseY = y + 8 + FRAME.height;
         this.statics.push(this.add.image(cx, baseY, baked.key, index).setOrigin(0.5, 1).setDepth(2));
         const anchor = baked.anchors[index];
-        // De dos, le ballon tenu passe derrière le joueur.
-        if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, BALL_TEXTURE).setDepth(back ? 1 : 3));
+        // De dos et de 3/4 dos, le ballon tenu passe derrière le joueur.
+        if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, BALL_TEXTURE).setDepth(seenFromBehind(heading) ? 1 : 3));
       });
     });
+  }
+
+  /**
+   * Rose des 8 directions : le meneur court, l'ailier dribble et le pivot court dans les huit
+   * directions autour d'un centre, avec la vue choisie par `headingFor` (comme dans le match).
+   */
+  private buildDirections() {
+    const g = this.studyBackground('LES 8 DIRECTIONS : PROFIL, 3/4 FACE, 3/4 DOS, DOS (ANIME)');
+    const roses: { spec: (typeof SPECIMENS)[number]; anim: AnimationName; label: string }[] = [
+      { spec: SPECIMENS[0], anim: 'run', label: 'MENEUR, COURSE' },
+      { spec: SPECIMENS[1], anim: 'dribble', label: 'AILIER, DRIBBLE' },
+      { spec: SPECIMENS[2], anim: 'run', label: 'PIVOT, COURSE' },
+    ];
+    const radius = { x: 72, y: 78 };
+    roses.forEach(({ spec, anim, label }, r) => {
+      const center = { x: 107 + r * 213, y: 196 };
+      const look = this.specimenLook(spec);
+      const baked = bakePlayer(this, `rose-${r}`, look, { primary: this.home.primary, secondary: this.home.secondary, loopAll: true });
+      g.fillStyle(PALETTE.chalk);
+      drawSmallText(g, label, center.x - smallTextWidth(label) / 2, 318);
+      DIRECTIONS.forEach((deg, d) => {
+        const rad = (deg * Math.PI) / 180;
+        const dir = { x: Math.round(Math.cos(rad) * 1000) / 1000, y: -Math.round(Math.sin(rad) * 1000) / 1000 };
+        const heading = headingFor(dir, 'side');
+        const facing = dir.x < 0 ? 'left' : 'right';
+        const feet = { x: Math.round(center.x + dir.x * radius.x), y: Math.round(center.y + dir.y * radius.y) };
+        g.fillStyle(PALETTE.slate);
+        for (let k = 6; k < 26; k += 2) g.fillRect(Math.round(center.x + dir.x * k), Math.round(center.y + dir.y * k * (radius.y / radius.x)), 1, 1);
+        this.placeSprite(baked, feet, anim, facing, heading, d);
+      });
+    });
+  }
+
+  /** Sprite animé posé pieds sur `feet`, avec le ballon tenu dans la main de l'image courante. */
+  private placeSprite(baked: BakedPlayer, feet: { x: number; y: number }, anim: AnimationName, facing: 'left' | 'right', heading: Heading, startFrame = 0) {
+    const sprite = this.add.sprite(feet.x, feet.y + 1, baked.key, 0).setOrigin(0.5, 1).setDepth(feet.y);
+    const ball = this.add.image(0, 0, BALL_TEXTURE).setDepth(feet.y + (seenFromBehind(heading) ? -0.1 : 0.1)).setVisible(false);
+    const place = (frameName: string | number) => {
+      const anchor = baked.anchors[Number(frameName)];
+      ball.setVisible(anchor !== null);
+      if (anchor) ball.setPosition(feet.x - FRAME.width / 2 + anchor.x, feet.y + 1 - FRAME.height + anchor.y);
+    };
+    sprite.on('animationupdate', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
+    sprite.on('animationstart', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
+    sprite.play({ key: animationKey(baked.key, anim, facing, heading), startFrame: startFrame % ANIMATIONS[anim].frames.length });
+    this.actors.push(sprite, ball);
   }
 
   private buildStatics() {
@@ -368,7 +435,13 @@ export class StyleScene extends Phaser.Scene {
     this.statics.push(swatches);
   }
 
-  private placeActor(look: Appearance, key: string, x: number, depth: number, opts: { team: TeamLook; anim: AnimationName; flip: boolean; referee?: boolean; startFrame?: number }): Actor {
+  private placeActor(
+    look: Appearance,
+    key: string,
+    x: number,
+    depth: number,
+    opts: { team: TeamLook; anim: AnimationName; flip: boolean; referee?: boolean; startFrame?: number; heading?: Heading },
+  ): Actor {
     const baked = bakePlayer(this, key, look, {
       primary: opts.team.primary,
       secondary: opts.team.secondary,
@@ -383,7 +456,8 @@ export class StyleScene extends Phaser.Scene {
     this.actors.push(this.add.image(fx, fy - 1, `style-shadow-${shadowW}`).setDepth(fy - 0.4));
     // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
     const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setDepth(fy);
-    const ball = this.add.image(0, 0, BALL_TEXTURE).setDepth(fy + 0.1).setVisible(false);
+    const heading = opts.heading ?? 'side';
+    const ball = this.add.image(0, 0, BALL_TEXTURE).setDepth(fy + (seenFromBehind(heading) ? -0.1 : 0.1)).setVisible(false);
     const actor = { sprite, ball, baked };
     const place = (frameName: string | number) => {
       const anchor = baked.anchors[Number(frameName)];
@@ -394,7 +468,7 @@ export class StyleScene extends Phaser.Scene {
     sprite.on('animationupdate', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
     sprite.on('animationstart', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
     const frames = ANIMATIONS[opts.anim].frames.length;
-    sprite.play({ key: animationKey(key, opts.anim, opts.flip ? 'left' : 'right'), startFrame: (opts.startFrame ?? 0) % frames });
+    sprite.play({ key: animationKey(key, opts.anim, opts.flip ? 'left' : 'right', heading), startFrame: (opts.startFrame ?? 0) % frames });
     this.actors.push(sprite, ball);
     return actor;
   }
@@ -410,7 +484,7 @@ export class StyleScene extends Phaser.Scene {
       const anim = this.sameAnim ?? ANIM_ORDER[i % ANIM_ORDER.length];
       const x = COLUMNS[i % 5];
       const depth = home ? ROWS.home : ROWS.away;
-      this.placeActor(looks[i], `style-p${i}`, x, depth, { team, anim, flip: i % 3 === 2, startFrame: i });
+      this.placeActor(looks[i], `style-p${i}`, x, depth, { team, anim, flip: i % 3 === 2, startFrame: i, heading: COURT_HEADINGS[i % COURT_HEADINGS.length] });
       const feet = this.proj.project(x, depth);
       const controlled = i === 0;
       if (controlled) {
