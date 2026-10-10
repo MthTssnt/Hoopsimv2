@@ -315,5 +315,23 @@ export function slotColor(slot: Slot, colors: SlotColors): number {
       return colors.secondary[1];
     case 't':
       return colors.secondary[2];
+    // Tons du style en volumes, ramenés aux rampes de 3 tons (ce rendu ne s'en sert pas).
+    case '0':
+      return colors.skin[0];
+    case '4':
+      return colors.skin[2];
+    case 'D':
+    case 'E':
+      return colors.hair[2];
+    case 'a':
+      return colors.primary[0];
+    case 'Q':
+      return colors.primary[2];
+    case 'T':
+      return colors.secondary[2];
+    case 'm':
+      return PALETTE.mist;
+    case 'G':
+      return PALETTE.slate;
   }
 }

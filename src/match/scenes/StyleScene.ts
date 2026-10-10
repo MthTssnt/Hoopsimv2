@@ -12,6 +12,7 @@ import { ART_PPM, ART_VIEW, artPx } from '../render/artConfig';
 import { drawSmallText, normalizeText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 import { createControlRing, createNameLabel, drawPlayerCard, drawScoreboard, POSITION_SHORT } from '../render/hud/hud';
 import { appearanceFor, appearanceSignature, type Appearance } from '../render/sprites/appearance';
+import type { SlotCanvas } from '../render/sprites/canvas';
 import { colorsFor, headLayer, sheetIndex, slotColor, type Heading } from '../render/sprites/compose';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import { LEGACY_AILIER, LEGACY_LOOK } from '../render/sprites/legacy';
@@ -22,10 +23,9 @@ import { BALL } from '../../assets/sprites/arena';
 import { drawGrid } from '../render/arena/draw';
 import { slotOf } from '../render/sprites/canvas';
 import type { Expression } from '../../assets/sprites/heads';
-import { CANDIDATE_HAIRS, CANDIDATE_STYLES, type CandidateHair, type CandidatePose } from '../../assets/sprites/styleCandidates';
-import { candidateHead, composeCandidate } from '../render/sprites/candidates';
-import { SlotCanvas } from '../render/sprites/canvas';
-import type { SlotColors } from '../render/sprites/compose';
+import { athleteColors, athleteSlotColor, renderAthlete, ATHLETE_FRAME, type AthleteColors, type AthleteFacing, type AthleteHair, type AthleteHeading, type AthleteLook } from '../render/sprites/athlete';
+import { sampleFrames, type SampleAnimation } from '../render/sprites/athleteAnims';
+import { bakeAthlete, SAMPLE_ANIMATIONS, SAMPLE_VIEWS, type BakedAthlete } from '../render/sprites/athleteBake';
 
 const ANIM_ORDER: AnimationName[] = ['idle', 'run', 'dribble', 'dribbleIdle', 'shoot', 'dunk'];
 /** Colonnes des joueurs (m le long du terrain) et profondeurs des deux rangées. */
@@ -70,21 +70,15 @@ const POSE_GROUPS = [
 /**
  * Vues de la scène : terrain, gros plan des gabarits, avant / après le redesign du 14, planches
  * des poses en diagonale bas (« poses ») et en diagonale haut (« dos »), rose des 8 directions,
- * puis la planche des 3 styles candidats du 15 quater (« styles », « styles-visages ») (touche V
- * ou `?style&vue=`).
+ * puis l'échantillon animé du nouveau style du 15 quinquies (« echantillon ») et toutes ses
+ * images (« echantillon-planche ») (touche V ou `?style&vue=`).
  */
-type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'directions' | 'styles' | 'styles-visages';
-const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'directions', 'styles', 'styles-visages'];
-/** Planche des styles : les 5 poses de chaque style, et leur libellé. */
-const STYLE_POSES: { pose: CandidatePose; label: string }[] = [
-  { pose: 'arret', label: 'ARRET' },
-  { pose: 'course', label: 'COURSE' },
-  { pose: 'dribble', label: 'DRIBBLE' },
-  { pose: 'courseHaut', label: 'HAUT' },
-  { pose: 'tir', label: 'TIR' },
-];
-/** Largeur d'une colonne de style (640 / 3). */
-const STYLE_COL = 213;
+type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'directions' | 'echantillon' | 'echantillon-planche';
+const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'directions', 'echantillon', 'echantillon-planche'];
+/** Nom affiché de chaque animation de l'échantillon. */
+const SAMPLE_LABELS: Record<SampleAnimation, string> = { idle: 'ARRET', run: 'COURSE', dribbleIdle: 'DRIBBLE ARRET', dribble: 'DRIBBLE COURSE', shoot: 'TIR' };
+/** Nom affiché de chaque position. */
+const VIEW_LABELS = ['BAS DROITE', 'BAS GAUCHE', 'HAUT DROITE', 'HAUT GAUCHE'];
 /** Position de chaque joueur du terrain (avec l'orientation, les quatre positions s'y mêlent). */
 const COURT_HEADINGS: Heading[] = ['down', 'up', 'down', 'up', 'down'];
 /** Rose des directions : angle (degrés au-dessus de l'horizontale, vers la droite). */
@@ -139,6 +133,8 @@ export class StyleScene extends Phaser.Scene {
   private debug!: Phaser.GameObjects.Text;
   private swatches!: Phaser.GameObjects.Graphics;
   private distinct = 0;
+  /** Animation montrée en grand dans l'échantillon (indice dans `SAMPLE_ANIMATIONS`). */
+  private sampleAnim = 0;
 
   constructor() {
     super('Style');
@@ -149,6 +145,8 @@ export class StyleScene extends Phaser.Scene {
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.homeIndex = new Rng(this.seed).int(0, TEAM_SEEDS.length - 1);
     this.sameAnim = null;
+    const anim = new URLSearchParams(window.location.search).get('anim');
+    this.sampleAnim = Math.max(0, SAMPLE_ANIMATIONS.indexOf(anim as SampleAnimation));
     const vue = new URLSearchParams(window.location.search).get('vue');
     this.view = VIEWS.includes(vue as View) ? (vue as View) : 'terrain';
   }
@@ -186,6 +184,10 @@ export class StyleScene extends Phaser.Scene {
       this.view = VIEWS[(VIEWS.indexOf(this.view) + 1) % VIEWS.length];
       this.buildAll();
     });
+    keyboard.on('keydown-N', () => {
+      this.sampleAnim = (this.sampleAnim + 1) % SAMPLE_ANIMATIONS.length;
+      if (this.view === 'echantillon') this.buildAll();
+    });
     keyboard.on('keydown-D', () => {
       const visible = !this.debug.visible;
       this.debug.setVisible(visible);
@@ -208,8 +210,8 @@ export class StyleScene extends Phaser.Scene {
     else if (this.view === 'poses') this.buildPoseSheet('PLANCHE DES POSES, DIAGONALE BAS (ECHELLE DU JEU)', this.specimenRows('down'));
     else if (this.view === 'dos') this.buildPoseSheet('PLANCHE DES POSES, DIAGONALE HAUT (ECHELLE DU JEU)', this.specimenRows('up'));
     else if (this.view === 'directions') this.buildDirections();
-    else if (this.view === 'styles') this.buildStyles();
-    else if (this.view === 'styles-visages') this.buildStyleFaces();
+    else if (this.view === 'echantillon') this.buildSample();
+    else if (this.view === 'echantillon-planche') this.buildSampleSheet();
     else {
       this.buildStatics();
       this.buildActors();
@@ -232,153 +234,157 @@ export class StyleScene extends Phaser.Scene {
     canvas.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px * scale, y + py * scale, scale, scale));
   }
 
-  /** Dessine un tampon de sprite agrandi `scale` fois, avec des couleurs données. */
-  private drawSlots(g: Phaser.GameObjects.Graphics, canvas: SlotCanvas, colors: SlotColors, x: number, y: number, scale: number) {
-    canvas.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px * scale, y + py * scale, scale, scale));
-  }
-
-  /** Couleurs d'un joueur de la planche des styles (teint, cheveux, équipe). */
-  private candidateColors(skin: number, hairColor: number, team: TeamLook): SlotColors {
-    return colorsFor({ heightCm: 200, heavy: false, heightClass: 'moyen', skin, head: 0, hair: 0, hairColor, number: 0 }, team.primary, team.secondary);
-  }
-
-  /** Ballon 8×8 agrandi `scale` fois, centré sur (cx, cy) en pixels du sprite. */
-  private drawBallAt(g: Phaser.GameObjects.Graphics, x: number, y: number, center: { x: number; y: number }, scale: number) {
-    const colors: Record<string, number> = { b: PALETTE.orange, B: PALETTE.orangeDark, n: PALETTE.ink, l: PALETTE.woodLight };
-    BALL.forEach((row, by) => {
-      for (let bx = 0; bx < row.length; bx++) {
-        const c = colors[row[bx]];
-        if (c !== undefined) g.fillStyle(c).fillRect(x + (center.x - 4 + bx) * scale, y + (center.y - 4 + by) * scale, scale, scale);
-      }
-    });
-    // Contour du ballon : les pixels voisins vides prennent la couleur du contour.
-    const filled = (bx: number, by: number) => by >= 0 && by < BALL.length && bx >= 0 && bx < BALL[by].length && BALL[by][bx] !== '.';
-    for (let by = -1; by <= BALL.length; by++) {
-      for (let bx = -1; bx <= BALL[0].length; bx++) {
-        if (filled(bx, by)) continue;
-        if (filled(bx - 1, by) || filled(bx + 1, by) || filled(bx, by - 1) || filled(bx, by + 1)) {
-          g.fillStyle(PALETTE.outline).fillRect(x + (center.x - 4 + bx) * scale, y + (center.y - 4 + by) * scale, scale, scale);
-        }
-      }
-    }
+  /** Apparence et couleurs d'un joueur de l'échantillon, tirées de la graine. */
+  private sampleLook(rng: Rng, heightCm: number, heavy: boolean, team: TeamLook): { look: AthleteLook; colors: AthleteColors } {
+    const hairs: AthleteHair[] = ['court', 'afro', 'tresses'];
+    const look: AthleteLook = { heightCm, heavy, hair: hairs[rng.int(0, hairs.length - 1)], number: rng.int(0, 99) };
+    return { look, colors: athleteColors(rng.int(0, 3), rng.int(0, 4), team.primary[1], team.secondary[1]) };
   }
 
   /**
-   * Planche des styles (15 quater) : trois colonnes, A, B et C. Dans chacune, l'ailier à
-   * l'échelle du jeu dans 5 poses, puis ×2 (arrêt, dribble, course vers le haut), puis un bout de
-   * parquet avec 4 joueurs de deux équipes, pour juger la lisibilité en match. R retire les teints
-   * et les coiffures, T change d'équipe.
+   * Joueur de l'échantillon animé, pieds sur `feet`, agrandi `scale` fois ; le ballon tenu suit
+   * l'image courante et passe devant ou derrière le corps.
    */
-  private buildStyles() {
-    const g = this.studyBackground('PLANCHE DES STYLES : A, B OU C ? (ECHELLE DU JEU, PUIS X2, PUIS EN MATCH)');
-    const rng = new Rng(hashSeed(`styles-${this.seed}`));
-    const specimen = { skin: rng.int(0, 3), hairColor: rng.int(0, 4) };
-    const court = Array.from({ length: 4 }, (_, i) => ({
-      skin: rng.int(0, 3),
-      hairColor: rng.int(0, 4),
-      hair: CANDIDATE_HAIRS[rng.int(0, CANDIDATE_HAIRS.length - 1)],
-      number: rng.int(0, 99),
-      team: i % 2 === 0 ? this.home : this.away,
-    }));
-    const groundRow = FRAME.groundY + 1;
-    CANDIDATE_STYLES.forEach((style, k) => {
-      const colX = k * STYLE_COL;
-      if (k > 0) g.fillStyle(PALETTE.slate).fillRect(colX, 12, 1, ART_VIEW.height - 16);
-      g.fillStyle(PALETTE.yellow);
-      drawSmallText(g, `${style.id}. ${style.name}`, colX + 6, 13);
-      const colors = this.candidateColors(specimen.skin, specimen.hairColor, this.home);
-      // 1. Les 5 poses à l'échelle du jeu (×3 à l'écran en 1080p plein écran).
-      const base1 = 96;
-      STYLE_POSES.forEach(({ pose, label }, i) => {
-        const cx = colX + 24 + i * 40;
-        const frame = composeCandidate(style.id, pose, { hair: 'court', number: 23 });
-        const left = cx - FRAME.centerX;
-        const top = base1 - groundRow;
-        this.drawSlots(g, frame.canvas, colors, left, top, 1);
-        if (frame.ball) this.drawBallAt(g, left, top, frame.ball, 1);
-        g.fillStyle(PALETTE.silver);
-        drawSmallText(g, label, cx - Math.floor(smallTextWidth(label) / 2), base1 + 3);
-      });
-      // 2. ×2 : arrêt, dribble, course vers le haut.
-      const base2 = 236;
+  private placeAthlete(baked: BakedAthlete, anim: SampleAnimation, heading: AthleteHeading, facing: AthleteFacing, feet: { x: number; y: number }, scale = 1, depth = feet.y) {
+    const left = feet.x - ATHLETE_FRAME.originX * scale;
+    const top = feet.y - ATHLETE_FRAME.groundY * scale;
+    const sprite = this.add.sprite(left, top, baked.key, baked.frameOf(anim, heading, facing, 0)).setOrigin(0).setScale(scale).setDepth(depth);
+    const ball = this.add.image(0, 0, BALL_TEXTURE).setScale(scale).setVisible(false);
+    const place = (frameName: string | number) => {
+      const b = baked.balls[Number(frameName)];
+      ball.setVisible(!!b);
+      if (!b) return;
+      ball.setPosition(left + (b.x + 0.5) * scale, top + (b.y + 0.5) * scale).setDepth(depth + (b.front ? 0.1 : -0.1));
+    };
+    sprite.on('animationupdate', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
+    sprite.on('animationstart', (_a: unknown, frame: Phaser.Animations.AnimationFrame) => place(frame.textureFrame));
+    sprite.play(baked.animKey(anim, heading, facing));
+    this.actors.push(sprite, ball);
+  }
+
+  /**
+   * Échantillon du nouveau style (15 quinquies), animé :
+   * - l'ailier ×3 en diagonale bas et haut, dans l'animation choisie (N : la suivante) ;
+   * - toutes les animations à l'échelle du jeu, dans les 4 positions ;
+   * - un bout de parquet avec 4 joueurs de deux équipes ;
+   * - les 3 gabarits à l'arrêt, et l'ailier actuel pour comparer.
+   */
+  private buildSample() {
+    const g = this.studyBackground('ECHANTILLON DU NOUVEAU STYLE (ANIME)   N : ANIMATION SUIVANTE');
+    const anim = SAMPLE_ANIMATIONS[this.sampleAnim];
+    const rng = new Rng(hashSeed(`echantillon-${this.seed}`));
+    const lead = this.sampleLook(rng, 200, false, this.home);
+    const baked = bakeAthlete(this, 'sample-lead', lead.look, lead.colors);
+    // 1. L'ailier ×3, diagonale bas et diagonale haut.
+    (['down', 'up'] as const).forEach((heading, i) => {
+      const x = 88 + i * 158;
+      this.placeAthlete(baked, anim, heading, 'right', { x, y: 226 }, 3);
+      const label = `${SAMPLE_LABELS[anim]}, ${heading === 'down' ? 'DIAGONALE BAS' : 'DIAGONALE HAUT'}`;
+      g.fillStyle(PALETTE.chalk);
+      drawSmallText(g, label, x - Math.floor(smallTextWidth(label) / 2), 240);
+    });
+    // 2. Toutes les animations à l'échelle du jeu, dans les 4 positions.
+    const gridX = 398;
+    const step = 54;
+    SAMPLE_ANIMATIONS.forEach((a, c) => {
+      const words = SAMPLE_LABELS[a].split(' ');
+      g.fillStyle(a === anim ? PALETTE.yellow : PALETTE.silver);
+      words.forEach((w, k) => drawSmallText(g, w, gridX + c * step - Math.floor(smallTextWidth(w) / 2), 12 + k * 6));
+    });
+    SAMPLE_VIEWS.forEach(({ heading, facing }, r) => {
+      const feetY = 74 + r * 50;
       g.fillStyle(PALETTE.silver);
-      drawSmallText(g, 'X2', colX + 6, 112);
-      (['arret', 'dribble', 'courseHaut'] as const).forEach((pose, i) => {
-        const cx = colX + 44 + i * 64;
-        const frame = composeCandidate(style.id, pose, { hair: 'court', number: 23 });
-        const left = cx - FRAME.centerX * 2;
-        const top = base2 - groundRow * 2;
-        this.drawSlots(g, frame.canvas, colors, left, top, 2);
-        if (frame.ball) this.drawBallAt(g, left, top, frame.ball, 2);
-      });
-      // 3. En match : bout de parquet, 4 joueurs de deux équipes à l'échelle du jeu.
-      const patch = { x: colX + 4, y: 246, w: STYLE_COL - 8, h: 108 };
-      g.fillStyle(PALETTE.wood).fillRect(patch.x, patch.y, patch.w, patch.h);
-      for (let y = patch.y + 3; y < patch.y + patch.h; y += 6) {
-        g.fillStyle(PALETTE.woodDark).fillRect(patch.x, y, patch.w, 1);
-        const joint = patch.x + ((y * 37) % 50);
-        for (let x = joint; x < patch.x + patch.w; x += 50) g.fillRect(x, y - 5, 1, 5);
-      }
-      g.fillStyle(PALETTE.chalk).fillRect(patch.x, patch.y + 14, patch.w, 1);
-      const spots: { x: number; y: number; pose: CandidatePose; facing: 'left' | 'right' }[] = [
-        { x: 36, y: 300, pose: 'dribble', facing: 'right' },
-        { x: 92, y: 290, pose: 'arret', facing: 'left' },
-        { x: 146, y: 336, pose: 'course', facing: 'right' },
-        { x: 182, y: 296, pose: 'courseHaut', facing: 'left' },
-      ];
-      bakeShadow(this, 'style-shadow-18', 18, 5);
-      [...spots.keys()]
-        .sort((a, b) => spots[a].y - spots[b].y)
-        .forEach((i) => {
-          const spot = spots[i];
-          const p = court[i];
-          const feetX = colX + spot.x;
-          this.statics.push(this.add.image(feetX, spot.y - 1, 'style-shadow-18').setDepth(1));
-          const frame = composeCandidate(style.id, spot.pose, { hair: p.hair, number: p.number }, spot.facing);
-          const pg = this.add.graphics().setDepth(2 + spot.y / 1000);
-          this.statics.push(pg);
-          const left = feetX - FRAME.centerX;
-          const top = spot.y - groundRow;
-          this.drawSlots(pg, frame.canvas, this.candidateColors(p.skin, p.hairColor, p.team), left, top, 1);
-          if (frame.ball) this.drawBallAt(pg, left, top, frame.ball, 1);
-        });
+      VIEW_LABELS[r].split(' ').forEach((w, k) => drawSmallText(g, w, 338, feetY - 26 + k * 6));
+      SAMPLE_ANIMATIONS.forEach((a, c) => this.placeAthlete(baked, a, heading, facing, { x: gridX + c * step, y: feetY }));
     });
+    // 3. En match : un bout de parquet, 4 joueurs de deux équipes.
+    const patch = { x: 4, y: 252, w: 326, h: 104 };
+    g.fillStyle(PALETTE.wood).fillRect(patch.x, patch.y, patch.w, patch.h);
+    for (let y = patch.y + 3; y < patch.y + patch.h; y += 6) {
+      g.fillStyle(PALETTE.woodDark).fillRect(patch.x, y, patch.w, 1);
+      for (let x = patch.x + ((y * 37) % 50); x < patch.x + patch.w; x += 50) g.fillRect(x, y - 5, 1, 5);
+    }
+    g.fillStyle(PALETTE.chalk).fillRect(patch.x, patch.y + 12, patch.w, 1);
+    const spots: { x: number; y: number; anim: SampleAnimation; heading: AthleteHeading; facing: AthleteFacing }[] = [
+      { x: 52, y: 318, anim: 'dribble', heading: 'down', facing: 'right' },
+      { x: 128, y: 298, anim: 'run', heading: 'up', facing: 'left' },
+      { x: 210, y: 344, anim: 'run', heading: 'down', facing: 'left' },
+      { x: 286, y: 306, anim: 'dribble', heading: 'up', facing: 'right' },
+    ];
+    bakeShadow(this, 'sample-shadow', 20, 5);
+    spots.forEach((spot, i) => {
+      const p = this.sampleLook(rng, 186 + rng.int(0, 26), rng.int(0, 3) === 0, i % 2 === 0 ? this.home : this.away);
+      const b = bakeAthlete(this, `sample-court-${i}`, p.look, p.colors, [spot.anim]);
+      this.actors.push(this.add.image(spot.x, spot.y, 'sample-shadow').setDepth(spot.y - 0.5));
+      this.placeAthlete(b, spot.anim, spot.heading, spot.facing, spot, 1);
+    });
+    // 4. Les 3 gabarits à l'arrêt, et l'ailier actuel pour comparer.
+    g.fillStyle(PALETTE.silver);
+    drawSmallText(g, 'GABARITS', 352, 262);
+    drawSmallText(g, 'AVANT', 572, 262);
+    [186, 200, 212].forEach((heightCm, i) => {
+      const p = this.sampleLook(new Rng(hashSeed(`gabarit-${this.seed}`)), heightCm, i === 2, this.home);
+      const b = bakeAthlete(this, `sample-build-${i}`, { ...p.look, hair: lead.look.hair }, lead.colors, ['idle']);
+      this.placeAthlete(b, 'idle', 'down', 'right', { x: 370 + i * 52, y: 334 });
+      const label = ['MEN', 'AIL', 'PIV'][i];
+      g.fillStyle(PALETTE.chalk);
+      drawSmallText(g, label, 370 + i * 52 - Math.floor(smallTextWidth(label) / 2), 342);
+    });
+    const old = bakePlayer(this, 'sample-old', this.specimenLook(SPECIMENS[1]), { primary: this.home.primary, secondary: this.home.secondary });
+    this.placeSprite(old, { x: 590, y: 333 }, 'idle', 'right', 'down');
   }
 
   /**
-   * Visages des styles (15 quater) : pour chaque style, la tête ×3 sur les 4 teints, l'afro et le
-   * bandeau, les expressions concentrée et joyeuse, puis de dos (diagonale haut).
+   * Toutes les images de l'échantillon, fixes : chaque animation en diagonale bas (à gauche) et en
+   * diagonale haut (à droite), puis les têtes ×2 (4 teints × 3 coiffures, 3 expressions).
    */
-  private buildStyleFaces() {
-    const g = this.studyBackground('VISAGES DES STYLES X3 : TEINTS, COIFFURES, EXPRESSIONS, DE DOS');
-    const items: { label: string; skin: number; hairColor: number; hair: CandidateHair; expression: Expression; back?: boolean }[] = [
-      { label: 'TEINT 1', skin: 0, hairColor: 1, hair: 'court', expression: 'neutre' },
-      { label: 'TEINT 2', skin: 1, hairColor: 3, hair: 'court', expression: 'neutre' },
-      { label: 'TEINT 3', skin: 2, hairColor: 0, hair: 'court', expression: 'neutre' },
-      { label: 'TEINT 4', skin: 3, hairColor: 0, hair: 'court', expression: 'neutre' },
-      { label: 'AFRO', skin: 3, hairColor: 0, hair: 'afro', expression: 'neutre' },
-      { label: 'BANDEAU', skin: 0, hairColor: 2, hair: 'bandeau', expression: 'neutre' },
-      { label: 'CONCENTREE', skin: 1, hairColor: 1, hair: 'court', expression: 'concentree' },
-      { label: 'JOYEUSE', skin: 2, hairColor: 0, hair: 'court', expression: 'joyeuse' },
-      { label: 'DE DOS', skin: 2, hairColor: 0, hair: 'court', expression: 'neutre', back: true },
-      { label: 'DOS AFRO', skin: 3, hairColor: 0, hair: 'afro', expression: 'neutre', back: true },
-    ];
-    const cell = 63;
-    CANDIDATE_STYLES.forEach((style, k) => {
-      const rowY = 14 + k * 115;
-      g.fillStyle(PALETTE.yellow);
-      drawSmallText(g, `${style.id}. ${style.name}`, 6, rowY);
-      items.forEach((item, i) => {
-        const c = new SlotCanvas(28, 28);
-        candidateHead(style, item.hair, item.expression, !!item.back, 6, 6, c);
-        c.outline('o');
-        const b = c.bounds()!;
-        const cx = 6 + i * cell + Math.floor(cell / 2);
-        const left = cx - Math.round(((b.left + b.right + 1) / 2) * 3);
-        const bottom = rowY + 82;
-        this.drawSlots(g, c, this.candidateColors(item.skin, item.hairColor, this.home), left, bottom - (b.bottom + 1) * 3, 3);
+  private buildSampleSheet() {
+    const g = this.studyBackground('ECHANTILLON : TOUTES LES IMAGES (DIAGONALE BAS A GAUCHE, DIAGONALE HAUT A DROITE)');
+    const rng = new Rng(hashSeed(`echantillon-${this.seed}`));
+    const lead = this.sampleLook(rng, 200, false, this.home);
+    const baked = bakeAthlete(this, 'sample-lead', lead.look, lead.colors);
+    const rowFeet = [54, 102, 150, 198, 256];
+    (['down', 'up'] as const).forEach((heading, h) => {
+      const x0 = 4 + h * 320;
+      SAMPLE_ANIMATIONS.forEach((anim, r) => {
+        const feetY = rowFeet[r];
         g.fillStyle(PALETTE.silver);
-        drawSmallText(g, item.label, cx - Math.floor(smallTextWidth(item.label) / 2), bottom + 4);
+        SAMPLE_LABELS[anim].split(' ').forEach((w, k) => drawSmallText(g, w, x0, feetY - 22 + k * 6));
+        sampleFrames(anim, heading).forEach((_, k) => {
+          const index = baked.frameOf(anim, heading, 'right', k);
+          const feet = { x: x0 + 52 + k * 33, y: feetY };
+          const left = feet.x - ATHLETE_FRAME.originX;
+          const top = feet.y - ATHLETE_FRAME.groundY;
+          this.statics.push(this.add.image(left, top, baked.key, index).setOrigin(0).setDepth(2));
+          const b = baked.balls[index];
+          if (b) this.statics.push(this.add.image(left + b.x + 0.5, top + b.y + 0.5, BALL_TEXTURE).setDepth(b.front ? 3 : 1));
+        });
+      });
+    });
+    // Têtes ×2 : 4 teints × 3 coiffures, puis les 3 expressions.
+    const heads: { skin: number; hairColor: number; hair: AthleteHair; expression?: 'neutre' | 'concentree' | 'joyeuse' }[] = [];
+    (['court', 'afro', 'tresses'] as const).forEach((hair, j) => [0, 1, 2, 3].forEach((skin) => heads.push({ skin, hair, hairColor: [1, 0, 0, 0, 2, 3][(skin + j) % 6] % 5 })));
+    (['neutre', 'concentree', 'joyeuse'] as const).forEach((expression) => heads.push({ skin: 2, hair: 'court', hairColor: 0, expression }));
+    g.fillStyle(PALETTE.silver);
+    drawSmallText(g, '4 TEINTS X 3 COIFFURES, PUIS NEUTRE, CONCENTREE, JOYEUSE (X2)', 4, 296);
+    const idle = sampleFrames('idle')[0];
+    heads.forEach((hd, i) => {
+      const frame = renderAthlete({ heightCm: 200, heavy: false, hair: hd.hair, number: 0 }, idle.lower, { ...idle.upper, expression: hd.expression }, 'down', 'right');
+      const colors = athleteColors(hd.skin, hd.hairColor, this.home.primary[1], this.home.secondary[1]);
+      // Tête seule : les 20 rangées du haut, centrées dans leur case.
+      const top = frame.canvas.bounds()!.top;
+      let left = Infinity;
+      let right = -Infinity;
+      frame.canvas.forEach((x, y) => {
+        if (y > top + 19) return;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+      });
+      const cx = 24 + i * 40 + (i >= 12 ? 10 : 0);
+      const x0 = cx - Math.round(((left + right + 1) / 2) * 2);
+      frame.canvas.forEach((x, y, slot) => {
+        if (y > top + 19) return;
+        g.fillStyle(athleteSlotColor(slot, colors)).fillRect(x0 + x * 2, 308 + (y - top) * 2, 2, 2);
       });
     });
   }

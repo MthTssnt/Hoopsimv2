@@ -4,10 +4,38 @@
  *   o contour · 1/2/3 peau claire/base/ombre · r/h/H cheveux reflet/base/ombre
  *   p/P/q équipe primaire claire/base/sombre · s/S/t équipe secondaire claire/base/sombre
  *   k encre (chaussures) · w craie (semelles, chaussettes, blanc des yeux) · n pupille
+ * Tons en plus du style en volumes (15 quinquies) : 0 reflet et 4 ombre profonde de la peau ·
+ * D ombre et E ombre profonde des cheveux · a reflet et Q ombre profonde du maillot · T ombre
+ * profonde de la couleur secondaire · m brume et G ardoise (chaussettes, semelles, chaussures).
  */
-export type Slot = 'o' | '1' | '2' | '3' | 'r' | 'h' | 'H' | 'p' | 'P' | 'q' | 's' | 'S' | 't' | 'k' | 'w' | 'n';
+export type Slot =
+  | 'o'
+  | '1'
+  | '2'
+  | '3'
+  | 'r'
+  | 'h'
+  | 'H'
+  | 'p'
+  | 'P'
+  | 'q'
+  | 's'
+  | 'S'
+  | 't'
+  | 'k'
+  | 'w'
+  | 'n'
+  | '0'
+  | '4'
+  | 'D'
+  | 'E'
+  | 'a'
+  | 'Q'
+  | 'T'
+  | 'm'
+  | 'G';
 
-const SLOT_LIST: readonly Slot[] = ['o', '1', '2', '3', 'r', 'h', 'H', 'p', 'P', 'q', 's', 'S', 't', 'k', 'w', 'n'];
+const SLOT_LIST: readonly Slot[] = ['o', '1', '2', '3', 'r', 'h', 'H', 'p', 'P', 'q', 's', 'S', 't', 'k', 'w', 'n', '0', '4', 'D', 'E', 'a', 'Q', 'T', 'm', 'G'];
 const SLOTS = new Set<string>(SLOT_LIST);
 /** Code d'un emplacement dans le tampon (0 = transparent). */
 const CODE = Object.fromEntries(SLOT_LIST.map((slot, i) => [slot, i + 1])) as Record<Slot, number>;

@@ -3,6 +3,7 @@ import type { Appearance } from './appearance';
 import { colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
 import { ANIMATIONS, bodyDims, FRAME, FRAMES, framesFor, type AnimationName, type BodyDims } from './rig';
 import type { TeamRamp } from '../../../assets/palette';
+import type { SlotCanvas, Slot } from './canvas';
 
 export interface BakedPlayer {
   /**
@@ -205,4 +206,43 @@ export function bakeShadow(scene: Phaser.Scene, key: string, width: number, heig
   }
   g.generateTexture(key, width, height);
   g.destroy();
+}
+
+/** Pixels RGBA d'une liste d'images rangées en grille (`columns` par rangée), et la case de chacune. */
+export function framesToPixels(
+  canvases: readonly SlotCanvas[],
+  colorOf: (slot: Slot) => number,
+  columns: number,
+): { width: number; height: number; pixels: Uint8ClampedArray; cells: { x: number; y: number }[] } {
+  const fw = canvases[0].width;
+  const fh = canvases[0].height;
+  const cols = Math.min(columns, canvases.length);
+  const width = cols * fw;
+  const height = Math.ceil(canvases.length / cols) * fh;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  const cells = canvases.map((_, i) => ({ x: (i % cols) * fw, y: Math.floor(i / cols) * fh }));
+  canvases.forEach((canvas, i) => {
+    const cell = cells[i];
+    canvas.forEach((x, y, slot) => {
+      const color = colorOf(slot);
+      const k = ((cell.y + y) * width + cell.x + x) * 4;
+      pixels[k] = (color >> 16) & 0xff;
+      pixels[k + 1] = (color >> 8) & 0xff;
+      pixels[k + 2] = color & 0xff;
+      pixels[k + 3] = 255;
+    });
+  });
+  return { width, height, pixels, cells };
+}
+
+/** Cuit une liste d'images (emplacements de couleur) en une texture en grille ; images nommées 0, 1, 2… */
+export function bakeFrames(scene: Phaser.Scene, key: string, canvases: readonly SlotCanvas[], colorOf: (slot: Slot) => number, columns = 32): void {
+  const { width, height, pixels, cells } = framesToPixels(canvases, colorOf, columns);
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const texture = scene.textures.createCanvas(key, width, height)!;
+  const image = texture.context.createImageData(width, height);
+  image.data.set(pixels);
+  texture.putData(image, 0, 0);
+  texture.refresh();
+  cells.forEach((cell, i) => texture.add(i, 0, cell.x, cell.y, canvases[i].width, canvases[i].height));
 }
