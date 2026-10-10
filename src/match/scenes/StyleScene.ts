@@ -12,7 +12,6 @@ import { ART_PPM, ART_VIEW, artPx } from '../render/artConfig';
 import { drawSmallText, normalizeText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 import { createControlRing, createNameLabel, drawPlayerCard, drawScoreboard, POSITION_SHORT } from '../render/hud/hud';
 import { appearanceFor, appearanceSignature, type Appearance } from '../render/sprites/appearance';
-import type { SlotCanvas } from '../render/sprites/canvas';
 import { colorsFor, headLayer, sheetIndex, slotColor, type Heading } from '../render/sprites/compose';
 import { animationKey, bakePlayer, bakeShadow, type BakedPlayer } from '../render/sprites/bake';
 import { LEGACY_AILIER, LEGACY_LOOK } from '../render/sprites/legacy';
@@ -23,6 +22,10 @@ import { BALL } from '../../assets/sprites/arena';
 import { drawGrid } from '../render/arena/draw';
 import { slotOf } from '../render/sprites/canvas';
 import type { Expression } from '../../assets/sprites/heads';
+import { CANDIDATE_HAIRS, CANDIDATE_STYLES, type CandidateHair, type CandidatePose } from '../../assets/sprites/styleCandidates';
+import { candidateHead, composeCandidate } from '../render/sprites/candidates';
+import { SlotCanvas } from '../render/sprites/canvas';
+import type { SlotColors } from '../render/sprites/compose';
 
 const ANIM_ORDER: AnimationName[] = ['idle', 'run', 'dribble', 'dribbleIdle', 'shoot', 'dunk'];
 /** Colonnes des joueurs (m le long du terrain) et profondeurs des deux rangées. */
@@ -66,11 +69,22 @@ const POSE_GROUPS = [
 
 /**
  * Vues de la scène : terrain, gros plan des gabarits, avant / après le redesign du 14, planches
- * des poses en diagonale bas (« poses ») et en diagonale haut (« dos »), rose des 8 directions
- * (touche V ou `?style&vue=`).
+ * des poses en diagonale bas (« poses ») et en diagonale haut (« dos »), rose des 8 directions,
+ * puis la planche des 3 styles candidats du 15 quater (« styles », « styles-visages ») (touche V
+ * ou `?style&vue=`).
  */
-type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'directions';
-const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'directions'];
+type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'directions' | 'styles' | 'styles-visages';
+const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'directions', 'styles', 'styles-visages'];
+/** Planche des styles : les 5 poses de chaque style, et leur libellé. */
+const STYLE_POSES: { pose: CandidatePose; label: string }[] = [
+  { pose: 'arret', label: 'ARRET' },
+  { pose: 'course', label: 'COURSE' },
+  { pose: 'dribble', label: 'DRIBBLE' },
+  { pose: 'courseHaut', label: 'HAUT' },
+  { pose: 'tir', label: 'TIR' },
+];
+/** Largeur d'une colonne de style (640 / 3). */
+const STYLE_COL = 213;
 /** Position de chaque joueur du terrain (avec l'orientation, les quatre positions s'y mêlent). */
 const COURT_HEADINGS: Heading[] = ['down', 'up', 'down', 'up', 'down'];
 /** Rose des directions : angle (degrés au-dessus de l'horizontale, vers la droite). */
@@ -194,6 +208,8 @@ export class StyleScene extends Phaser.Scene {
     else if (this.view === 'poses') this.buildPoseSheet('PLANCHE DES POSES, DIAGONALE BAS (ECHELLE DU JEU)', this.specimenRows('down'));
     else if (this.view === 'dos') this.buildPoseSheet('PLANCHE DES POSES, DIAGONALE HAUT (ECHELLE DU JEU)', this.specimenRows('up'));
     else if (this.view === 'directions') this.buildDirections();
+    else if (this.view === 'styles') this.buildStyles();
+    else if (this.view === 'styles-visages') this.buildStyleFaces();
     else {
       this.buildStatics();
       this.buildActors();
@@ -214,6 +230,157 @@ export class StyleScene extends Phaser.Scene {
   private drawCanvas(g: Phaser.GameObjects.Graphics, canvas: SlotCanvas, look: Appearance, x: number, y: number, scale: number) {
     const colors = colorsFor(look, this.home.primary, this.home.secondary);
     canvas.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px * scale, y + py * scale, scale, scale));
+  }
+
+  /** Dessine un tampon de sprite agrandi `scale` fois, avec des couleurs données. */
+  private drawSlots(g: Phaser.GameObjects.Graphics, canvas: SlotCanvas, colors: SlotColors, x: number, y: number, scale: number) {
+    canvas.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px * scale, y + py * scale, scale, scale));
+  }
+
+  /** Couleurs d'un joueur de la planche des styles (teint, cheveux, équipe). */
+  private candidateColors(skin: number, hairColor: number, team: TeamLook): SlotColors {
+    return colorsFor({ heightCm: 200, heavy: false, heightClass: 'moyen', skin, head: 0, hair: 0, hairColor, number: 0 }, team.primary, team.secondary);
+  }
+
+  /** Ballon 8×8 agrandi `scale` fois, centré sur (cx, cy) en pixels du sprite. */
+  private drawBallAt(g: Phaser.GameObjects.Graphics, x: number, y: number, center: { x: number; y: number }, scale: number) {
+    const colors: Record<string, number> = { b: PALETTE.orange, B: PALETTE.orangeDark, n: PALETTE.ink, l: PALETTE.woodLight };
+    BALL.forEach((row, by) => {
+      for (let bx = 0; bx < row.length; bx++) {
+        const c = colors[row[bx]];
+        if (c !== undefined) g.fillStyle(c).fillRect(x + (center.x - 4 + bx) * scale, y + (center.y - 4 + by) * scale, scale, scale);
+      }
+    });
+    // Contour du ballon : les pixels voisins vides prennent la couleur du contour.
+    const filled = (bx: number, by: number) => by >= 0 && by < BALL.length && bx >= 0 && bx < BALL[by].length && BALL[by][bx] !== '.';
+    for (let by = -1; by <= BALL.length; by++) {
+      for (let bx = -1; bx <= BALL[0].length; bx++) {
+        if (filled(bx, by)) continue;
+        if (filled(bx - 1, by) || filled(bx + 1, by) || filled(bx, by - 1) || filled(bx, by + 1)) {
+          g.fillStyle(PALETTE.outline).fillRect(x + (center.x - 4 + bx) * scale, y + (center.y - 4 + by) * scale, scale, scale);
+        }
+      }
+    }
+  }
+
+  /**
+   * Planche des styles (15 quater) : trois colonnes, A, B et C. Dans chacune, l'ailier à
+   * l'échelle du jeu dans 5 poses, puis ×2 (arrêt, dribble, course vers le haut), puis un bout de
+   * parquet avec 4 joueurs de deux équipes, pour juger la lisibilité en match. R retire les teints
+   * et les coiffures, T change d'équipe.
+   */
+  private buildStyles() {
+    const g = this.studyBackground('PLANCHE DES STYLES : A, B OU C ? (ECHELLE DU JEU, PUIS X2, PUIS EN MATCH)');
+    const rng = new Rng(hashSeed(`styles-${this.seed}`));
+    const specimen = { skin: rng.int(0, 3), hairColor: rng.int(0, 4) };
+    const court = Array.from({ length: 4 }, (_, i) => ({
+      skin: rng.int(0, 3),
+      hairColor: rng.int(0, 4),
+      hair: CANDIDATE_HAIRS[rng.int(0, CANDIDATE_HAIRS.length - 1)],
+      number: rng.int(0, 99),
+      team: i % 2 === 0 ? this.home : this.away,
+    }));
+    const groundRow = FRAME.groundY + 1;
+    CANDIDATE_STYLES.forEach((style, k) => {
+      const colX = k * STYLE_COL;
+      if (k > 0) g.fillStyle(PALETTE.slate).fillRect(colX, 12, 1, ART_VIEW.height - 16);
+      g.fillStyle(PALETTE.yellow);
+      drawSmallText(g, `${style.id}. ${style.name}`, colX + 6, 13);
+      const colors = this.candidateColors(specimen.skin, specimen.hairColor, this.home);
+      // 1. Les 5 poses à l'échelle du jeu (×3 à l'écran en 1080p plein écran).
+      const base1 = 96;
+      STYLE_POSES.forEach(({ pose, label }, i) => {
+        const cx = colX + 24 + i * 40;
+        const frame = composeCandidate(style.id, pose, { hair: 'court', number: 23 });
+        const left = cx - FRAME.centerX;
+        const top = base1 - groundRow;
+        this.drawSlots(g, frame.canvas, colors, left, top, 1);
+        if (frame.ball) this.drawBallAt(g, left, top, frame.ball, 1);
+        g.fillStyle(PALETTE.silver);
+        drawSmallText(g, label, cx - Math.floor(smallTextWidth(label) / 2), base1 + 3);
+      });
+      // 2. ×2 : arrêt, dribble, course vers le haut.
+      const base2 = 236;
+      g.fillStyle(PALETTE.silver);
+      drawSmallText(g, 'X2', colX + 6, 112);
+      (['arret', 'dribble', 'courseHaut'] as const).forEach((pose, i) => {
+        const cx = colX + 44 + i * 64;
+        const frame = composeCandidate(style.id, pose, { hair: 'court', number: 23 });
+        const left = cx - FRAME.centerX * 2;
+        const top = base2 - groundRow * 2;
+        this.drawSlots(g, frame.canvas, colors, left, top, 2);
+        if (frame.ball) this.drawBallAt(g, left, top, frame.ball, 2);
+      });
+      // 3. En match : bout de parquet, 4 joueurs de deux équipes à l'échelle du jeu.
+      const patch = { x: colX + 4, y: 246, w: STYLE_COL - 8, h: 108 };
+      g.fillStyle(PALETTE.wood).fillRect(patch.x, patch.y, patch.w, patch.h);
+      for (let y = patch.y + 3; y < patch.y + patch.h; y += 6) {
+        g.fillStyle(PALETTE.woodDark).fillRect(patch.x, y, patch.w, 1);
+        const joint = patch.x + ((y * 37) % 50);
+        for (let x = joint; x < patch.x + patch.w; x += 50) g.fillRect(x, y - 5, 1, 5);
+      }
+      g.fillStyle(PALETTE.chalk).fillRect(patch.x, patch.y + 14, patch.w, 1);
+      const spots: { x: number; y: number; pose: CandidatePose; facing: 'left' | 'right' }[] = [
+        { x: 36, y: 300, pose: 'dribble', facing: 'right' },
+        { x: 92, y: 290, pose: 'arret', facing: 'left' },
+        { x: 146, y: 336, pose: 'course', facing: 'right' },
+        { x: 182, y: 296, pose: 'courseHaut', facing: 'left' },
+      ];
+      bakeShadow(this, 'style-shadow-18', 18, 5);
+      [...spots.keys()]
+        .sort((a, b) => spots[a].y - spots[b].y)
+        .forEach((i) => {
+          const spot = spots[i];
+          const p = court[i];
+          const feetX = colX + spot.x;
+          this.statics.push(this.add.image(feetX, spot.y - 1, 'style-shadow-18').setDepth(1));
+          const frame = composeCandidate(style.id, spot.pose, { hair: p.hair, number: p.number }, spot.facing);
+          const pg = this.add.graphics().setDepth(2 + spot.y / 1000);
+          this.statics.push(pg);
+          const left = feetX - FRAME.centerX;
+          const top = spot.y - groundRow;
+          this.drawSlots(pg, frame.canvas, this.candidateColors(p.skin, p.hairColor, p.team), left, top, 1);
+          if (frame.ball) this.drawBallAt(pg, left, top, frame.ball, 1);
+        });
+    });
+  }
+
+  /**
+   * Visages des styles (15 quater) : pour chaque style, la tête ×3 sur les 4 teints, l'afro et le
+   * bandeau, les expressions concentrée et joyeuse, puis de dos (diagonale haut).
+   */
+  private buildStyleFaces() {
+    const g = this.studyBackground('VISAGES DES STYLES X3 : TEINTS, COIFFURES, EXPRESSIONS, DE DOS');
+    const items: { label: string; skin: number; hairColor: number; hair: CandidateHair; expression: Expression; back?: boolean }[] = [
+      { label: 'TEINT 1', skin: 0, hairColor: 1, hair: 'court', expression: 'neutre' },
+      { label: 'TEINT 2', skin: 1, hairColor: 3, hair: 'court', expression: 'neutre' },
+      { label: 'TEINT 3', skin: 2, hairColor: 0, hair: 'court', expression: 'neutre' },
+      { label: 'TEINT 4', skin: 3, hairColor: 0, hair: 'court', expression: 'neutre' },
+      { label: 'AFRO', skin: 3, hairColor: 0, hair: 'afro', expression: 'neutre' },
+      { label: 'BANDEAU', skin: 0, hairColor: 2, hair: 'bandeau', expression: 'neutre' },
+      { label: 'CONCENTREE', skin: 1, hairColor: 1, hair: 'court', expression: 'concentree' },
+      { label: 'JOYEUSE', skin: 2, hairColor: 0, hair: 'court', expression: 'joyeuse' },
+      { label: 'DE DOS', skin: 2, hairColor: 0, hair: 'court', expression: 'neutre', back: true },
+      { label: 'DOS AFRO', skin: 3, hairColor: 0, hair: 'afro', expression: 'neutre', back: true },
+    ];
+    const cell = 63;
+    CANDIDATE_STYLES.forEach((style, k) => {
+      const rowY = 14 + k * 115;
+      g.fillStyle(PALETTE.yellow);
+      drawSmallText(g, `${style.id}. ${style.name}`, 6, rowY);
+      items.forEach((item, i) => {
+        const c = new SlotCanvas(28, 28);
+        candidateHead(style, item.hair, item.expression, !!item.back, 6, 6, c);
+        c.outline('o');
+        const b = c.bounds()!;
+        const cx = 6 + i * cell + Math.floor(cell / 2);
+        const left = cx - Math.round(((b.left + b.right + 1) / 2) * 3);
+        const bottom = rowY + 82;
+        this.drawSlots(g, c, this.candidateColors(item.skin, item.hairColor, this.home), left, bottom - (b.bottom + 1) * 3, 3);
+        g.fillStyle(PALETTE.silver);
+        drawSmallText(g, item.label, cx - Math.floor(smallTextWidth(item.label) / 2), bottom + 4);
+      });
+    });
   }
 
   private specimenLook(spec: (typeof SPECIMENS)[number]): Appearance {
