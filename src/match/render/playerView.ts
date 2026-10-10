@@ -17,12 +17,11 @@ export const PLAYER_VIEW_TUNING = {
   /** Bornes de l'accélération des pas. */
   cadence: [0.6, 1.6] as const,
   /**
-   * Secteurs de la vue (degrés au-dessus de l'horizontale, vers le fond du terrain) : profil
-   * jusqu'à 22,5°, 3/4 dos jusqu'à 67,5°, dos au-delà ; vers la caméra, 3/4 face dès 22,5°.
+   * Position du joueur, toujours en diagonale : au-delà de cet angle (degrés) au-dessus de
+   * l'horizontale, diagonale haut (de dos) ; au-delà en dessous, diagonale bas (de face). Entre
+   * les deux (course horizontale), il garde sa position : c'est aussi l'hystérésis.
    */
-  sectorEdges: [22.5, 67.5] as const,
-  /** Marge (degrés) pour quitter une vue : un joueur qui court près d'une frontière ne clignote pas. */
-  hysteresis: 6,
+  deadZone: 15,
 } as const;
 
 /**
@@ -53,38 +52,23 @@ export type SpriteState =
   | { kind: 'anim'; name: AnimationName; facing: Facing; heading: Heading }
   | { kind: 'frame'; frame: number; facing: Facing; heading: Heading };
 
-/** Plage d'angles (degrés, + vers le fond du terrain) de chaque vue. */
-function sectorOf(heading: Heading): [number, number] {
-  const [low, high] = PLAYER_VIEW_TUNING.sectorEdges;
-  if (heading === 'back') return [high, 90];
-  if (heading === 'back34') return [low, high];
-  if (heading === 'front34') return [-90, -low];
-  return [-low, low];
-}
-
 /**
- * Vue pour une direction au sol (vitesse, ou direction vers le panier) : 8 secteurs de 45°.
- * Profil près de l'horizontale ; en montant, 3/4 dos puis dos ; en descendant (tout droit
- * compris), 3/4 face. On garde la vue précédente tant que l'angle reste à moins de
- * `hysteresis` degrés de son secteur.
+ * Position pour une direction au sol (vitesse, ou direction vers le panier, le receveur, le
+ * ballon) : diagonale haut en montant, diagonale bas en descendant ; à l'horizontale (à moins de
+ * `deadZone` degrés), la position précédente est gardée. Le côté (gauche ou droite) est celui du
+ * corps (`facing`).
  */
 export function headingFor(direction: { x: number; y: number }, previous: Heading): Heading {
   // y croît vers la caméra : monter, c'est aller vers les y négatifs.
   const angle = (Math.atan2(-direction.y, Math.abs(direction.x)) * 180) / Math.PI;
-  const [from, to] = sectorOf(previous);
-  const margin = PLAYER_VIEW_TUNING.hysteresis;
-  if (angle >= from - margin && angle <= to + margin) return previous;
-  const [low, high] = PLAYER_VIEW_TUNING.sectorEdges;
-  if (angle >= high) return 'back';
-  if (angle >= low) return 'back34';
-  if (angle > -low) return 'side';
-  return 'front34';
+  if (angle > PLAYER_VIEW_TUNING.deadZone) return 'up';
+  if (angle < -PLAYER_VIEW_TUNING.deadZone) return 'down';
+  return previous;
 }
 
 /**
- * Vue du joueur d'après sa course (voir `headingFor`). À l'arrêt et en l'air, il garde la vue
- * précédente. Un tireur (tir, layup, dunk, lancer) fait face au panier : `faceToward` est la
- * direction du cercle, et sa vue suit ce secteur.
+ * Position du joueur d'après sa course (voir `headingFor`). À l'arrêt et en l'air, il la garde.
+ * Un tireur (tir, layup, dunk) fait face au panier : `faceToward` est la direction du cercle.
  */
 export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean, faceToward: { x: number; y: number } | null = null): Heading {
   if (faceToward) return headingFor(faceToward, previous);

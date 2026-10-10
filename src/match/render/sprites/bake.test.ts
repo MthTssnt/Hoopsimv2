@@ -5,7 +5,7 @@ import { BakeQueue, SHEET_SIZE, SheetBaker, sheetCell, type Clock, type Stepper 
 import { SHEET_VIEWS } from './compose';
 import { FRAME, FRAMES } from './rig';
 
-/** Images d'une feuille : 19 par bloc, 8 blocs (4 vues, 2 orientations). */
+/** Images d'une feuille : 19 par bloc, 4 blocs (2 diagonales, 2 orientations). */
 const SHEET = FRAMES.length * SHEET_VIEWS.length;
 
 const look: Appearance = { heightCm: 200, heavy: false, heightClass: 'moyen', skin: 2, head: 0, hair: 1, hairColor: 0, number: 23 };

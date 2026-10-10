@@ -85,7 +85,7 @@ function smooth(current: number, target: number, rate: number, deltaMs: number):
 }
 
 const SPEED_LABELS = { slow: 'lente', normal: 'normale', fast: 'rapide' } as const;
-const HEADING_LABELS: Record<Heading, string> = { side: 'de profil', front34: 'de 3/4 face', back34: 'de 3/4 dos', back: 'de dos' };
+const HEADING_LABELS: Record<Heading, string> = { down: 'diagonale bas', up: 'diagonale haut' };
 const ZONE_LABELS: Record<ShotZone, string> = { rim: 'près du cercle', mid: 'mi-distance', three: '3 pts' };
 const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: 'vert', early: 'tôt', late: 'tard' };
 /**
@@ -230,7 +230,7 @@ interface BodySprite {
   sprite: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Image;
   label: Phaser.GameObjects.Image;
-  /** Vue : de dos quand il monte, de profil sinon ; gardée à l'arrêt. */
+  /** Position : diagonale haut quand il monte, bas quand il descend ; gardée à l'horizontale et à l'arrêt. */
   heading: Heading;
   /** Pieds dessinés (relevés pendant l'accroche d'un dunk) et point au sol. */
   feet: Point;
@@ -673,7 +673,7 @@ export class MatchScene extends Phaser.Scene {
       // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
       sprite: this.add.sprite(0, 0, member.baked.key, 0).setOrigin(0.5, 1),
       label: this.add.image(0, 0, member.label).setOrigin(0.5, 0).setDepth(900),
-      heading: 'side',
+      heading: 'down',
       feet: { x: 0, y: 0 },
       ground: { x: 0, y: 0 },
     };
@@ -1442,7 +1442,7 @@ export class MatchScene extends Phaser.Scene {
     const owed = rules ? rules.mustClear.map((v, team) => (v ? teamName(team) : null)).filter(Boolean) : [];
     const top = [
       `${a.firstName} ${a.lastName} · ${a.pos} · ${(a.heightCm / 100).toFixed(2)} m · ${a.weightKg} kg · ${this.perTeam} contre ${this.perTeam} · graine ${this.seed}`,
-      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · vue ${HEADING_LABELS[this.bodies[controlled].heading]}`,
+      `course ${body.runSpeed.toFixed(1)} m/s · saut ${body.jumpHeight.toFixed(2)} m · détente ${a.attrs.vertical} · passe ${a.attrs.passing} · position ${HEADING_LABELS[this.bodies[controlled].heading]}-${this.world.players[controlled].facing < 0 ? 'gauche' : 'droite'}`,
       ...this.aiLines(),
       ...(this.rotationLine() ? [this.rotationLine()!, this.bakeLine()] : []),
       this.world.full

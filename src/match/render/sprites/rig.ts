@@ -104,9 +104,8 @@ export interface LegPose {
 
 const ARMS = {
   hang: { elbow: [0, 4], hand: [0, 10] },
-  swingFwd: { elbow: [1, 4], hand: [-3, 7] },
   swingBack: { elbow: [1, 4], hand: [3, 8] },
-  // Dribble de profil : la main revient devant le corps, le ballon rebondit devant les jambes.
+  // Dribble en diagonale bas : la main revient devant le corps, le ballon rebondit devant les jambes.
   dribbleHigh: { elbow: [1, 4], hand: [-2, 8] },
   dribbleLow: { elbow: [1, 6], hand: [-2, 11] },
   guard: { elbow: [3, 3], hand: [4, -1] },
@@ -115,40 +114,32 @@ const ARMS = {
   guide: { elbow: [3, -3], hand: [1, -8] },
   release: { elbow: [1, -6], hand: [1, -11] },
   reach: { elbow: [0, -6], hand: [0, -11] },
-  // Vue de dos : bras qui pompent (vers l'avant, la main remonte), dribble sur le côté.
+  // Diagonale haut : bras qui pompent (vers l'avant, la main remonte), dribble sur le côté.
   pumpFwd: { elbow: [1, 4], hand: [0, 7] },
   pumpBack: { elbow: [0, 4], hand: [1, 10] },
   dribbleSide: { elbow: [1, 4], hand: [3, 8] },
   dribbleSideLow: { elbow: [1, 6], hand: [3, 11] },
-  // 3/4 : le balancier va vers la caméra (écart horizontal divisé par deux).
+  // Diagonale bas : le balancier va vers la caméra (écart horizontal réduit).
   swingFwd34: { elbow: [1, 4], hand: [-1, 8] },
   swingBack34: { elbow: [1, 4], hand: [2, 8] },
 } satisfies Record<string, ArmPose>;
 
 const LEGS = {
-  stand: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 0 } },
-  strideA: { back: { knee: 1, foot: 3, lift: 3 }, front: { knee: 3, foot: 4, lift: 0 } },
-  passA: { back: { knee: 0, foot: 1, lift: 1 }, front: { knee: 1, foot: 0, lift: 0 } },
-  strideB: { back: { knee: 3, foot: 4, lift: 0 }, front: { knee: 1, foot: 3, lift: 3 } },
-  passB: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 0, foot: 1, lift: 1 } },
   crouch: { back: { knee: 3, foot: 1, lift: 0 }, front: { knee: 3, foot: 1, lift: 0 } },
   air: { back: { knee: 1, foot: 0, lift: 3 }, front: { knee: 3, foot: 1, lift: 4 } },
   dunkAir: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 3, foot: 1, lift: 6 } },
   dangle: { back: { knee: 0, foot: 0, lift: 1 }, front: { knee: 0, foot: 1, lift: 1 } },
-  // Course vue de dos : jambes côte à côte, un pied levé à chaque foulée.
-  stepLeft: { back: { knee: 1, foot: 0, lift: 3 }, front: { knee: 1, foot: 0, lift: 0 } },
-  stepRight: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 3 } },
-  // 3/4 face : la jambe du côté de la course (avant, à droite) est la plus éloignée de la caméra,
-  // son pied est dessiné 2 px plus haut ; foulées deux fois moins larges qu'au profil.
-  stand34: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 0, depth: 2 } },
-  stride34A: { back: { knee: 1, foot: 1, lift: 3 }, front: { knee: 2, foot: 2, lift: 0, depth: 2 } },
-  pass34A: { back: { knee: 0, foot: 1, lift: 1 }, front: { knee: 1, foot: 0, lift: 0, depth: 2 } },
-  stride34B: { back: { knee: 2, foot: 2, lift: 0 }, front: { knee: 1, foot: 1, lift: 3, depth: 2 } },
-  pass34B: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 0, foot: 1, lift: 1, depth: 2 } },
-  // 3/4 dos : l'inverse, la jambe arrière (à gauche) est la plus éloignée.
-  standB34: { back: { knee: 1, foot: 0, lift: 0, depth: 2 }, front: { knee: 1, foot: 0, lift: 0 } },
-  stepB34A: { back: { knee: 1, foot: 1, lift: 3, depth: 2 }, front: { knee: 1, foot: 0, lift: 0 } },
-  stepB34B: { back: { knee: 1, foot: 1, lift: 0, depth: 2 }, front: { knee: 1, foot: 0, lift: 3 } },
+  // Diagonale bas : la jambe du côté de la course (avant, à droite) est la plus éloignée de la
+  // caméra, son pied est dessiné 2 px plus haut ; foulées en biais.
+  standDown: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 1, foot: 0, lift: 0, depth: 2 } },
+  strideDownA: { back: { knee: 1, foot: 1, lift: 3 }, front: { knee: 2, foot: 2, lift: 0, depth: 2 } },
+  passDownA: { back: { knee: 0, foot: 1, lift: 1 }, front: { knee: 1, foot: 0, lift: 0, depth: 2 } },
+  strideDownB: { back: { knee: 2, foot: 2, lift: 0 }, front: { knee: 1, foot: 1, lift: 3, depth: 2 } },
+  passDownB: { back: { knee: 1, foot: 0, lift: 0 }, front: { knee: 0, foot: 1, lift: 1, depth: 2 } },
+  // Diagonale haut : l'inverse, la jambe arrière (à gauche) est la plus éloignée.
+  standUp: { back: { knee: 1, foot: 0, lift: 0, depth: 2 }, front: { knee: 1, foot: 0, lift: 0 } },
+  stepUpA: { back: { knee: 1, foot: 1, lift: 3, depth: 2 }, front: { knee: 1, foot: 0, lift: 0 } },
+  stepUpB: { back: { knee: 1, foot: 1, lift: 0, depth: 2 }, front: { knee: 1, foot: 0, lift: 3 } },
 } satisfies Record<string, { back: LegPose; front: LegPose }>;
 
 /**
@@ -187,24 +178,28 @@ const f = (legs: keyof typeof LEGS, front: keyof typeof ARMS, back: keyof typeof
 /** Foulée en suspension : le corps entier monte d'un pixel (aucun membre allongé). */
 const airborne = (def: FrameDef): FrameDef => ({ ...def, rise: 1 });
 
-/** Toutes les images d'un joueur, dans l'ordre de la feuille de sprites. */
+/**
+ * Les 19 images d'un joueur en diagonale bas (de 3/4 face, il descend ou court en biais vers la
+ * caméra), dans l'ordre d'un bloc de la feuille. Foulées en biais, pied du côté de la course 2 px
+ * plus haut (plus loin), balancier des bras vers la caméra.
+ */
 export const FRAMES: readonly FrameDef[] = [
   // 0-1 arrêt (respiration)
-  f('stand', 'hang', 'hang'),
-  f('stand', 'hang', 'hang', 1),
+  f('standDown', 'hang', 'hang'),
+  f('standDown', 'hang', 'hang', 1),
   // 2-5 course : bras opposés aux jambes, foulées en suspension
-  airborne(f('strideA', 'swingBack', 'swingFwd')),
-  f('passA', 'hang', 'hang'),
-  airborne(f('strideB', 'swingFwd', 'swingBack')),
-  f('passB', 'hang', 'hang'),
-  // 6-9 dribble en courant : main devant le corps, ballon devant les jambes
-  airborne(f('strideA', 'dribbleHigh', 'guard', 0, 'hand')),
-  f('passA', 'dribbleLow', 'guard', 0, 'dribbleMid'),
-  airborne(f('strideB', 'dribbleHigh', 'guard', 0, 'dribbleLow')),
-  f('passB', 'dribbleLow', 'guard', 0, 'dribbleMid'),
+  airborne(f('strideDownA', 'swingBack34', 'swingFwd34')),
+  f('passDownA', 'hang', 'hang'),
+  airborne(f('strideDownB', 'swingFwd34', 'swingBack34')),
+  f('passDownB', 'hang', 'hang'),
+  // 6-9 dribble en courant : ballon devant les jambes
+  airborne(f('strideDownA', 'dribbleHigh', 'guard', 0, 'hand')),
+  f('passDownA', 'dribbleLow', 'guard', 0, 'dribbleMid'),
+  airborne(f('strideDownB', 'dribbleHigh', 'guard', 0, 'dribbleLow')),
+  f('passDownB', 'dribbleLow', 'guard', 0, 'dribbleMid'),
   // 10-11 dribble à l'arrêt
-  f('stand', 'dribbleHigh', 'guard', 0, 'hand'),
-  f('stand', 'dribbleLow', 'guard', 1, 'dribbleLow'),
+  f('standDown', 'dribbleHigh', 'guard', 0, 'hand'),
+  f('standDown', 'dribbleLow', 'guard', 1, 'dribbleLow'),
   // 12-14 saut / tir (visage concentré)
   f('crouch', 'chest', 'chest', 3, 'chest', 'concentree'),
   f('air', 'raise', 'guide', 0, 'overhead', 'concentree'),
@@ -218,81 +213,41 @@ export const FRAMES: readonly FrameDef[] = [
 ];
 
 /**
- * Les mêmes images vues de dos (mêmes indices, mêmes animations) : course jambes côte à côte et
- * bras qui pompent, dribble sur le côté de la hanche. Le tir et le dunk gardent leurs poses.
+ * Les mêmes images en diagonale haut (de 3/4 dos, il monte ou court en biais vers le fond) :
+ * bras qui pompent, dribble sur le côté de la hanche, pied arrière (le plus loin) 2 px plus haut.
+ * Le tir, le dunk et le contre gardent leurs poses, avec la tête, le torse et les chaussures de dos.
  */
-export const BACK_FRAMES: readonly FrameDef[] = [
-  f('stand', 'hang', 'hang'),
-  f('stand', 'hang', 'hang', 1),
-  airborne(f('stepLeft', 'pumpFwd', 'pumpBack')),
-  f('stand', 'hang', 'hang'),
-  airborne(f('stepRight', 'pumpBack', 'pumpFwd')),
-  f('stand', 'hang', 'hang'),
-  airborne(f('stepLeft', 'dribbleSide', 'pumpBack', 0, 'hand')),
-  f('stand', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
-  airborne(f('stepRight', 'dribbleSide', 'pumpFwd', 0, 'dribbleLow')),
-  f('stand', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
-  f('stand', 'dribbleSide', 'hang', 0, 'hand'),
-  f('stand', 'dribbleSideLow', 'hang', 1, 'dribbleLow'),
+export const UP_FRAMES: readonly FrameDef[] = [
+  f('standUp', 'hang', 'hang'),
+  f('standUp', 'hang', 'hang', 1),
+  airborne(f('stepUpA', 'pumpFwd', 'pumpBack')),
+  f('standUp', 'hang', 'hang'),
+  airborne(f('stepUpB', 'pumpBack', 'pumpFwd')),
+  f('standUp', 'hang', 'hang'),
+  airborne(f('stepUpA', 'dribbleSide', 'pumpBack', 0, 'hand')),
+  f('standUp', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
+  airborne(f('stepUpB', 'dribbleSide', 'pumpFwd', 0, 'dribbleLow')),
+  f('standUp', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
+  f('standUp', 'dribbleSide', 'hang', 0, 'hand'),
+  f('standUp', 'dribbleSideLow', 'hang', 1, 'dribbleLow'),
   ...FRAMES.slice(12),
 ];
 
 /**
- * Vue de 3/4 face (le joueur descend en biais, ou tout droit) : mêmes indices et mêmes animations
- * que le profil ; foulées deux fois moins larges, pied du côté de la course 2 px plus haut (plus
- * loin), balancier des bras vers la caméra.
- * Le tir, le dunk et le contre gardent leurs poses (tête, torse et chaussures de la vue).
+ * Position d'un joueur : toujours en diagonale (décision de Matheo, 15 ter). `down` = diagonale
+ * bas, vu de face de 3/4 ; `up` = diagonale haut, vu de dos de 3/4. Avec l'orientation (droite ou
+ * gauche), cela fait les quatre positions. Voir `nextHeading`.
  */
-export const FRONT34_FRAMES: readonly FrameDef[] = [
-  f('stand34', 'hang', 'hang'),
-  f('stand34', 'hang', 'hang', 1),
-  airborne(f('stride34A', 'swingBack34', 'swingFwd34')),
-  f('pass34A', 'hang', 'hang'),
-  airborne(f('stride34B', 'swingFwd34', 'swingBack34')),
-  f('pass34B', 'hang', 'hang'),
-  airborne(f('stride34A', 'dribbleHigh', 'guard', 0, 'hand')),
-  f('pass34A', 'dribbleLow', 'guard', 0, 'dribbleMid'),
-  airborne(f('stride34B', 'dribbleHigh', 'guard', 0, 'dribbleLow')),
-  f('pass34B', 'dribbleLow', 'guard', 0, 'dribbleMid'),
-  f('stand34', 'dribbleHigh', 'guard', 0, 'hand'),
-  f('stand34', 'dribbleLow', 'guard', 1, 'dribbleLow'),
-  ...FRAMES.slice(12),
-];
+export type Heading = 'down' | 'up';
 
-/**
- * Vue de 3/4 dos (le joueur monte en biais) : comme de dos (bras qui pompent, dribble sur le côté
- * de la hanche), le pied arrière (à gauche, le plus loin) 2 px plus haut.
- */
-export const BACK34_FRAMES: readonly FrameDef[] = [
-  f('standB34', 'hang', 'hang'),
-  f('standB34', 'hang', 'hang', 1),
-  airborne(f('stepB34A', 'pumpFwd', 'pumpBack')),
-  f('standB34', 'hang', 'hang'),
-  airborne(f('stepB34B', 'pumpBack', 'pumpFwd')),
-  f('standB34', 'hang', 'hang'),
-  airborne(f('stepB34A', 'dribbleSide', 'pumpBack', 0, 'hand')),
-  f('standB34', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
-  airborne(f('stepB34B', 'dribbleSide', 'pumpFwd', 0, 'dribbleLow')),
-  f('standB34', 'dribbleSideLow', 'hang', 0, 'dribbleMid'),
-  f('standB34', 'dribbleSide', 'hang', 0, 'hand'),
-  f('standB34', 'dribbleSideLow', 'hang', 1, 'dribbleLow'),
-  ...FRAMES.slice(12),
-];
-
-/** Vue d'un joueur : profil, 3/4 face, 3/4 dos ou dos (voir `nextHeading`). */
-export type Heading = 'side' | 'front34' | 'back34' | 'back';
-
-/** Images d'une vue (mêmes indices et mêmes animations dans les quatre). */
+/** Images d'une position (mêmes indices et mêmes animations dans les deux). */
 export function framesFor(heading: Heading): readonly FrameDef[] {
-  if (heading === 'back') return BACK_FRAMES;
-  if (heading === 'front34') return FRONT34_FRAMES;
-  if (heading === 'back34') return BACK34_FRAMES;
-  return FRAMES;
+  return heading === 'up' ? UP_FRAMES : FRAMES;
 }
 
-/** Vue de dos ou de 3/4 dos : pas de visage, numéro dans le dos, bras derrière le torse. */
+/** Diagonale haut : pas de visage, numéro dans le dos, bras derrière le torse, ballon derrière. */
 export function seenFromBehind(heading: Heading): boolean {
-  return heading === 'back' || heading === 'back34';
+  return heading === 'up';
 }
 
 export type AnimationName = 'idle' | 'run' | 'dribble' | 'dribbleIdle' | 'shoot' | 'dunk';

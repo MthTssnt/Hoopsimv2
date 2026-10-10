@@ -112,10 +112,12 @@ export const HEADS: readonly (readonly string[])[] = [
 export type Expression = 'neutre' | 'concentree' | 'joyeuse';
 
 /**
- * Expressions, posées par-dessus la tête et les cheveux. Yeux : 2×3 de blanc et une colonne
- * d'iris côté intérieur, 2 px d'écart, sur les mêmes rangées. Sourcils : 4 px au-dessus de chaque
- * œil. Nez : 2 px d'ombre de peau. Bouche : ligne fermée de 4 px (sourire avec dents seulement
- * pour « joyeuse »). Aucun pixel sombre sur les joues.
+ * Expressions du visage vu en diagonale (de 3/4, tourné vers la droite ; vers la gauche, le
+ * dessin est retourné), posées par-dessus la tête et les cheveux. L'œil proche (côté qui
+ * s'éloigne) a 2×3 de blanc, l'œil éloigné 1 colonne contre le bord, les iris regardent dans le
+ * sens de la course. Sourcils de 4 px et 2 px, nez de 3 px d'ombre de peau et bouche décalés vers
+ * le sens de la course. L'oreille (côté qui s'éloigne) est posée par `headLayer`.
+ * Aucun pixel sombre sur les joues.
  */
 export const EXPRESSIONS: Readonly<Record<Expression, readonly string[]>> = {
   neutre: [
@@ -125,14 +127,14 @@ export const EXPRESSIONS: Readonly<Record<Expression, readonly string[]>> = {
     '................',
     '................',
     '................',
-    '...nnnn..nnnn...',
-    '....wwn..nww....',
-    '....wwn..nww....',
-    '....wwn..nww....',
+    '....nnnn....nn..',
+    '.....wwn....wn..',
+    '.....wwn....wn..',
+    '.....wwn....wn..',
+    '..........3.....',
+    '..........33....',
     '................',
-    '.......33.......',
-    '................',
-    '......nnnn......',
+    '.........nnn....',
     '................',
     '................',
   ],
@@ -142,15 +144,15 @@ export const EXPRESSIONS: Readonly<Record<Expression, readonly string[]>> = {
     '................',
     '................',
     '................',
-    '...n........n...',
-    '....nnn..nnn....',
-    '....wwn..nww....',
-    '....wwn..nww....',
-    '....wwn..nww....',
+    '....n........n..',
+    '.....nnn....n...',
+    '.....wwn....wn..',
+    '.....wwn....wn..',
+    '.....wwn....wn..',
+    '..........3.....',
+    '..........33....',
     '................',
-    '.......33.......',
-    '................',
-    '......nnnn......',
+    '.........nnn....',
     '................',
     '................',
   ],
@@ -160,19 +162,22 @@ export const EXPRESSIONS: Readonly<Record<Expression, readonly string[]>> = {
     '................',
     '................',
     '................',
-    '...nnnn..nnnn...',
+    '....nnnn....nn..',
     '................',
-    '....wwn..nww....',
-    '....wwn..nww....',
-    '....wwn..nww....',
+    '.....wwn....wn..',
+    '.....wwn....wn..',
+    '.....wwn....wn..',
+    '..........3.....',
+    '..........33....',
     '................',
-    '.......33.......',
-    '................',
-    '.....nwwwwn.....',
-    '......nnnn......',
+    '........nwwn....',
+    '.........nn.....',
     '................',
   ],
 };
+
+/** Oreille du côté qui s'éloigne (visage en diagonale) : colonne et rangées, au ton d'ombre. */
+export const EAR = { col: 1, rows: [8, 9, 10] } as const;
 
 /** Rangées occupées par les yeux dans une expression (pour les tests et le gros plan). */
 export const EYE_ROWS = [7, 8, 9] as const;

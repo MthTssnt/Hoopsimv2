@@ -134,16 +134,26 @@ Règles :
 
 ## 5. Personnages
 
-### Visage (de face, symétrique)
-- **Yeux** : 2×3 de blanc, avec une colonne d'iris sombre côté intérieur ; 2 px d'écart entre
-  les deux yeux, sur les mêmes rangées. Le visage est exactement symétrique.
-- **Sourcils** : une rangée sombre de 4 px au-dessus de chaque œil. C'est ce qui donne
-  l'expression.
-- **Nez** : 2 px d'ombre de peau, au centre.
-- **Bouche** : ligne fermée de 4 px. Un grand sourire seulement pour « joyeuse » ; jamais de
-  bouche ouverte au repos.
+### Visage (de 3/4, tourné dans le sens de la course)
+Le visage n'est jamais vu de face : il est toujours tourné en diagonale (incrément 15 ter,
+décision de Matheo). Il est dessiné tourné vers la droite ; vers la gauche, le dessin est
+retourné.
+- **Yeux**, sur les mêmes rangées (7 à 9) :
+  - l'œil proche (du côté qui s'éloigne) a 2×3 de blanc et une colonne d'iris ;
+  - l'œil éloigné, raccourci, n'a qu'une colonne de blanc et son iris, contre le bord de la
+    tête du côté de la course ;
+  - les iris regardent dans le sens de la course.
+- **Sourcils** : une rangée sombre de 4 px sur l'œil proche, de 2 px sur l'œil éloigné. C'est ce
+  qui donne l'expression.
+- **Nez** : 3 px d'ombre de peau en équerre, à au moins 2 colonnes du centre, vers le sens de la
+  course.
+- **Bouche** : ligne fermée de 3 px, décalée comme le nez. Un sourire avec dents seulement pour
+  « joyeuse » ; jamais de bouche ouverte au repos.
+- **Oreille** : 3 px au ton d'ombre de la peau, du côté qui s'éloigne (colonne 1, rangées 8 à
+  10), posée seulement sur la peau : une coiffure qui couvre les côtés la cache.
 - **Ombrage** : un ton plus foncé sur un seul côté (le droit, lumière en haut à gauche).
-  Aucun pixel sombre isolé sur les joues, pas d'oreille dessinée.
+  Aucun pixel sombre isolé sur les joues.
+- **Portrait du HUD** : le même visage de 3/4 (diagonale bas, tourné vers la droite).
 - **Contour** : 1 px fermé tout autour de la tête et du corps, ajouté automatiquement.
 - **3 expressions** :
   - neutre, par défaut ;
@@ -151,54 +161,57 @@ Règles :
   - joyeuse (sourire avec dents), pour les célébrations, à brancher dans le match.
 
 ### Orientation et sol
-Quatre vues (incrément 15 bis, décision de Matheo), choisies sur l'angle de la course au sol en
-8 secteurs de 45° :
+Quatre positions, toutes en diagonale (incrément 15 ter, décision de Matheo) : il n'y a plus ni
+profil, ni vue de face, ni dos plein.
 
-| Vue | Déplacement |
-| --- | --- |
-| profil | à moins de 22,5° de l'horizontale |
-| 3/4 dos | en montant, entre 22,5° et 67,5° |
-| dos | en montant, au-delà de 67,5° |
-| 3/4 face | en descendant dès 22,5°, descente tout droit comprise |
+| Position | Déplacement | Vu |
+| --- | --- | --- |
+| diagonale bas droite | descend vers la droite | de face, en diagonale |
+| diagonale bas gauche | descend vers la gauche | de face, en diagonale |
+| diagonale haut droite | monte vers la droite | de dos, en diagonale |
+| diagonale haut gauche | monte vers la gauche | de dos, en diagonale |
 
-- **Changement de vue** :
-  - pour quitter une vue, il faut dépasser sa frontière de 6° : pas de clignotement près d'une
-    diagonale ;
-  - à l'arrêt et en l'air, le joueur garde sa dernière vue ;
-  - le tireur (tir, layup, dunk, lancer franc) fait face au panier, dans la vue du secteur de la
-    direction du cercle : profil de face au panier, 3/4 dos depuis l'aile proche, 3/4 face
-    depuis l'aile du fond, dos sous le cercle côté caméra.
-- **De profil** : corps vu de face, légèrement penché dans le sens du jeu par les poses.
-- **De dos** : la tête est vue de dos (chaque coiffure a sa grille de dos, la nuque en peau, pas
-  de visage), le col est droit, le numéro est dans le dos, les chaussures sont vues du talon et
-  les deux bras passent derrière le torse.
-- **3/4 face** :
-  - le visage (yeux, sourcils, nez, bouche) est décalé d'une colonne dans le sens de la course,
-    le col et le numéro aussi ;
-  - le flanc qui s'éloigne est au ton d'ombre ;
-  - les foulées sont deux fois moins larges qu'au profil, et le balancier des bras va vers la
-    caméra ;
-  - la jambe du côté de la course est la plus éloignée : son pied est dessiné 2 px plus haut ;
-  - chaussures de 3/4, pointe plus courte (5 px) ;
+- **Choix de la position** (`headingFor`, `render/playerView.ts`) :
+  - en montant à plus de 15° au-dessus de l'horizontale : diagonale haut ; en descendant à plus
+    de 15° : diagonale bas ; montée et descente tout droit comprises ;
+  - entre les deux (course horizontale, zone morte de ±15°), le joueur garde sa diagonale et ne
+    change que de côté. La zone morte évite aussi tout clignotement ;
+  - à l'arrêt et en l'air, il garde sa position ; au départ, diagonale bas ;
+  - le côté (gauche ou droite) est celui du corps : la dernière direction horizontale ;
+  - le tireur (tir, layup, dunk, lancer franc), le passeur et le voleur prennent la même règle
+    sur la direction du cercle, du receveur ou du ballon : diagonale haut depuis l'aile proche,
+    diagonale bas depuis l'aile du fond, position gardée de face au panier.
+- **Repères communs**, dessinés vers la droite (vers la gauche, le dessin est retourné, puis le
+  numéro est reposé à l'endroit) :
+  - la tête est décalée d'1 px vers le sens de la course par rapport au torse ;
+  - le torse et le short ont un flanc de 2 colonnes au ton sombre ;
+  - les membres sont étagés : le bras et la jambe éloignés de la caméra passent derrière, au ton
+    d'ombre de la peau, et le pied éloigné est dessiné 2 px plus haut (le pied proche reste sur
+    la rangée du sol, le cadre ne change pas) ;
+  - à l'arrêt, les jambes restent droites (entrejambe droit).
+- **Diagonale bas** (de face, 3/4) :
+  - visage de 3/4 (voir « Visage ») sur la tête et la coiffure de face ;
+  - flanc du côté qui s'éloigne, col et numéro décalés vers le sens de la course ;
+  - le bras du côté de la course passe derrière le torse, épaule rentrée de 2 px : on voit
+    l'avant-bras et la main ; le bras proche passe devant le torse ;
+  - la jambe du côté de la course est l'éloignée : hanche rentrée d'1 px, pied 2 px plus haut ;
+  - chaussures de 3/4, pointe de 5 px ;
   - le ballon du dribble rebondit devant les jambes, dessiné devant le corps.
-- **3/4 dos** :
-  - tête et coiffure de dos, avec la joue et l'oreille (une colonne de peau, l'oreille au ton
-    d'ombre) du côté de la course ;
-  - col et numéro décalés d'une colonne vers l'arrière, flanc du côté de la course au ton
-    d'ombre ;
-  - bras derrière le torse ;
-  - la jambe arrière est la plus éloignée (pied 2 px plus haut) ;
-  - chaussures vues du talon avec un bout de pointe ;
-  - le ballon du dribble rebondit sur le côté de la hanche, derrière le corps.
-- Tir, dunk et contre gardent leurs poses dans toutes les vues, avec la tête, le torse, les
-  jambes et les chaussures de la vue.
-- Tournés vers la gauche, les joueurs ont leurs propres images dans chaque vue : le dessin est
-  retourné, puis le numéro est reposé à l'endroit.
-- **Feuille** : 8 blocs (4 vues × 2 orientations) de 19 images, rangés en grille (une rangée par
-  bloc, 1 064×512 px). En une seule bande, elle dépasserait la taille maximale d'une texture.
-- **Ballon au dribble** : de profil, la main revient devant le corps et le ballon rebondit
-  devant les jambes, un peu en avant dans le sens de la course, dessiné par-dessus elles. De
-  dos, il rebondit sur le côté de la hanche.
+- **Diagonale haut** (de dos, 3/4) :
+  - tête et coiffure de dos ; du côté de la course, la joue, la mâchoire et l'oreille dépassent
+    sur 3 colonnes (rangées 7 à 12), l'oreille au ton d'ombre : on devine le profil ;
+  - flanc du côté de la course, col et numéro décalés vers l'arrière ;
+  - les deux bras passent derrière le torse ; l'épaule du bras éloigné (côté opposé à la course)
+    est rentrée de 2 px ;
+  - la jambe éloignée est celle du côté opposé à la course (pied 2 px plus haut) ;
+  - chaussures vues du talon, avec un bout de pointe ;
+  - le ballon du dribble rebondit sur le côté de la hanche, dessiné derrière le corps.
+- Un bras levé (tir, dunk, contre) n'est jamais rentré : il passe devant la tête et le torse.
+- Tir, dunk et contre gardent leurs poses dans les deux diagonales, avec la tête, le torse, les
+  jambes et les chaussures de la diagonale.
+- **Feuille** : 4 blocs (bas droite, bas gauche, haut droite, haut gauche) de 19 images, soit
+  76 images rangées en grille (une rangée par bloc, 1 064×256 px). En une seule bande, une
+  feuille dépasserait la taille maximale d'une texture.
 - **Course** : les foulées montent tout le corps d'un pixel (suspension), sans rien allonger.
   Les pas s'accélèrent avec la vitesse au sol (foulée d'environ 0,9 m), pour que les pieds
   accrochent le parquet.
@@ -244,10 +257,12 @@ plus une variante d'identité : c'est un état.
 | Contre (image 18) | 1 | tout le saut sans le ballon | Deux bras tendus vers le haut, jambes du saut, visage concentré ; contre, contestation, rebond. Après son lâcher, le tireur garde l'image 14 (bras du lâcher) jusqu'au sol |
 
 Planches complètes (touche V de `?style`) :
-- vue « poses » : les 19 images des trois gabarits, et vers la gauche ;
-- vue « dos » : les mêmes images vues de dos ;
-- vue « trois-quarts » : l'ailier de 3/4 face et de 3/4 dos, vers la droite et vers la gauche ;
-- vue « directions » : les trois gabarits courent ou dribblent, animés, dans les 8 directions.
+- vue « gros-plan » : les trois gabarits en diagonale bas, avec la règle des proportions, et les
+  3 expressions de 3/4 en grand ;
+- vue « poses » : les 19 images des trois gabarits en diagonale bas, et l'ailier vers la gauche ;
+- vue « dos » : les mêmes images en diagonale haut ;
+- vue « directions » : les trois gabarits courent ou dribblent, animés, dans les 8 directions
+  (les 4 positions en diagonale).
 
 ## 6. Panier et terrain
 - **Panier massif** :
@@ -317,7 +332,8 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
 - **Annonce du lâcher** : PARFAIT (`yellow`), BON (`green`), TÔT / TARD (`silver`), en petite
   police sur fond sombre, au-dessus de la tête ; elle monte de 4 px et s'efface en 0,9 s.
 - **Pose du tir** : ballon levé (tir en suspension) ou bras tendu vers le cercle (layup), visage
-  concentré, tourné vers le panier dans la vue de son secteur (voir « Orientation et sol »).
+  concentré, tourné vers le panier dans la diagonale de la direction du cercle (voir
+  « Orientation et sol »).
 - **Dunk réussi** : annonce « DUNK » (`yellow`, même style que PARFAIT) et secousse de caméra de
   ±2 px entiers pendant 0,15 s (le pixel-art reste net), pour toi comme pour l'IA.
 - **1 contre 1 (7a)** :
@@ -350,7 +366,7 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   « DÉVIÉE » (`silver`) au-dessus de celui qui la touche sans la garder ; une faute de main
   reprend « FAUTE » (`red`) au-dessus du défenseur. Mêmes règles que les messages du 7b (montée,
   effacement en 1,5 s, pile). Pose provisoire du geste de vol : l'image 14 (bras tendu) pendant
-  0,25 s, de profil, tournée vers le ballon ; une vraie pose viendra en phase 3. Le déséquilibre
+  0,25 s, dans la diagonale de la direction du ballon ; une vraie pose viendra en phase 3. Le déséquilibre
   après un vol raté (0,3 s) n'a pas encore de pose : il se voit au ralentissement.
 - **Terrain entier (incrément 10)** :
   - **tableau de score vivant** : période (QT1 à QT4, puis P1, P2… en prolongation), chrono
@@ -382,8 +398,9 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     (`chalk`) au-dessus de chaque joueur qui entre. Mêmes règles que les autres messages
     (montée, effacement en 1,5 s, pile) ;
   - **remplaçants** : le corps garde sa place, seuls le sprite et l'étiquette changent. Une
-    feuille de 152 images coûte ~40 ms dans le navigateur (composition bornée à la boîte de
-    chaque calque, 15 bis) : les dix titulaires sont cuits au chargement (~0,4 s), le banc en
+    feuille de 76 images coûte ~21 ms dans le navigateur (composition bornée à la boîte de
+    chaque calque, 15 bis ; 4 blocs depuis le 15 ter) : les dix titulaires sont cuits au
+    chargement (~0,2 s), le banc en
     tâche de fond (~4 ms par image). Un remplaçant pas encore
     prêt serait fini d'un trait à son entrée (le debug H compte ces cas et affiche la plus
     longue image des 5 dernières secondes) ;

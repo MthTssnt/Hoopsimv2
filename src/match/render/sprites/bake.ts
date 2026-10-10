@@ -6,8 +6,8 @@ import type { TeamRamp } from '../../../assets/palette';
 
 export interface BakedPlayer {
   /**
-   * Clé de la texture (feuille de sprites) : 4 blocs de 19 images (profil droite, profil gauche,
-   * dos droite, dos gauche ; voir `sheetIndex`). Animations : voir `animationKey`.
+   * Clé de la texture (feuille de sprites) : 4 blocs de 19 images (diagonale bas droite, bas
+   * gauche, haut droite, haut gauche ; voir `sheetIndex`). Animations : voir `animationKey`.
    */
   key: string;
   /** Centre du ballon tenu pour chaque image de la feuille, ou null. */
@@ -25,19 +25,19 @@ export interface BakeOptions {
 
 /**
  * Clé d'animation d'un joueur cuit, selon son orientation et sa vue (jamais de retournement : le
- * numéro resterait en miroir) : `${key}:${nom}`, puis la vue (`:back`, `:front34`, `:back34` ; rien de profil), puis `:left` vers la gauche.
+ * numéro resterait en miroir) : `${key}:${nom}`, puis `:up` en diagonale haut, puis `:left` vers la gauche.
  */
-export function animationKey(key: string, name: AnimationName, facing: Facing, heading: Heading = 'side'): string {
-  return `${key}:${name}${heading === 'side' ? '' : `:${heading}`}${facing === 'left' ? ':left' : ''}`;
+export function animationKey(key: string, name: AnimationName, facing: Facing, heading: Heading = 'down'): string {
+  return `${key}:${name}${heading === 'up' ? ':up' : ''}${facing === 'left' ? ':left' : ''}`;
 }
 
-/** Nombre d'images d'une feuille : 19 images dans chacun des 8 blocs (4 vues, 2 orientations). */
+/** Nombre d'images d'une feuille : 19 images dans chacun des 4 blocs (2 diagonales, 2 orientations). */
 const SHEET_FRAMES = FRAMES.length * SHEET_VIEWS.length;
 
 /**
- * Position d'une image dans la texture : une rangée par bloc (19 images), 8 rangées. En une
- * seule bande, les 152 images feraient 8 512 px de large, au-delà de la taille maximale d'une
- * texture (souvent 8 192, parfois 4 096 px) : la feuille s'afficherait en noir.
+ * Position d'une image dans la texture : une rangée par bloc (19 images). En une seule bande, une
+ * feuille trop longue dépasserait la taille maximale d'une texture (souvent 8 192, parfois
+ * 4 096 px) et s'afficherait en noir.
  */
 export function sheetCell(index: number): { x: number; y: number } {
   return { x: (index % FRAMES.length) * FRAME.width, y: Math.floor(index / FRAMES.length) * FRAME.height };

@@ -237,6 +237,16 @@
     le haut en 3/4 dos ; la montée tout droit de dos.
   - Toutes les poses existent dans les quatre vues ; celles du 16 y seront dessinées aussi.
   - Le tireur fait face au panier dans la vue de son secteur.
+- **Quatre positions en diagonale (incrément 15 ter, remplace le 15 bis)** : les 3/4 du 15 bis ne
+  se voyaient pas assez. Il n'y a plus que quatre positions, toutes en diagonale : plus de profil,
+  plus de vue de face ni de dos plein.
+  - Tourné vers la droite : en montant, diagonale haut droite (vu de dos, en diagonale) ; en
+    descendant, diagonale bas droite (vu de face, en diagonale). Pareil vers la gauche.
+  - Les visages aussi sont vus en diagonale.
+  - À l'horizontale, le joueur garde sa dernière diagonale (haut ou bas) et ne change que de
+    côté ; au départ, diagonale bas.
+  - Le portrait du HUD est de 3/4 aussi.
+  - Les poses du 16 seront dessinées dans les deux diagonales.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

@@ -47,7 +47,7 @@ interface PoseRow {
   heading: Heading;
 }
 /** Suffixe du nom de rangée selon la vue. */
-const HEADING_TITLES: Record<Heading, string> = { side: '', back: ' DE DOS', front34: ' DE 3/4 FACE', back34: ' DE 3/4 DOS' };
+const HEADING_TITLES: Record<Heading, string> = { down: ' DIAGONALE BAS', up: ' DIAGONALE HAUT' };
 const EXPRESSION_LIST: { expression: Expression; label: string }[] = [
   { expression: 'neutre', label: 'NEUTRE' },
   { expression: 'concentree', label: 'CONCENTREE' },
@@ -66,12 +66,13 @@ const POSE_GROUPS = [
 
 /**
  * Vues de la scène : terrain, gros plan des gabarits, avant / après le redesign du 14, planches
- * des poses de profil, de dos et de 3/4, rose des 8 directions (touche V ou `?style&vue=`).
+ * des poses en diagonale bas (« poses ») et en diagonale haut (« dos »), rose des 8 directions
+ * (touche V ou `?style&vue=`).
  */
-type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'trois-quarts' | 'directions';
-const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'trois-quarts', 'directions'];
-/** Vue de chaque joueur du terrain (les 3/4 et le dos se mêlent au profil). */
-const COURT_HEADINGS: Heading[] = ['side', 'front34', 'back34', 'side', 'back'];
+type View = 'terrain' | 'gros-plan' | 'avant-apres' | 'poses' | 'dos' | 'directions';
+const VIEWS: View[] = ['terrain', 'gros-plan', 'avant-apres', 'poses', 'dos', 'directions'];
+/** Position de chaque joueur du terrain (avec l'orientation, les quatre positions s'y mêlent). */
+const COURT_HEADINGS: Heading[] = ['down', 'up', 'down', 'up', 'down'];
 /** Rose des directions : angle (degrés au-dessus de l'horizontale, vers la droite). */
 const DIRECTIONS = [0, 45, 90, 135, 180, 225, 270, 315];
 
@@ -190,15 +191,8 @@ export class StyleScene extends Phaser.Scene {
     this.actors = [];
     if (this.view === 'gros-plan') this.buildCloseup();
     else if (this.view === 'avant-apres') this.buildBeforeAfter();
-    else if (this.view === 'poses') this.buildPoseSheet('PLANCHE DES POSES (ECHELLE DU JEU)', this.specimenRows('side'));
-    else if (this.view === 'dos') this.buildPoseSheet('PLANCHE DES POSES DE DOS (ECHELLE DU JEU)', this.specimenRows('back'));
-    else if (this.view === 'trois-quarts')
-      this.buildPoseSheet('PLANCHE DES POSES DE 3/4 (ECHELLE DU JEU)', [
-        { spec: SPECIMENS[1], facing: 'right', heading: 'front34' },
-        { spec: SPECIMENS[1], facing: 'left', heading: 'front34' },
-        { spec: SPECIMENS[1], facing: 'right', heading: 'back34' },
-        { spec: SPECIMENS[1], facing: 'left', heading: 'back34' },
-      ]);
+    else if (this.view === 'poses') this.buildPoseSheet('PLANCHE DES POSES, DIAGONALE BAS (ECHELLE DU JEU)', this.specimenRows('down'));
+    else if (this.view === 'dos') this.buildPoseSheet('PLANCHE DES POSES, DIAGONALE HAUT (ECHELLE DU JEU)', this.specimenRows('up'));
     else if (this.view === 'directions') this.buildDirections();
     else {
       this.buildStatics();
@@ -334,7 +328,7 @@ export class StyleScene extends Phaser.Scene {
     drawSmallText(g, 'BALLON 8X8 X3', 560, 266);
   }
 
-  /** Rangées des planches de profil et de dos : les trois gabarits, puis l'ailier vers la gauche. */
+  /** Rangées d'une planche (diagonale bas ou haut) : les trois gabarits, puis l'ailier vers la gauche. */
   private specimenRows(heading: Heading): PoseRow[] {
     return [...SPECIMENS.map((spec) => ({ spec, facing: 'right' as const, heading })), { spec: SPECIMENS[1], facing: 'left' as const, heading }];
   }
@@ -361,7 +355,7 @@ export class StyleScene extends Phaser.Scene {
         const baseY = y + 8 + FRAME.height;
         this.statics.push(this.add.image(cx, baseY, baked.key, index).setOrigin(0.5, 1).setDepth(2));
         const anchor = baked.anchors[index];
-        // De dos et de 3/4 dos, le ballon tenu passe derrière le joueur.
+        // En diagonale haut (de dos), le ballon tenu passe derrière le joueur.
         if (anchor) this.statics.push(this.add.image(cx - FRAME.width / 2 + anchor.x, baseY - FRAME.height + anchor.y, BALL_TEXTURE).setDepth(seenFromBehind(heading) ? 1 : 3));
       });
     });
@@ -372,7 +366,7 @@ export class StyleScene extends Phaser.Scene {
    * directions autour d'un centre, avec la vue choisie par `headingFor` (comme dans le match).
    */
   private buildDirections() {
-    const g = this.studyBackground('LES 8 DIRECTIONS : PROFIL, 3/4 FACE, 3/4 DOS, DOS (ANIME)');
+    const g = this.studyBackground('LES 8 DIRECTIONS : 4 POSITIONS EN DIAGONALE (ANIME)');
     const roses: { spec: (typeof SPECIMENS)[number]; anim: AnimationName; label: string }[] = [
       { spec: SPECIMENS[0], anim: 'run', label: 'MENEUR, COURSE' },
       { spec: SPECIMENS[1], anim: 'dribble', label: 'AILIER, DRIBBLE' },
@@ -388,7 +382,7 @@ export class StyleScene extends Phaser.Scene {
       DIRECTIONS.forEach((deg, d) => {
         const rad = (deg * Math.PI) / 180;
         const dir = { x: Math.round(Math.cos(rad) * 1000) / 1000, y: -Math.round(Math.sin(rad) * 1000) / 1000 };
-        const heading = headingFor(dir, 'side');
+        const heading = headingFor(dir, 'down');
         const facing = dir.x < 0 ? 'left' : 'right';
         const feet = { x: Math.round(center.x + dir.x * radius.x), y: Math.round(center.y + dir.y * radius.y) };
         g.fillStyle(PALETTE.slate);
@@ -456,7 +450,7 @@ export class StyleScene extends Phaser.Scene {
     this.actors.push(this.add.image(fx, fy - 1, `style-shadow-${shadowW}`).setDepth(fy - 0.4));
     // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
     const sprite = this.add.sprite(fx, fy + 1, key, 0).setOrigin(0.5, 1).setDepth(fy);
-    const heading = opts.heading ?? 'side';
+    const heading = opts.heading ?? 'down';
     const ball = this.add.image(0, 0, BALL_TEXTURE).setDepth(fy + (seenFromBehind(heading) ? -0.1 : 0.1)).setVisible(false);
     const actor = { sprite, ball, baked };
     const place = (frameName: string | number) => {

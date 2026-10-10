@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { PALETTE, teamRamp } from '../../../assets/palette';
-import { EXPRESSIONS, EYE_ROWS, HAIRS, type Expression } from '../../../assets/sprites/heads';
+import { EAR, EXPRESSIONS, EYE_ROWS, HAIRS, type Expression } from '../../../assets/sprites/heads';
 import { BALL } from '../../../assets/sprites/arena';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, JERSEY_DIGITS, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
 import { createNewGame, TEAM_SEEDS } from '../../../engine';
 import { colorDistance, teamLook } from '../arena/draw';
 import { appearanceFor, appearanceSignature, type Appearance } from './appearance';
 import type { Slot } from './canvas';
-import { CHEEK_ROWS, colorsFor, composeFrame, NUMBER_MIN_TORSO, NUMBER_TOP, numberZone, SHEET_VIEWS, slotColor, type Heading } from './compose';
-import { BACK_FRAMES, BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, framesFor, HEAD_SIZE, NECK_ROWS, raisedHandTop, SHOE_ROWS, SHORTS_ROWS } from './rig';
+import { CHEEK, colorsFor, composeFrame, HEAD_TURN, NUMBER_MIN_TORSO, NUMBER_TOP, numberZone, SHEET_VIEWS, slotColor, type Heading } from './compose';
+import { BUILDS, bodyDims, bodyLayout, FRAME, FRAMES, framesFor, HEAD_SIZE, NECK_ROWS, raisedHandTop, SHOE_ROWS, SHORTS_ROWS, UP_FRAMES } from './rig';
 import { WORLD_TUNING } from '../../world/MatchWorld';
 import { ART_PPM } from '../artConfig';
 
@@ -25,8 +25,8 @@ const SPECIMENS = { meneur: 186, ailier: 200, pivot: 212 } as const;
 const specimen = (heightCm: number, heavy = false, number = 23): Appearance => ({ ...looks[0], heightCm, heavy, number, hair: 1, head: 0 });
 const idle = (heightCm: number, heavy = false) => composeFrame(specimen(heightCm, heavy), FRAMES[0], bodyDims(heightCm, heavy)).canvas;
 const framesOf = framesFor;
-/** Les quatre vues : profil, dos, 3/4 face, 3/4 dos. */
-const HEADINGS: readonly Heading[] = ['side', 'back', 'front34', 'back34'];
+/** Les deux diagonales : bas (de face, de 3/4) et haut (de dos, de 3/4). */
+const HEADINGS: readonly Heading[] = ['down', 'up'];
 
 /** Un échantillon varié : toutes les coiffures, les deux corpulences, les trois gabarits. */
 function sample(): Appearance[] {
@@ -60,7 +60,7 @@ describe('sprites des joueurs : règles générales', () => {
     expect([...outside]).toEqual([]);
   });
 
-  it('tiennent dans leur cadre, contour compris, dans les huit blocs (4 vues, 2 orientations)', () => {
+  it('tiennent dans leur cadre, contour compris, dans les quatre positions', () => {
     for (const look of sample()) {
       for (const { facing, heading } of SHEET_VIEWS) {
         for (const frame of framesOf(heading)) {
@@ -74,23 +74,26 @@ describe('sprites des joueurs : règles générales', () => {
     }
   });
 
-  it('posent les pieds au sol dans les images au sol, de profil comme de dos', () => {
-    for (const heading of ['side', 'back'] as const) {
-      for (const i of [0, 1, 3, 5, 7, 9, 10, 11, 12, 15]) {
-        expect(composeFrame(looks[0], framesOf(heading)[i], bodyDims(200, false), 'team', 'right', heading).canvas.bounds()!.bottom).toBe(FRAME.groundY);
-      }
+  it('posent le pied proche au sol dans les images au sol, dans les deux diagonales', () => {
+    const bottom = (heading: Heading, i: number) => composeFrame(looks[0], framesOf(heading)[i], bodyDims(200, false), 'team', 'right', heading).canvas.bounds()!.bottom;
+    for (const heading of HEADINGS) {
+      // Arrêt, dribble à l'arrêt, flexion du tir et du dunk : pied proche sur la rangée du sol.
+      for (const i of [0, 1, 10, 11, 12, 15]) expect(bottom(heading, i)).toBe(FRAME.groundY);
+      // Passages : le pied proche peut passer (levé d'1 px) pendant que le pied éloigné, plus
+      // loin donc plus haut, est posé.
+      for (const i of [3, 5, 7, 9]) expect(bottom(heading, i)).toBeGreaterThanOrEqual(FRAME.groundY - 1);
     }
   });
 
   it('font rebondir la course : les foulées montent d’un pixel, sans rien allonger', () => {
     const dims = bodyDims(200, false);
-    for (const heading of ['side', 'back'] as const) {
+    for (const heading of HEADINGS) {
       for (const i of [2, 4, 6, 8]) {
         const frame = framesOf(heading)[i];
         expect(frame.rise).toBe(1);
         const up = composeFrame(looks[0], frame, dims, 'team', 'right', heading).canvas;
         const flat = composeFrame(looks[0], { ...frame, rise: 0 }, dims, 'team', 'right', heading).canvas;
-        expect(up.bounds()!.bottom).toBe(FRAME.groundY - 1);
+        expect(up.bounds()!.bottom).toBe(flat.bounds()!.bottom - 1);
         // Même dessin, décalé d'une rangée.
         flat.forEach((x, y, slot) => expect(up.get(x, y - 1)).toBe(slot));
       }
@@ -144,7 +147,7 @@ describe('sprites des joueurs : règles générales', () => {
     expect(anchors[14]).toBeNull();
   });
 
-  it('dribblent de profil devant le corps, un peu en avant, et le ballon touche le sol au rebond', () => {
+  it('dribblent en diagonale bas devant le corps, un peu en avant, et le ballon touche le sol au rebond', () => {
     for (const heightCm of Object.values(SPECIMENS)) {
       const dims = bodyDims(heightCm, false);
       const L = bodyLayout(dims);
@@ -171,66 +174,119 @@ describe('sprites des joueurs : règles générales', () => {
     }
   });
 
-  it('dribblent de dos sur le côté de la hanche, du côté de l’orientation', () => {
+  it('dribblent en diagonale haut sur le côté de la hanche, du côté de l’orientation', () => {
     const dims = bodyDims(200, false);
     const L = bodyLayout(dims);
     for (const facing of ['right', 'left'] as const) {
       const ahead = facing === 'right' ? 1 : -1;
       for (const i of [6, 7, 8, 9, 10, 11]) {
-        const ball = composeFrame(looks[0], BACK_FRAMES[i], dims, 'team', facing, 'back').ball!;
+        const ball = composeFrame(looks[0], UP_FRAMES[i], dims, 'team', facing, 'up').ball!;
         expect((ball.x - FRAME.centerX) * ahead).toBeGreaterThan(L.torsoRight - FRAME.centerX + 1);
       }
     }
   });
 });
 
-describe('vues de 3/4', () => {
-  const eyeColumns = (heading: Heading, facing: 'right' | 'left') => {
-    const dims = bodyDims(200, false);
-    const L = bodyLayout(dims);
-    const c = composeFrame(specimen(200), framesFor(heading)[0], dims, 'team', facing, heading).canvas;
-    const cols = new Set<number>();
-    for (let y = L.headTop; y < L.neckY; y++) for (let x = 0; x < FRAME.width; x++) if (c.get(x, y) === 'w') cols.add(x);
-    return [...cols].sort((a, b) => a - b);
+describe('positions en diagonale', () => {
+  const dims = bodyDims(200, false);
+  const L = bodyLayout(dims);
+  const pose = (heading: Heading, facing: 'right' | 'left' = 'right', i = 0, look = specimen(200)) =>
+    composeFrame(look, framesFor(heading)[i], dims, 'team', facing, heading);
+  /** Colonnes de blanc des yeux dans la tête, en séries contiguës (de gauche à droite). */
+  const eyeRuns = (facing: 'right' | 'left') => {
+    const c = pose('down', facing).canvas;
+    const cols: number[] = [];
+    for (let x = 0; x < FRAME.width; x++) if (c.get(x, L.headTop + EYE_ROWS[1]) === 'w') cols.push(x);
+    const runs: number[][] = [];
+    for (const x of cols) {
+      if (runs.length && x === runs[runs.length - 1][runs[runs.length - 1].length - 1] + 1) runs[runs.length - 1].push(x);
+      else runs.push([x]);
+    }
+    return runs;
   };
 
-  it('gardent la taille de chaque gabarit : même sommet de la tête et même sol que le profil', () => {
+  it('gardent la taille de chaque gabarit : même sommet de la tête et même sol dans les deux diagonales', () => {
     for (const heightCm of Object.values(SPECIMENS)) {
-      const dims = bodyDims(heightCm, false);
-      const side = idle(heightCm).bounds()!;
-      for (const heading of ['front34', 'back34'] as const) {
-        const b = composeFrame(specimen(heightCm), framesFor(heading)[0], dims, 'team', 'right', heading).canvas.bounds()!;
-        expect(b.top).toBe(side.top);
-        expect(b.bottom).toBe(FRAME.groundY);
-      }
+      const d = bodyDims(heightCm, false);
+      const down = composeFrame(specimen(heightCm), framesFor('down')[0], d, 'team', 'right', 'down').canvas.bounds()!;
+      const up = composeFrame(specimen(heightCm), framesFor('up')[0], d, 'team', 'right', 'up').canvas.bounds()!;
+      expect(up.top).toBe(down.top);
+      expect(down.bottom).toBe(FRAME.groundY);
+      expect(up.bottom).toBe(FRAME.groundY);
     }
   });
 
-  it('3/4 face : le visage est là, décalé d’une colonne dans le sens de la course', () => {
-    const side = eyeColumns('side', 'right');
-    expect(side.length).toBeGreaterThan(0);
-    expect(eyeColumns('front34', 'right')).toEqual(side.map((x) => x + 1));
-    expect(eyeColumns('front34', 'left')).toEqual(eyeColumns('side', 'left').map((x) => x - 1));
+  it('diagonale bas : visage tourné, œil proche de 2 colonnes, œil éloigné d’une colonne du côté de la course', () => {
+    const right = eyeRuns('right');
+    expect(right.map((r) => r.length)).toEqual([2, 1]);
+    // L'œil éloigné est contre le bord de la tête (décalée de HEAD_TURN), du côté de la course.
+    const headRight = FRAME.centerX - HEAD_SIZE / 2 + HEAD_TURN + HEAD_SIZE - 1;
+    expect(headRight - right[1][0]).toBeLessThanOrEqual(3);
+    // Vers la gauche : le même visage, retourné.
+    expect(eyeRuns('left').map((r) => r.length)).toEqual([1, 2]);
   });
 
-  it('3/4 dos : pas de visage, mais la joue et l’oreille du côté de la course', () => {
-    const dims = bodyDims(200, false);
-    const L = bodyLayout(dims);
-    const headLeft = FRAME.centerX - HEAD_SIZE / 2;
+  it('diagonale bas : oreille au ton d’ombre du côté qui s’éloigne, tête décalée vers la course', () => {
+    const c = pose('down').canvas;
+    const headLeft = FRAME.centerX - HEAD_SIZE / 2 + HEAD_TURN;
+    for (const row of EAR.rows) expect(c.get(headLeft + EAR.col, L.headTop + row)).toBe('3');
+    expect(HEAD_TURN).toBe(1);
+  });
+
+  it('diagonale haut : pas de visage, mais joue et oreille sur 3 colonnes du côté de la course', () => {
+    const headLeft = FRAME.centerX - HEAD_SIZE / 2 + HEAD_TURN;
     for (let hair = 0; hair < HAIRS.length; hair++) {
       for (const facing of ['right', 'left'] as const) {
-        const c = composeFrame({ ...specimen(200), hair }, framesFor('back34')[0], dims, 'team', facing, 'back34').canvas;
+        const c = pose('up', facing, 0, { ...specimen(200), hair }).canvas;
         for (let y = L.headTop; y < L.neckY; y++) for (let x = 0; x < FRAME.width; x++) expect(['w', 'n']).not.toContain(c.get(x, y));
-        const edge = facing === 'right' ? headLeft + HEAD_SIZE - 1 : FRAME.width - 1 - (headLeft + HEAD_SIZE - 1);
-        for (const row of CHEEK_ROWS) expect(SKIN.has(c.get(edge, L.headTop + row)!)).toBe(true);
+        const at = (col: number) => (facing === 'right' ? headLeft + col : FRAME.width - 1 - (headLeft + col));
+        for (const row of [8, 9, 10]) for (const col of CHEEK.cols) expect(SKIN.has(c.get(at(col), L.headTop + row)!)).toBe(true);
       }
+      expect(HAIRS[hair].back).toHaveLength(HEAD_SIZE);
+      for (const row of HAIRS[hair].back) expect(row).toHaveLength(HEAD_SIZE);
     }
   });
 
-  it('dessinent le pied le plus éloigné 2 px plus haut (côté de la course de face, l’autre de dos)', () => {
-    const dims = bodyDims(200, false);
+  it('montrent un flanc de 2 colonnes au ton sombre : côté qui s’éloigne en bas, côté de la course en haut', () => {
+    const rows = [L.torsoTop + 2, L.torsoTop + 5, L.torsoTop + 8];
+    const down = pose('down', 'right', 0, { ...specimen(200), number: 1 }).canvas;
+    const up = pose('up', 'right', 0, { ...specimen(200), number: 1 }).canvas;
+    for (const y of rows) {
+      expect([down.get(L.torsoLeft, y), down.get(L.torsoLeft + 1, y)]).toEqual(['q', 'q']);
+      expect([up.get(L.torsoRight - 1, y), up.get(L.torsoRight, y)]).toEqual(['q', 'q']);
+    }
+  });
+
+  it('posent le numéro sur le devant en bas, hors du flanc en haut', () => {
+    for (const n of [0, 7, 12, 88]) {
+      const look = { ...specimen(200), number: n };
+      const down = pose('down', 'right', 0, look).numberAt!;
+      const up = pose('up', 'right', 0, look).numberAt!;
+      expect(down.x).toBeGreaterThanOrEqual(L.torsoLeft + 3);
+      expect(down.x + jerseyNumberWidth(n) - 1).toBeLessThanOrEqual(L.torsoRight);
+      expect(up.x).toBeGreaterThanOrEqual(L.torsoLeft + 1);
+      expect(up.x + jerseyNumberWidth(n) - 1).toBeLessThanOrEqual(L.torsoRight - 2);
+    }
+  });
+
+  it('étagent les bras : le bras éloigné, à moitié derrière le torse, se voit moins que le bras proche', () => {
+    const visible = (heading: Heading, side: 'left' | 'right') => {
+      const c = pose(heading).canvas;
+      let n = 0;
+      c.forEach((x, y, slot) => {
+        if (y < L.torsoTop || y > L.shortsTop || !SKIN.has(slot)) return;
+        if (side === 'left' ? x < L.torsoLeft : x > L.torsoRight) n++;
+      });
+      return n;
+    };
+    // En bas, le bras éloigné est à droite (côté de la course) ; en haut, à gauche.
+    expect(visible('down', 'right')).toBeLessThan(visible('down', 'left'));
+    expect(visible('up', 'left')).toBeLessThan(visible('up', 'right'));
+  });
+
+  it('dessinent le pied éloigné 2 px plus haut (côté de la course en bas, l’autre en haut)', () => {
     const sole = (heading: Heading, right: boolean) => {
-      const c = composeFrame(specimen(200), framesFor(heading)[0], dims, 'team', 'right', heading).canvas;
+      const c = pose(heading).canvas;
       let y = -1;
       c.forEach((x, py, slot) => {
         // Bords de chaque pied (la pointe de la chaussure gauche dépasse le milieu du cadre).
@@ -239,19 +295,18 @@ describe('vues de 3/4', () => {
       });
       return y;
     };
-    expect(sole('front34', false) - sole('front34', true)).toBe(2);
-    expect(sole('back34', true) - sole('back34', false)).toBe(2);
-    expect(sole('side', true)).toBe(sole('side', false));
+    expect(sole('down', false) - sole('down', true)).toBe(2);
+    expect(sole('up', true) - sole('up', false)).toBe(2);
   });
 
   it('gardent un entrejambe droit à l’arrêt, au-dessus du pied le plus haut', () => {
     for (const heightCm of Object.values(SPECIMENS)) {
-      const dims = bodyDims(heightCm, false);
-      const L = bodyLayout(dims);
-      for (const heading of ['front34', 'back34'] as const) {
-        const c = composeFrame(specimen(heightCm), framesFor(heading)[0], dims, 'team', 'right', heading).canvas;
+      const d = bodyDims(heightCm, false);
+      const layout = bodyLayout(d);
+      for (const heading of HEADINGS) {
+        const c = composeFrame(specimen(heightCm), framesFor(heading)[0], d, 'team', 'right', heading).canvas;
         const gaps = new Set<string>();
-        for (let y = L.shortsBottom + 1; y < L.shoeTop - 3; y++) {
+        for (let y = layout.shortsBottom + 1; y < layout.shoeTop - 3; y++) {
           const skin: number[] = [];
           for (let x = 0; x < FRAME.width; x++) if (SKIN.has(c.get(x, y)!)) skin.push(x);
           const inner = skin.findIndex((x, k) => k > 0 && x - skin[k - 1] > 1);
@@ -262,55 +317,14 @@ describe('vues de 3/4', () => {
     }
   });
 
-  it('dribblent devant le corps de 3/4 face, sur le côté de la hanche de 3/4 dos', () => {
-    const dims = bodyDims(200, false);
-    const L = bodyLayout(dims);
-    for (const facing of ['right', 'left'] as const) {
-      const ahead = facing === 'right' ? 1 : -1;
-      for (const i of [6, 7, 8, 9, 10, 11]) {
-        const front = composeFrame(looks[0], framesFor('front34')[i], dims, 'team', facing, 'front34').ball!;
-        expect(Math.abs(front.x - FRAME.centerX)).toBeLessThanOrEqual(FRAME.centerX - L.torsoLeft + 6);
-        const back = composeFrame(looks[0], framesFor('back34')[i], dims, 'team', facing, 'back34').ball!;
-        expect((back.x - FRAME.centerX) * ahead).toBeGreaterThan(L.torsoRight - FRAME.centerX + 1);
-      }
-    }
-  });
-
-  it('se distinguent du profil et du dos dans chaque image', () => {
-    const dims = bodyDims(200, false);
-    const key = (heading: Heading, i: number) => {
-      const c = composeFrame(specimen(200), framesFor(heading)[i], dims, 'team', 'right', heading).canvas;
-      let text = '';
-      for (let y = 0; y < FRAME.height; y++) for (let x = 0; x < FRAME.width; x++) text += c.get(x, y) ?? '.';
-      return text;
+  it('se distinguent franchement : à la même pose, la diagonale haut diffère de la diagonale bas', () => {
+    const text = (heading: Heading, i: number) => {
+      const c = pose(heading, 'right', i).canvas;
+      let t = '';
+      for (let y = 0; y < FRAME.height; y++) for (let x = 0; x < FRAME.width; x++) t += c.get(x, y) ?? '.';
+      return t;
     };
-    for (let i = 0; i < FRAMES.length; i++) {
-      expect(key('front34', i)).not.toBe(key('side', i));
-      expect(key('back34', i)).not.toBe(key('back', i));
-    }
-  });
-});
-
-describe('vue de dos', () => {
-  const dims = bodyDims(200, false);
-  const L = bodyLayout(dims);
-
-  it('n’a pas de visage : ni blanc des yeux ni trait sombre dans la tête, pour toutes les coiffures', () => {
-    for (let hair = 0; hair < HAIRS.length; hair++) {
-      const c = composeFrame({ ...specimen(200), hair }, BACK_FRAMES[0], dims, 'team', 'right', 'back').canvas;
-      for (let y = L.headTop; y < L.neckY; y++) {
-        for (let x = 0; x < FRAME.width; x++) expect(['w', 'n']).not.toContain(c.get(x, y));
-      }
-      expect(HAIRS[hair].back).toHaveLength(HEAD_SIZE);
-      for (const row of HAIRS[hair].back) expect(row).toHaveLength(HEAD_SIZE);
-    }
-  });
-
-  it('garde les proportions de face : même hauteur et même tête', () => {
-    const back = composeFrame(specimen(200), BACK_FRAMES[0], dims, 'team', 'right', 'back').canvas.bounds()!;
-    const front = idle(200).bounds()!;
-    expect(back.top).toBe(front.top);
-    expect(back.bottom).toBe(front.bottom);
+    for (let i = 0; i < FRAMES.length; i++) expect(text('up', i)).not.toBe(text('down', i));
   });
 });
 
@@ -354,18 +368,19 @@ describe('sprites des joueurs : proportions chiffrées (ailier standard)', () =>
   });
 
   it('ont des bras de 2 px avec un contour de chaque côté, de 12 px, la main de 2×2 à la taille', () => {
+    // Le bras proche (côté qui s'éloigne, à gauche en diagonale bas), entier à côté du torse.
     const row = L.torsoTop + 3;
-    expect(c.get(L.torsoRight + 1, row)).toBe('o');
-    expect(SKIN.has(c.get(L.torsoRight + 2, row)!)).toBe(true);
-    expect(SKIN.has(c.get(L.torsoRight + 3, row)!)).toBe(true);
-    expect(c.get(L.torsoRight + 4, row)).toBe('o');
+    expect(c.get(L.torsoLeft - 1, row)).toBe('o');
+    expect(SKIN.has(c.get(L.torsoLeft - 2, row)!)).toBe(true);
+    expect(SKIN.has(c.get(L.torsoLeft - 3, row)!)).toBe(true);
+    expect(c.get(L.torsoLeft - 4, row)).toBe('o');
     let bottom = L.torsoTop;
-    while (SKIN.has(c.get(L.torsoRight + 2, bottom + 1)!)) bottom++;
+    while (SKIN.has(c.get(L.torsoLeft - 3, bottom + 1)!)) bottom++;
     const length = bottom - L.torsoTop + 1;
     expect(length).toBe(12);
     // Main de 2×2 au bout, au niveau de la taille (bas du torse ou haut du short).
-    expect(SKIN.has(c.get(L.torsoRight + 3, bottom)!)).toBe(true);
-    expect(SKIN.has(c.get(L.torsoRight + 3, bottom - 1)!)).toBe(true);
+    expect(SKIN.has(c.get(L.torsoLeft - 2, bottom)!)).toBe(true);
+    expect(SKIN.has(c.get(L.torsoLeft - 2, bottom - 1)!)).toBe(true);
     expect(bottom).toBeGreaterThanOrEqual(L.shortsTop - 1);
     expect(bottom).toBeLessThanOrEqual(L.shortsTop + 1);
   });
@@ -394,8 +409,9 @@ describe('sprites des joueurs : proportions chiffrées (ailier standard)', () =>
         const legs = idle(heightCm, heavy);
         const layout = bodyLayout(bodyDims(heightCm, heavy));
         const gaps = new Set<string>();
-        // Rangées de peau des jambes : sous le short, au-dessus de la chaussette.
-        for (let y = layout.shortsBottom + 1; y < layout.shoeTop - 1; y++) {
+        // Rangées de peau des deux jambes : sous le short, au-dessus de la chaussette du pied
+        // éloigné (2 px plus haut que l'autre).
+        for (let y = layout.shortsBottom + 1; y < layout.shoeTop - 3; y++) {
           const skin: number[] = [];
           for (let x = 0; x < FRAME.width; x++) if (SKIN.has(legs.get(x, y)!)) skin.push(x);
           const inner = skin.findIndex((x, k) => k > 0 && x - skin[k - 1] > 1);
@@ -440,32 +456,38 @@ describe('gabarits', () => {
   });
 });
 
-describe('visage', () => {
+describe('visage de 3/4 (diagonale bas)', () => {
   const dark = (ch: string) => ch === 'n' || ch === 'o';
   const all = Object.entries(EXPRESSIONS) as [Expression, readonly string[]][];
 
-  it('a des yeux symétriques : 2×3 de blanc + iris côté intérieur, 2 px d’écart, mêmes rangées', () => {
+  it('a un œil proche de 2×3 et un œil éloigné de 1×3, iris tournés vers le sens de la course', () => {
     for (const [, grid] of all) {
-      for (const row of EYE_ROWS) expect(grid[row]).toBe('....wwn..nww....');
-      // Tout le visage est symétrique.
-      for (const row of grid) expect(row).toBe([...row].reverse().join(''));
+      for (const row of EYE_ROWS) expect(grid[row]).toBe('.....wwn....wn..');
+      // Le visage est tourné : il n'est plus symétrique.
+      expect(grid[EYE_ROWS[0]]).not.toBe([...grid[EYE_ROWS[0]]].reverse().join(''));
     }
   });
 
-  it('a des sourcils de 4 px au-dessus de chaque œil (inclinés quand concentré)', () => {
-    expect(EXPRESSIONS.neutre[6]).toBe('...nnnn..nnnn...');
+  it('a des sourcils de 4 px et 2 px (inclinés quand concentré)', () => {
+    expect(EXPRESSIONS.neutre[6]).toBe('....nnnn....nn..');
     for (const [, grid] of all) {
       const brows = grid.slice(0, EYE_ROWS[0]).join('');
-      expect([...brows].filter(dark)).toHaveLength(8);
+      expect([...brows].filter(dark)).toHaveLength(6);
     }
     expect(EXPRESSIONS.concentree[5]).not.toBe(EXPRESSIONS.concentree[6]);
   });
 
-  it('a un nez de 2 px d’ombre de peau, une bouche fermée de 4 px, un sourire seulement quand joyeux', () => {
-    for (const [, grid] of all) expect([...grid.join('')].filter((ch) => ch === '3')).toHaveLength(2);
-    expect(EXPRESSIONS.neutre[13]).toBe('......nnnn......');
-    expect(EXPRESSIONS.neutre.join('')).not.toContain('w'.repeat(4));
-    expect(EXPRESSIONS.joyeuse.join('')).toContain('wwww');
+  it('décale le nez (3 px d’ombre de peau) et la bouche vers le sens de la course ; sourire seulement quand joyeux', () => {
+    const center = (HEAD_SIZE - 1) / 2;
+    for (const [, grid] of all) {
+      const nose: number[] = [];
+      grid.forEach((row) => [...row].forEach((ch, x) => ch === '3' && nose.push(x)));
+      expect(nose).toHaveLength(3);
+      for (const x of nose) expect(x - center).toBeGreaterThanOrEqual(2);
+    }
+    expect(EXPRESSIONS.neutre[13]).toBe('.........nnn....');
+    expect(EXPRESSIONS.neutre.join('')).not.toContain('ww'.repeat(2));
+    expect(EXPRESSIONS.joyeuse[13]).toContain('ww');
   });
 
   it('n’a aucun pixel sombre sur les joues', () => {
@@ -485,7 +507,7 @@ describe('numéros de maillot', () => {
     expect(JERSEY_DIGITS[1][0]).toHaveLength(2);
   });
 
-  it('se lisent à l’endroit dans les huit blocs (jamais en miroir), dans le dos aussi', () => {
+  it('se lisent à l’endroit dans les quatre positions (jamais en miroir), dans le dos aussi', () => {
     const expected: string[] = [];
     drawJerseyNumber(12, 0, 0, (x, y) => void expected.push(`${x},${y}`));
     for (const { facing, heading } of SHEET_VIEWS) {
@@ -500,7 +522,9 @@ describe('numéros de maillot', () => {
 
   it('tiennent tous (0 à 99) sur la poitrine du torse le plus étroit, sous le col', () => {
     const narrowest = Math.min(...Object.values(SPECIMENS).map((h) => bodyDims(h, false).torsoWidth));
-    for (let n = 0; n < 100; n++) expect(jerseyNumberWidth(n)).toBeLessThanOrEqual(numberZone(narrowest).width);
+    for (let n = 0; n < 100; n++) {
+      for (const heading of HEADINGS) expect(jerseyNumberWidth(n)).toBeLessThanOrEqual(numberZone(narrowest, heading).width);
+    }
     expect(NUMBER_TOP).toBeGreaterThanOrEqual(2);
     expect(NUMBER_MIN_TORSO).toBeLessThanOrEqual(BUILDS.meneur.torso);
   });
