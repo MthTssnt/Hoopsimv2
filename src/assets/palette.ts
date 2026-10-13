@@ -107,13 +107,17 @@ export const SKIN_RAMPS: readonly Ramp5[] = [
   [0xc88a58, 0x9c6438, 0x774626, 0x522e18, 0x26130a],
 ];
 
-/** Cheveux (même ordre que `HAIR_COLORS`) : noir, brun, blond, roux, gris. */
+/**
+ * Cheveux (même ordre que `HAIR_COLORS`) : noir, brun, blond, roux, gris ; puis châtain, propre au
+ * rendu 2D (les couleurs de `HAIR_COLORS` ne changent pas).
+ */
 export const HAIR_RAMPS: readonly Ramp5[] = [
   [0x6a6478, 0x3a3444, 0x262030, 0x18121e, 0x0a060c],
   [0xb07c4c, 0x84552f, 0x5f3a1f, 0x3e2412, 0x1c0e06],
   [0xfff0a8, 0xf4cf6a, 0xd4a444, 0x9c6c26, 0x4a2c0c],
   [0xf08a4a, 0xc45a2a, 0x943a18, 0x62220c, 0x2c0e04],
   [0xffffff, 0xdcdae4, 0xaeacba, 0x7a7888, 0x34323e],
+  [0xc08a5a, 0x96643a, 0x6e4626, 0x4a2c16, 0x22120a],
 ];
 
 /** Rampe de 5 tons d'une couleur d'équipe. */

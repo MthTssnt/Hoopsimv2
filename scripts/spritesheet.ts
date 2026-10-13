@@ -1,15 +1,16 @@
 /**
  * Planches de contrôle du rendu 2D, agrandies sans lissage (plus proche voisin), sur fond uni :
  * - `<sortie>.png` : une rangée par animation, images de gauche à droite ;
- * - `<sortie>-tetes.png` : la tête (coupe courte) en ×8 avec 4 visages différents, ses expressions,
- *   un visage sur 3 teints ; puis 3 joueurs entiers à l'arrêt en ×4 et en taille réelle (×1).
+ * - `<sortie>-tetes.png` : en ×8, 4 visages, 4 expressions, un visage sur 3 teints, toutes les
+ *   coiffures de face puis de dos (couleurs de cheveux variées, bandeau en option) ; puis 6 joueurs
+ *   entiers à l'arrêt en ×4, ×3 (match en plein écran 1080p) et ×2 (fenêtre 1080p).
  * PNG écrits avec le zlib de Node (sans dépendance) ; affiche le temps de rendu d'une image.
  *   npm run sprites -- [sortie.png] [échelle de la première planche]
  */
 import { writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { teamRamp } from '../src/assets/palette';
-import { FACE_EXPRESSIONS, headGrid2D, type FaceExpression } from '../src/assets/sprites/heads2d';
+import { FACE_TRAITS, HAIRS_2D, headGrid2D, type FaceExpression } from '../src/assets/sprites/heads2d';
 import type { Appearance } from '../src/match/render/sprites/appearance';
 import { SlotCanvas, slotOf } from '../src/match/render/sprites/canvas';
 import { colors2D, slotColor, type SlotColors } from '../src/match/render/sprites/compose';
@@ -111,24 +112,33 @@ const bodies: SheetRow[] = ROWS.map((row) => ({
 console.log(writeSheet(out, bodies, false));
 
 // Planche des têtes : la coupe courte, seule (×8), sur 3 teints (×8), puis le joueur entier (×4 et ×1).
-const HEAD_CELL = 18;
+const HEAD_CELL = 24;
 const headCell = (look: Appearance, heading: Heading, expression: FaceExpression = 'neutre') => {
   const grid = headGrid2D(look, heading, expression);
   const canvas = new SlotCanvas(HEAD_CELL, HEAD_CELL);
   grid.rows.forEach((row, y) => [...row].forEach((ch, x) => {
     const slot = slotOf(ch);
-    if (slot) canvas.set(x + 3, y + 3, slot);
+    if (slot) canvas.set(x + 2, y + 1, slot);
   }));
   colorOutline(canvas, (x, y) => (canvas.get(x, y) && 'rhHDE'.includes(canvas.get(x, y)!) ? 'hair' : 'skin'));
   return { canvas, colors: team(look) };
 };
-const SKINS = [
-  { name: 'CLAIRE', skin: 0 },
-  { name: 'MOYENNE', skin: 2 },
-  { name: 'FONCEE', skin: 3 },
+// Joueurs de la planche : apparence complète du rendu 2D.
+const look2D = (o: Partial<Appearance>): Appearance => ({ ...LOOK, hair: 0, hairColor: 1, skin: 2, head: 0, face: 0, number: 23, ...o });
+const headRow = (label: string, cells: SheetRow['cells']): SheetRow => ({ label, zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells });
+const HAIR_COLOR_ORDER = [0, 1, 5, 3, 2, 4]; // noir, brun, châtain, roux, blond, gris
+const styleLook = (hair: number, extra: Partial<Appearance> = {}) => look2D({ hair, hairColor: HAIR_COLOR_ORDER[hair % 6], skin: [2, 0, 3, 1][hair % 4], face: hair % FACE_TRAITS.length, head: hair % 5, ...extra });
+const styles = HAIRS_2D.map((_, hair) => styleLook(hair));
+// Le bandeau, option combinable : sur les cheveux longs et sur la coupe en pics.
+const banded = [styleLook(5, { headband: true }), styleLook(1, { headband: true })];
+const six = [
+  look2D({ hair: 0, hairColor: 1, skin: 2, head: 0, face: 0, number: 23 }),
+  look2D({ hair: 6, hairColor: 0, skin: 3, head: 1, face: 1, number: 34, facialHair: 1 }),
+  look2D({ hair: 3, hairColor: 2, skin: 0, head: 2, face: 3, number: 7 }),
+  look2D({ hair: 7, hairColor: 0, skin: 3, head: 3, face: 4, number: 11, heightCm: 212, heavy: true }),
+  look2D({ hair: 9, hairColor: 5, skin: 1, head: 4, face: 2, number: 50, facialHair: 2, heightCm: 186 }),
+  look2D({ hair: 12, hairColor: 3, skin: 0, head: 0, face: 5, number: 3, headband: true }),
 ];
-const player = (skin: number, face = 0, number = 23, hairColor = 1): Appearance => ({ ...LOOK, skin, hair: 1, hairColor, face, number });
-const medium = player(2);
 const full = (label: string, z: number, looks: Appearance[]): SheetRow => ({
   label,
   zoom: z,
@@ -136,13 +146,15 @@ const full = (label: string, z: number, looks: Appearance[]): SheetRow => ({
   cellH: FRAME.height,
   cells: looks.map((l) => ({ canvas: renderFigure2D(l, poses2D('idle')[0].pose, 'down').canvas, colors: team(l) })),
 });
-const trio = [player(0, 0, 7, 2), player(2, 1, 23, 1), player(3, 3, 34, 0)];
 const heads: SheetRow[] = [
-  { label: '4 VISAGES X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: [0, 1, 2, 3].map((face) => headCell(player(2, face), 'down')) },
-  { label: 'EXPRESSIONS X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: FACE_EXPRESSIONS.map((e) => headCell(medium, 'down', e)) },
-  { label: '3 TEINTS X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: SKINS.map(({ skin }) => headCell(player(skin, 1), 'down')) },
-  full('JOUEURS X4', 4, trio),
-  full('JOUEURS X1', 1, trio),
+  headRow('4 VISAGES', [0, 1, 2, 3].map((k) => headCell(look2D({ hair: 0, head: [0, 1, 2, 3][k], face: [0, 1, 2, 3][k] }), 'down'))),
+  headRow('EXPRESSIONS', (['concentree', 'joyeuse', 'effort', 'decu'] as const).map((e) => headCell(look2D({ face: 3 }), 'down', e))),
+  headRow('3 TEINTS', [0, 2, 3].map((skin) => headCell(look2D({ skin, face: 1, head: 0 }), 'down'))),
+  headRow('COIFFURES FACE', [...styles, ...banded].map((l) => headCell(l, 'down'))),
+  headRow('COIFFURES DOS', [...styles, ...banded].map((l) => headCell(l, 'up'))),
+  full('6 JOUEURS X4', 4, six),
+  full('MATCH X3', 3, six),
+  full('FENETRE X2', 2, six),
 ];
 console.log(writeSheet(out.replace(/\.png$/, '') + '-tetes.png', heads, true));
 
