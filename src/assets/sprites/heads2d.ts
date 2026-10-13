@@ -197,6 +197,69 @@ export interface HeadLook extends Pick<Appearance, 'head' | 'hair'> {
   facialHair?: FacialHair2D;
 }
 
+/**
+ * Nouvelle technique (retour de Matheo, d'après des sprites de RPG en pixel-art, technique seulement) :
+ * les cheveux sont le volume principal de la tête, en mèches de 4 tons (r reflet, h clair, H base,
+ * D ombre) séparées par des creux sombres, avec un reflet par mèche en haut à gauche et quelques
+ * pointes qui cassent la silhouette ; visage minimaliste dans la moitié basse, encadré par la
+ * frange (yeux 1×2, pas de sourcils, nez d'1 px en silhouette) ; peau presque plate (2 tons :
+ * ombre sous la frange et sur le côté de la mâchoire) ; mâchoire et menton légèrement marqués. Le
+ * contour coloré (ton le plus foncé de chaque matière) est posé par `figure2d`.
+ * Pour l'instant une seule tête, la coupe courte (coiffure 1), avant de décliner les autres.
+ */
+const SHORT_CUT: Readonly<Record<Heading, readonly string[]>> = {
+  down: [
+    '....hH.Hh...',
+    '..DrhhHDrhH.',
+    '.DrhHHDrhhHH',
+    'DhHHDDhhHHDH',
+    'DHHDHhHHDH3.',
+    '.DHDHHD3D32.',
+    '.DHD322e2e2.',
+    '..DD222e2e22',
+    '...32222222.',
+    '....3222222.',
+    '.....322223.',
+    '......3333..',
+  ],
+  up: [
+    '....hH.Hh...',
+    '..DrhhHDrhH.',
+    '.DrhHHDrhhH.',
+    'DhHHDDhhHHD.',
+    'DHHDHhHHDHD.',
+    'DDHHDHHHDD3.',
+    '.DHDHHHDD32.',
+    '..DHDDHD322.',
+    '...D322223..',
+    '....32222...',
+    '.....333....',
+  ],
+};
+
+/** Yeux (« e » dans la grille : œil proche colonne 7, éloigné colonne 9, 1×2) et bouche selon l'expression. */
+const SHORT_CUT_FACES: Readonly<Record<Expression, { eyes: readonly [string, string]; mouth: readonly (readonly [number, number, string])[] }>> = {
+  neutre: { eyes: ['n', 'n'], mouth: [[9, 9, '3']] },
+  // Concentré : paupières baissées (l'ombre du front descend sur l'œil), lèvres serrées.
+  concentree: { eyes: ['3', 'n'], mouth: [[8, 9, '3'], [9, 9, '3']] },
+  // Content : yeux plissés vers le haut, sourire avec les dents.
+  joyeuse: { eyes: ['n', '2'], mouth: [[8, 9, '3'], [9, 9, 'w']] },
+};
+
+/** Point du cou sous la tête (grille de la coupe courte). */
+const SHORT_CUT_NECK: Readonly<Record<Heading, { x: number; y: number }>> = {
+  down: { x: 5, y: 10 },
+  up: { x: 5, y: 9 },
+};
+
+function shortCut(heading: Heading, expression: Expression): Head2D {
+  const face = SHORT_CUT_FACES[expression];
+  const rows = SHORT_CUT[heading].map((row, y) =>
+    [...row].map((ch, x) => (ch === 'e' ? face.eyes[y === 6 ? 0 : 1] : face.mouth.some(([mx, my]) => mx === x && my === y) && heading === 'down' ? face.mouth.find(([mx, my]) => mx === x && my === y)![2] : ch)).join(''),
+  );
+  return { rows, anchor: SHORT_CUT_NECK[heading] };
+}
+
 const cache = new Map<string, Head2D>();
 
 /** Tête composée : crâne et visage, cheveux, oreilles, traits, pilosité faciale. Mise en cache (une par variante). */
@@ -207,7 +270,7 @@ export function headGrid2D(look: HeadLook, heading: Heading, expression: Express
   const key = `${head}|${hairIndex}|${facial}|${heading}|${heading === 'down' ? expression : ''}`;
   const cached = cache.get(key);
   if (cached) return cached;
-  const made = composeHead(SHAPES_2D[head], HAIRS_2D[hairIndex], facial, heading, expression);
+  const made = hairIndex === 1 ? shortCut(heading, expression) : composeHead(SHAPES_2D[head], HAIRS_2D[hairIndex], facial, heading, expression);
   cache.set(key, made);
   return made;
 }

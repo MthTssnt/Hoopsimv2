@@ -1,4 +1,4 @@
-import { HAIR_COLORS, HAIR_HIGHLIGHTS, PALETTE, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
+import { HAIR_COLORS, HAIR_HIGHLIGHTS, HAIR_RAMPS, mixColor, PALETTE, shadeColor, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
 import { SHOES_DOWN, SHOES_UP, SHORTS_DOWN, SHORTS_UP, TORSOS_DOWN, TORSOS_UP, stretch, widen } from '../../../assets/sprites/body';
 import { EAR, EXPRESSIONS, HAIRS, HEADS, type Expression } from '../../../assets/sprites/heads';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
@@ -275,11 +275,32 @@ export interface SlotColors {
   hair: readonly [number, number, number];
   primary: TeamRamp;
   secondary: TeamRamp;
+  /** Rendu 2D : contour coloré de la peau (brun-rouge foncé), ombre profonde et contour des cheveux. */
+  skinEdge?: number;
+  hairDeep?: readonly [number, number];
 }
 
 export function colorsFor(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
   const [base, shadow] = HAIR_COLORS[look.hairColor];
   return { skin: SKIN_TONES[look.skin], hair: [HAIR_HIGHLIGHTS[look.hairColor], base, shadow], primary, secondary };
+}
+
+/**
+ * Couleurs du rendu 2D (`figure2d.ts`) : mêmes teints et mêmes équipes, cheveux en 4 tons (reflet,
+ * clair, base, ombre) pris dans `HAIR_RAMPS`, plus les contours colorés : le ton le plus foncé de
+ * chaque matière (cheveux : dernier ton de la rampe ; peau : brun-rouge foncé tiré de son ombre).
+ */
+export function colors2D(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
+  const ramp = HAIR_RAMPS[look.hairColor];
+  const skin = SKIN_TONES[look.skin];
+  return {
+    skin,
+    hair: [ramp[0], ramp[1], ramp[2]],
+    hairDeep: [ramp[3], ramp[4]],
+    skinEdge: mixColor(shadeColor(skin[2], 0.55), 0x5a1410, 0.3),
+    primary,
+    secondary,
+  };
 }
 
 export function slotColor(slot: Slot, colors: SlotColors): number {
@@ -315,14 +336,15 @@ export function slotColor(slot: Slot, colors: SlotColors): number {
       return colors.secondary[1];
     case 't':
       return colors.secondary[2];
-    // Tons du style en volumes, ramenés aux rampes de 3 tons (ce rendu ne s'en sert pas).
+    // Tons en plus : contours colorés et ombre profonde du rendu 2D (`colors2D`) ; sinon ramenés aux 3 tons.
     case '0':
       return colors.skin[0];
     case '4':
-      return colors.skin[2];
+      return colors.skinEdge ?? colors.skin[2];
     case 'D':
+      return colors.hairDeep?.[0] ?? colors.hair[2];
     case 'E':
-      return colors.hair[2];
+      return colors.hairDeep?.[1] ?? colors.hair[2];
     case 'a':
       return colors.primary[0];
     case 'Q':

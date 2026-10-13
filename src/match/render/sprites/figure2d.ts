@@ -258,6 +258,8 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
   const hx = Math.round(neck.x) - head.anchor.x;
   const hy = Math.round(neck.y) - head.anchor.y;
   const headBottom: number[] = [];
+  // Pixels de la tête : cheveux ou peau (pour le contour coloré).
+  const headKind: ('hair' | 'skin')[] = [];
   head.rows.forEach((row, gy) => {
     for (let gx = 0; gx < row.length; gx++) {
       const slot = slotOf(row[gx]);
@@ -269,6 +271,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
       if (k >= 0 && parts[k].near > headNear && parts[k].group.startsWith('arm')) continue;
       slots[y * W + x] = slot;
       material[y * W + x] = null;
+      headKind[y * W + x] = HAIR_SLOTS.has(slot) ? 'hair' : 'skin';
       headBottom[x] = Math.max(headBottom[x] ?? -1, y);
     }
   });
@@ -292,7 +295,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
       if (above && canvas.get(x - 1, y) && canvas.get(x + 1, y) && canvas.get(x, y + 1)) canvas.set(x, y, above);
     }
   }
-  canvas.outline('o');
+  colorOutline(canvas, (x, y) => headKind[y * W + x] ?? null);
   if (kit === 'referee') stripeReferee(canvas, material);
   return { canvas, chest: S(heading === 'down' ? J.chestFront : J.chestBack) };
 }
@@ -321,6 +324,37 @@ function castsOn(owner: Int16Array, W: number, x: number, y: number, g: number, 
   if (x < 0 || y < 0) return false;
   const j = owner[y * W + x];
   return j >= 0 && gid[j] !== g && parts[j].near > near;
+}
+
+const HAIR_SLOTS: ReadonlySet<Slot> = new Set<Slot>(['r', 'h', 'H', 'D', 'E']);
+
+/**
+ * Contour d'un pixel autour de la silhouette (voisinage à 4). Le corps garde son contour sombre ;
+ * la tête est entourée du ton le plus foncé de chaque matière (cheveux : E, peau : 4, brun-rouge),
+ * un ton plus clair côté lumière (au-dessus et à gauche : D, 3). Là où la tête touche le cou ou les
+ * épaules, il n'y a pas de vide, donc pas de contour entre les deux.
+ */
+export function colorOutline(canvas: SlotCanvas, kindAt: (x: number, y: number) => 'hair' | 'skin' | null): void {
+  const b = canvas.bounds();
+  if (!b) return;
+  const edges: [number, number, Slot][] = [];
+  for (let y = Math.max(0, b.top - 1); y <= Math.min(canvas.height - 1, b.bottom + 1); y++) {
+    for (let x = Math.max(0, b.left - 1); x <= Math.min(canvas.width - 1, b.right + 1); x++) {
+      if (canvas.get(x, y) !== null) continue;
+      let slot: Slot | null = null;
+      for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]] as const) {
+        if (canvas.get(x + dx, y + dy) === null) continue;
+        const kind = kindAt(x + dx, y + dy);
+        // Côté lumière : le vide est à gauche ou au-dessus du pixel peint.
+        const light = dx === 1 || dy === 1;
+        const tone: Slot = kind === null ? 'o' : kind === 'hair' ? (light ? 'D' : 'E') : light ? '3' : '4';
+        // Le contour du corps l'emporte, puis le ton le plus foncé.
+        if (!slot || tone === 'o' || (slot !== 'o' && (tone === 'E' || tone === '4'))) slot = tone;
+      }
+      if (slot) edges.push([x, y, slot]);
+    }
+  }
+  for (const [x, y, slot] of edges) canvas.set(x, y, slot);
 }
 
 /** Pointes d'un pixel et trous d'un pixel de la silhouette : retirés et bouchés (bords propres), dans la boîte peinte. */
