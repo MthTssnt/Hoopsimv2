@@ -1,17 +1,15 @@
 /**
  * Planches de contrôle du rendu 2D, agrandies sans lissage (plus proche voisin), sur fond uni :
  * - `<sortie>.png` : une rangée par animation, images de gauche à droite ;
- * - `<sortie>-tetes.png` : la tête (coupe courte) seule en ×8 de face et de dos, sur 3 teints, ses
- *   expressions ; puis le joueur entier en ×4 et en taille réelle (×1) : arrêt et course en
- *   diagonale bas, arrêt et course de dos, 3 joueurs à l'arrêt (un par teint).
+ * - `<sortie>-tetes.png` : la tête (coupe courte) en ×8 avec 4 visages différents, ses expressions,
+ *   un visage sur 3 teints ; puis 3 joueurs entiers à l'arrêt en ×4 et en taille réelle (×1).
  * PNG écrits avec le zlib de Node (sans dépendance) ; affiche le temps de rendu d'une image.
  *   npm run sprites -- [sortie.png] [échelle de la première planche]
  */
 import { writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { teamRamp } from '../src/assets/palette';
-import type { Expression } from '../src/assets/sprites/heads';
-import { headGrid2D } from '../src/assets/sprites/heads2d';
+import { FACE_EXPRESSIONS, headGrid2D, type FaceExpression } from '../src/assets/sprites/heads2d';
 import type { Appearance } from '../src/match/render/sprites/appearance';
 import { SlotCanvas, slotOf } from '../src/match/render/sprites/canvas';
 import { colors2D, slotColor, type SlotColors } from '../src/match/render/sprites/compose';
@@ -114,7 +112,7 @@ console.log(writeSheet(out, bodies, false));
 
 // Planche des têtes : la coupe courte, seule (×8), sur 3 teints (×8), puis le joueur entier (×4 et ×1).
 const HEAD_CELL = 18;
-const headCell = (look: Appearance, heading: Heading, expression: Expression = 'neutre') => {
+const headCell = (look: Appearance, heading: Heading, expression: FaceExpression = 'neutre') => {
   const grid = headGrid2D(look, heading, expression);
   const canvas = new SlotCanvas(HEAD_CELL, HEAD_CELL);
   grid.rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -129,23 +127,22 @@ const SKINS = [
   { name: 'MOYENNE', skin: 2 },
   { name: 'FONCEE', skin: 3 },
 ];
-const player = (skin: number, number = 23): Appearance => ({ ...LOOK, skin, hair: 1, hairColor: skin === 3 ? 0 : 1, number });
+const player = (skin: number, face = 0, number = 23, hairColor = 1): Appearance => ({ ...LOOK, skin, hair: 1, hairColor, face, number });
 const medium = player(2);
-const frames = (anim: Anim2D, heading: Heading, look = medium) =>
-  poses2D(anim).map((f) => ({ canvas: renderFigure2D(look, f.pose, heading).canvas, colors: team(look) }));
-const full = (label: string, z: number, cells: SheetRow['cells']): SheetRow => ({ label, zoom: z, cellW: FRAME.width, cellH: FRAME.height, cells });
-const playerRows = (z: number): SheetRow[] => [
-  full(`ARRET X${z}`, z, frames('idle', 'down')),
-  full(`COURSE X${z}`, z, frames('run', 'down')),
-  full(`DOS X${z}`, z, [...frames('idle', 'up'), ...frames('run', 'up')]),
-  full(`3 TEINTS X${z}`, z, SKINS.map(({ skin }, k) => ({ canvas: renderFigure2D(player(skin, [7, 23, 34][k]), poses2D('idle')[0].pose, 'down').canvas, colors: team(player(skin)) }))),
-];
+const full = (label: string, z: number, looks: Appearance[]): SheetRow => ({
+  label,
+  zoom: z,
+  cellW: FRAME.width,
+  cellH: FRAME.height,
+  cells: looks.map((l) => ({ canvas: renderFigure2D(l, poses2D('idle')[0].pose, 'down').canvas, colors: team(l) })),
+});
+const trio = [player(0, 0, 7, 2), player(2, 1, 23, 1), player(3, 3, 34, 0)];
 const heads: SheetRow[] = [
-  { label: 'TETE X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: [headCell(medium, 'down'), headCell(medium, 'up')] },
-  { label: 'TEINTS X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: SKINS.flatMap(({ skin }) => [headCell(player(skin), 'down'), headCell(player(skin), 'up')]) },
-  { label: 'EXPRESSIONS X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: (['neutre', 'concentree', 'joyeuse'] as const).map((e) => headCell(medium, 'down', e)) },
-  ...playerRows(4),
-  ...playerRows(1),
+  { label: '4 VISAGES X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: [0, 1, 2, 3].map((face) => headCell(player(2, face), 'down')) },
+  { label: 'EXPRESSIONS X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: FACE_EXPRESSIONS.map((e) => headCell(medium, 'down', e)) },
+  { label: '3 TEINTS X8', zoom: 8, cellW: HEAD_CELL, cellH: HEAD_CELL, cells: SKINS.map(({ skin }) => headCell(player(skin, 1), 'down')) },
+  full('JOUEURS X4', 4, trio),
+  full('JOUEURS X1', 1, trio),
 ];
 console.log(writeSheet(out.replace(/\.png$/, '') + '-tetes.png', heads, true));
 

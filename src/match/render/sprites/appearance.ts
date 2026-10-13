@@ -14,6 +14,8 @@ export interface Appearance {
   number: number;
   /** Pilosité faciale du rendu 2D (`FACIAL_HAIR_2D`, 0 : aucune). */
   facialHair?: number;
+  /** Visage type du rendu 2D (`FACE_TRAITS`), par défaut celui de la forme de tête. */
+  face?: number;
 }
 
 export interface AppearanceSource {

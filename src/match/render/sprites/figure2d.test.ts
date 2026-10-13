@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACIAL_HAIR_2D, HAIRS_2D, headGrid2D, SHAPES_2D } from '../../../assets/sprites/heads2d';
+import { FACE_EXPRESSIONS, FACE_TRAITS, FACIAL_HAIR_2D, HAIRS_2D, headGrid2D, SHAPES_2D, type FaceExpression } from '../../../assets/sprites/heads2d';
 import type { Expression } from '../../../assets/sprites/heads';
 import type { Appearance } from './appearance';
 import type { SlotCanvas, Slot } from './canvas';
@@ -49,7 +49,7 @@ describe('rendu 2D : proportions et cadre', () => {
     const head = headGrid2D(AILIER, 'down');
     const rows = head.rows.filter((r) => /[^.]/.test(r)).length;
     expect(rows / height(AILIER)).toBeGreaterThan(0.22);
-    expect(rows / height(AILIER)).toBeLessThan(0.3);
+    expect(rows / height(AILIER)).toBeLessThanOrEqual(0.31);
   });
 
   it('pieds sur la rangée du sol (contour dessous) au sol, en l’air à l’envol ; tout tient dans le cadre', () => {
@@ -302,13 +302,13 @@ describe('têtes : dessin', () => {
 });
 
 describe('tête « coupe courte » (nouvelle technique)', () => {
-  const grid = (heading: Heading, e: Expression = 'neutre') => headGrid2D({ head: 0, hair: 1 }, heading, e).rows;
+  const grid = (heading: Heading, e: FaceExpression = 'neutre') => headGrid2D({ head: 0, hair: 1 }, heading, e).rows;
   const count = (rows: string[], chars: string) => rows.join('').split('').filter((c) => chars.includes(c)).length;
 
   it('les cheveux sont le volume principal : 4 tons, plus de la moitié de la tête ; de dos, presque toute la tête', () => {
     for (const [heading, share] of [['down', 0.5], ['up', 0.7]] as const) {
       const rows = grid(heading);
-      expect(count(rows, 'rhHD') / count(rows, 'rhHD23n'), heading).toBeGreaterThan(share);
+      expect(count(rows, 'rhHD') / count(rows, 'rhHD1234nw'), heading).toBeGreaterThan(share);
       for (const tone of 'rhHD') expect(count(rows, tone), `${heading} ${tone}`).toBeGreaterThan(0);
     }
   });
@@ -318,14 +318,29 @@ describe('tête « coupe courte » (nouvelle technique)', () => {
     expect(top.match(/[rhHD]+/g)!.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('visage minimaliste : yeux 1×2, pas de sourcils, peau en 2 tons ; aucun trait de dos', () => {
-    const down = grid('down');
-    const eyes = down.flatMap((r, y) => [...r].flatMap((c, x) => (c === 'n' ? [`${x},${y}`] : [])));
-    expect(eyes).toHaveLength(4);
-    expect(new Set(eyes.map((p) => p.split(',')[0])).size).toBe(2);
-    expect(count(down, '1')).toBe(0);
-    expect(count(grid('up'), 'nw')).toBe(0);
-    expect(new Set(EXPRESSIONS.map((e) => grid('down', e).join('/'))).size).toBe(3);
+  it('visage : noir réservé aux 2 pupilles, blanc d’œil, sourcils séparés de l’œil par la peau ; aucun trait de dos', () => {
+    for (let face = 0; face < FACE_TRAITS.length; face++) {
+      for (const e of FACE_EXPRESSIONS) {
+        const rows = headGrid2D({ head: 0, hair: 1, face }, 'down', e).rows;
+        const at = (x: number, y: number) => rows[y]?.[x] ?? '.';
+        const pupils = rows.flatMap((r, y) => [...r].flatMap((c, x) => (c === 'n' ? [[x, y]] : [])));
+        expect(pupils, `${face} ${e}`).toHaveLength(2);
+        // L'œil éloigné (à droite) est plus étroit : pas de blanc à côté de lui.
+        const [nearEye, farEye] = [...pupils].sort((a, b) => a[0] - b[0]);
+        expect(at(farEye[0] - 1, farEye[1])).not.toBe('w');
+        if (e !== 'effort') expect(at(nearEye[0], nearEye[1] - 1), `${face} ${e} : pas de sourcil collé à l’œil`).not.toMatch(/[rhHD]/);
+      }
+      expect(count(headGrid2D({ head: 0, hair: 1, face }, 'down').rows, 'w'), `visage ${face}`).toBeLessThanOrEqual(1);
+    }
+    expect(count(grid('up'), 'nw4')).toBe(0);
+  });
+
+  it('au moins 4 expressions distinctes et des visages types différents', () => {
+    expect(FACE_EXPRESSIONS.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(FACE_EXPRESSIONS.map((e) => grid('down', e).join('/'))).size).toBe(FACE_EXPRESSIONS.length);
+    expect(new Set(FACE_TRAITS.map((_, face) => headGrid2D({ head: 0, hair: 1, face }, 'down').rows.join('/'))).size).toBe(FACE_TRAITS.length);
+    // Joie et effort montrent les dents (blanc cassé).
+    for (const e of ['joyeuse', 'effort'] as const) expect(count(grid('down', e), 'w')).toBeGreaterThanOrEqual(2);
   });
 
   it('contour coloré autour de la tête, contour sombre autour du corps, rien entre la tête et le cou', () => {

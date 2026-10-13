@@ -195,6 +195,8 @@ export interface Head2D {
 export interface HeadLook extends Pick<Appearance, 'head' | 'hair'> {
   /** Indice dans `FACIAL_HAIR_2D` (0 : aucune). */
   facialHair?: FacialHair2D;
+  /** Indice dans `FACE_TRAITS` (par défaut : celui de la forme de tête). */
+  face?: number;
 }
 
 /**
@@ -208,6 +210,8 @@ export interface HeadLook extends Pick<Appearance, 'head' | 'hair'> {
  * Pour l'instant une seule tête, la coupe courte (coiffure 1), avant de décliner les autres.
  */
 const SHORT_CUT: Readonly<Record<Heading, readonly string[]>> = {
+  // Rangées 0-5 : cheveux (validés). Rangées 6-12 : visage, une rangée de plus que la première
+  // version pour loger sourcil, peau, paupière et œil sans qu'ils se touchent.
   down: [
     '....hH.Hh...',
     '..DrhhHDrhH.',
@@ -215,9 +219,10 @@ const SHORT_CUT: Readonly<Record<Heading, readonly string[]>> = {
     'DhHHDDhhHHDH',
     'DHHDHhHHDH3.',
     '.DHDHHD3D32.',
-    '.DHD322e2e2.',
-    '..DD222e2e22',
+    '.DHD3222222.',
+    '..DD2222222.',
     '...32222222.',
+    '...322222222',
     '....3222222.',
     '.....322223.',
     '......3333..',
@@ -237,40 +242,101 @@ const SHORT_CUT: Readonly<Record<Heading, readonly string[]>> = {
   ],
 };
 
-/** Yeux (« e » dans la grille : œil proche colonne 7, éloigné colonne 9, 1×2) et bouche selon l'expression. */
-const SHORT_CUT_FACES: Readonly<Record<Expression, { eyes: readonly [string, string]; mouth: readonly (readonly [number, number, string])[] }>> = {
-  neutre: { eyes: ['n', 'n'], mouth: [[9, 9, '3']] },
-  // Concentré : paupières baissées (l'ombre du front descend sur l'œil), lèvres serrées.
-  concentree: { eyes: ['3', 'n'], mouth: [[8, 9, '3'], [9, 9, '3']] },
-  // Content : yeux plissés vers le haut, sourire avec les dents.
-  joyeuse: { eyes: ['n', '2'], mouth: [[8, 9, '3'], [9, 9, 'w']] },
-};
+/** Expressions du visage du rendu 2D : celles du jeu, plus l'effort (ou le cri) et la déception. */
+export type FaceExpression = Expression | 'effort' | 'decu';
+export const FACE_EXPRESSIONS: readonly FaceExpression[] = ['neutre', 'concentree', 'joyeuse', 'effort', 'decu'];
+
+/** Traits qui varient d'un joueur à l'autre. */
+export interface FaceTraits {
+  eyes: 'rond' | 'etroit' | 'lourd';
+  brows: 'fin' | 'epais';
+  nose: 'fin' | 'large';
+  mouth: 'fine' | 'pleine';
+}
+
+/** Visages types (le joueur en reçoit un, d'après son apparence). */
+export const FACE_TRAITS: readonly FaceTraits[] = [
+  { eyes: 'rond', brows: 'fin', nose: 'fin', mouth: 'fine' },
+  { eyes: 'etroit', brows: 'epais', nose: 'large', mouth: 'pleine' },
+  { eyes: 'lourd', brows: 'epais', nose: 'fin', mouth: 'fine' },
+  { eyes: 'rond', brows: 'epais', nose: 'large', mouth: 'pleine' },
+  { eyes: 'etroit', brows: 'fin', nose: 'fin', mouth: 'pleine' },
+  { eyes: 'lourd', brows: 'fin', nose: 'large', mouth: 'fine' },
+];
+
+type Pixel = readonly [number, number, string];
+
+/**
+ * Visage de la coupe courte (diagonale bas), en pixels posés sur la grille : tout est fait avec
+ * les tons de la peau (2 base, 3 ombre, 4 ombre foncée, 1 lumière), le blanc cassé (w) et la
+ * couleur foncée des cheveux (sourcils) ; le noir (n) est réservé aux pupilles.
+ * Repères : sourcils rangée 6, paupières 7, yeux 8 (œil proche colonnes 6-7, œil éloigné 9, plus
+ * étroit), pointe du nez 11 en rangée 9, bouche rangée 10.
+ */
+function shortCutFace(t: FaceTraits, e: FaceExpression): Pixel[] {
+  const px: Pixel[] = [];
+  const brow = t.brows === 'epais' ? 'D' : 'H';
+  // Modelé : lumière sur la pommette, ombre sous l'arcade entre les yeux.
+  px.push([6, 9, '1'], [8, 7, '3']);
+  // Nez : arête éclairée, ombre dessous ; le nez large descend d'une rangée de plus.
+  px.push([10, 8, '1'], [10, 10, '3']);
+  if (t.nose === 'large') px.push([11, 10, '2'], [10, 9, '3']);
+  // Paupières et yeux : 1 blanc + 1 pupille (regard vers l'avant) ; l'œil éloigné est plus étroit.
+  const lids = t.eyes !== 'rond' || e === 'concentree' || e === 'decu';
+  const wide = e === 'effort';
+  if (lids && !wide) px.push([6, 7, '3'], [7, 7, '3'], [9, 7, '3']);
+  px.push([6, 8, t.eyes === 'lourd' && !wide ? '3' : 'w'], [7, 8, 'n'], [9, 8, 'n']);
+  // Sourcils (1 pixel de peau au-dessus de l'œil) : ils portent l'expression.
+  const near: Point[] = t.brows === 'epais' ? [[5, 6], [6, 6], [7, 6]] : [[6, 6], [7, 6]];
+  const far: Point[] = t.brows === 'epais' ? [[9, 6], [10, 6]] : [[9, 6]];
+  const brows: Point[] =
+    e === 'joyeuse'
+      ? [...near.map(([x, y]): Point => (x === 7 ? [x, y - 1] : [x, y])), ...far.map(([x, y]): Point => (x === 9 ? [x, y - 1] : [x, y]))]
+      : e === 'effort'
+        ? [[7, 5], [9, 5], ...(t.brows === 'epais' ? ([[10, 5]] as Point[]) : []), ...near.filter(([x]) => x < 7)]
+        : e === 'decu'
+          ? [...near, [8, 7], ...far]
+          : [...near, ...far];
+  for (const [x, y] of brows) px.push([x, y, brow]);
+  // Bouche en ombre foncée de la peau (4), lèvre claire dessous pour les lèvres pleines.
+  const lip = t.mouth === 'pleine';
+  const mouths: Record<FaceExpression, Pixel[]> = {
+    neutre: lip ? [[7, 10, '4'], [8, 10, '4'], [9, 10, '4'], [8, 11, '1']] : [[7, 10, '4'], [8, 10, '4']],
+    concentree: [[7, 10, '4'], [8, 10, '4'], [9, 10, '4'], ...(lip ? ([[8, 11, '1']] as Pixel[]) : [])],
+    joyeuse: [[6, 9, '4'], [7, 10, 'w'], [8, 10, 'w'], [9, 9, '4'], ...(lip ? ([[8, 11, '1']] as Pixel[]) : [])],
+    effort: [[7, 10, 'w'], [8, 10, 'w'], [7, 11, '4'], [8, 11, '4'], ...(lip ? ([[9, 10, '4']] as Pixel[]) : [])],
+    decu: [[6, 11, '4'], [7, 10, '4'], [8, 10, '4'], [9, 11, '4']],
+  };
+  px.push(...mouths[e]);
+  return px;
+}
 
 /** Point du cou sous la tête (grille de la coupe courte). */
 const SHORT_CUT_NECK: Readonly<Record<Heading, { x: number; y: number }>> = {
-  down: { x: 5, y: 10 },
+  down: { x: 5, y: 11 },
   up: { x: 5, y: 9 },
 };
 
-function shortCut(heading: Heading, expression: Expression): Head2D {
-  const face = SHORT_CUT_FACES[expression];
-  const rows = SHORT_CUT[heading].map((row, y) =>
-    [...row].map((ch, x) => (ch === 'e' ? face.eyes[y === 6 ? 0 : 1] : face.mouth.some(([mx, my]) => mx === x && my === y) && heading === 'down' ? face.mouth.find(([mx, my]) => mx === x && my === y)![2] : ch)).join(''),
-  );
-  return { rows, anchor: SHORT_CUT_NECK[heading] };
+function shortCut(heading: Heading, expression: FaceExpression, traits: FaceTraits): Head2D {
+  const rows = SHORT_CUT[heading].map((row) => [...row]);
+  if (heading === 'down') for (const [x, y, ch] of shortCutFace(traits, expression)) if (rows[y]?.[x] !== undefined) rows[y][x] = ch;
+  return { rows: rows.map((r) => r.join('')), anchor: SHORT_CUT_NECK[heading] };
 }
 
 const cache = new Map<string, Head2D>();
 
 /** Tête composée : crâne et visage, cheveux, oreilles, traits, pilosité faciale. Mise en cache (une par variante). */
-export function headGrid2D(look: HeadLook, heading: Heading, expression: Expression = 'neutre'): Head2D {
+export function headGrid2D(look: HeadLook, heading: Heading, expression: FaceExpression = 'neutre'): Head2D {
   const head = look.head % SHAPES_2D.length;
   const hairIndex = look.hair % HAIRS_2D.length;
   const facial = (look.facialHair ?? 0) % FACIAL_HAIR_2D.length;
-  const key = `${head}|${hairIndex}|${facial}|${heading}|${heading === 'down' ? expression : ''}`;
+  const face = (look.face ?? look.head) % FACE_TRAITS.length;
+  const key = `${head}|${hairIndex}|${facial}|${face}|${heading}|${heading === 'down' ? expression : ''}`;
   const cached = cache.get(key);
   if (cached) return cached;
-  const made = hairIndex === 1 ? shortCut(heading, expression) : composeHead(SHAPES_2D[head], HAIRS_2D[hairIndex], facial, heading, expression);
+  // Ancien style (en attendant d'être refait) : l'effort y devient « concentré », la déception « neutre ».
+  const old: Expression = expression === 'effort' ? 'concentree' : expression === 'decu' ? 'neutre' : expression;
+  const made = hairIndex === 1 ? shortCut(heading, expression, FACE_TRAITS[face]) : composeHead(SHAPES_2D[head], HAIRS_2D[hairIndex], facial, heading, old);
   cache.set(key, made);
   return made;
 }
