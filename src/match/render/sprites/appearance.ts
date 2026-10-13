@@ -12,6 +12,8 @@ export interface Appearance {
   hair: number;
   hairColor: number;
   number: number;
+  /** Pilosité faciale du rendu 2D (`FACIAL_HAIR_2D`, 0 : aucune). */
+  facialHair?: number;
 }
 
 export interface AppearanceSource {

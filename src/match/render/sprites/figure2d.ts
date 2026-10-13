@@ -257,6 +257,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
   const headNear = neck.near + 0.6;
   const hx = Math.round(neck.x) - head.anchor.x;
   const hy = Math.round(neck.y) - head.anchor.y;
+  const headBottom: number[] = [];
   head.rows.forEach((row, gy) => {
     for (let gx = 0; gx < row.length; gx++) {
       const slot = slotOf(row[gx]);
@@ -268,7 +269,15 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
       if (k >= 0 && parts[k].near > headNear && parts[k].group.startsWith('arm')) continue;
       slots[y * W + x] = slot;
       material[y * W + x] = null;
+      headBottom[x] = Math.max(headBottom[x] ?? -1, y);
     }
+  });
+  // Ombre portée de la tête (sous le menton et la mâchoire) : le pixel du cou, des trapèzes ou du
+  // col juste dessous passe au ton d'ombre ; elle relie la tête au cou, sans contour entre les deux.
+  headBottom.forEach((bottom, x) => {
+    const i = (bottom + 1) * W + x;
+    const m = material[i];
+    if (bottom + 1 < H && m && m !== 'sole' && slots[i]) slots[i] = TONES[m][2];
   });
 
   // Un seul contour sombre autour de toute la silhouette ; avant, les trous d'un pixel entre la

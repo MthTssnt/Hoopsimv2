@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HAIRS_2D, headGrid2D, SHAPES_2D } from '../../../assets/sprites/heads2d';
+import { FACIAL_HAIR_2D, HAIRS_2D, headGrid2D, SHAPES_2D } from '../../../assets/sprites/heads2d';
 import type { Expression } from '../../../assets/sprites/heads';
 import type { Appearance } from './appearance';
 import type { SlotCanvas, Slot } from './canvas';
@@ -169,17 +169,20 @@ describe('rendu 2D : tête, numéro, orientation', () => {
 });
 
 describe('têtes : toutes les variantes existent', () => {
-  it('5 formes × 10 coiffures × 3 expressions, dans les deux diagonales ; coiffures toutes différentes', () => {
+  it('5 formes × 10 coiffures × 3 expressions × 5 pilosités, dans les deux diagonales ; coiffures toutes différentes', () => {
     expect(SHAPES_2D).toHaveLength(5);
     expect(HAIRS_2D).toHaveLength(10);
+    expect(FACIAL_HAIR_2D).toHaveLength(5);
     for (const heading of HEADINGS) {
       for (let head = 0; head < 5; head++) {
         const byHair = new Set<string>();
         for (let hair = 0; hair < 10; hair++) {
           for (const expression of EXPRESSIONS) {
-            const g = headGrid2D({ head, hair }, heading, expression);
-            expect(g.rows.every((r) => r.length === g.rows[0].length)).toBe(true);
-            expect(g.rows[g.anchor.y][g.anchor.x], `${heading} ${head} ${hair}`).not.toBe('.');
+            for (let facialHair = 0; facialHair < 5; facialHair++) {
+              const g = headGrid2D({ head, hair, facialHair }, heading, expression);
+              expect(g.rows.every((r) => r.length === g.rows[0].length)).toBe(true);
+              expect(g.rows[g.anchor.y][g.anchor.x], `${heading} ${head} ${hair}`).not.toBe('.');
+            }
           }
           byHair.add(headGrid2D({ head, hair }, heading).rows.join('/'));
         }
@@ -188,20 +191,109 @@ describe('têtes : toutes les variantes existent', () => {
     }
   });
 
-  it('les coiffures dégagent les yeux ; les expressions diffèrent', () => {
+  it('5 morphologies différentes, de face comme de dos', () => {
+    for (const heading of HEADINGS) expect(new Set(SHAPES_2D.map((s) => s[heading].join('/'))).size).toBe(5);
+  });
+
+  it('les expressions changent les sourcils et la bouche ; l’œil reste petit (1 px)', () => {
     for (let head = 0; head < 5; head++) {
-      for (let hair = 0; hair < 10; hair++) {
-        const eyes = headGrid2D({ head, hair }, 'down').rows.join('').split('n').length - 1;
-        expect(eyes, `${head} ${hair}`).toBeGreaterThanOrEqual(2);
-      }
-      const faces = new Set(EXPRESSIONS.map((e) => headGrid2D({ head, hair: 1 }, 'down', e).rows.join('/')));
-      expect(faces.size).toBe(3);
+      const faces = EXPRESSIONS.map((e) => headGrid2D({ head, hair: 1 }, 'down', e).rows.join(''));
+      expect(new Set(faces).size).toBe(3);
+      for (const f of faces) expect(f.split('n').length - 1).toBe(2);
     }
   });
 
-  it('forme de tête et coiffure se voient dans l’image du joueur (teint et couleurs : choisis à la cuisson)', () => {
+  it('les pilosités faciales diffèrent et laissent la bouche ; de dos, la barbe se voit au bord de la mâchoire', () => {
+    for (let head = 0; head < 5; head++) {
+      const faces = [0, 1, 2, 3, 4].map((facialHair) => headGrid2D({ head, hair: 1, facialHair }, 'down').rows.join('/'));
+      expect(new Set(faces).size, `forme ${head}`).toBe(5);
+      const backs = [0, 1].map((facialHair) => headGrid2D({ head, hair: 1, facialHair }, 'up').rows.join('/'));
+      expect(backs[1]).not.toBe(backs[0]);
+    }
+  });
+});
+
+describe('têtes : dessin', () => {
+  const at = (g: { rows: string[] }, x: number, y: number) => g.rows[y]?.[x] ?? '.';
+  const skin = (c: string) => c === '1' || c === '2' || c === '3';
+  const hairTone = (c: string) => c === 'r' || c === 'h' || c === 'H';
+  // Coordonnées de la grille composée : origine du crâne en (3, 4).
+  const OX = 3;
+  const OY = 4;
+
+  it('un peu plus haute que large, environ 12 rangées comme aujourd’hui', () => {
+    for (let head = 0; head < 5; head++) {
+      const g = headGrid2D({ head, hair: 1 }, 'down');
+      const rows = g.rows.filter((r) => /[^.]/.test(r)).length;
+      const xs = g.rows.flatMap((r) => [...r].flatMap((c, x) => (c === '.' ? [] : [x])));
+      const width = Math.max(...xs) - Math.min(...xs) + 1;
+      expect(rows, SHAPES_2D[head].name).toBeGreaterThanOrEqual(width);
+      expect(rows).toBeGreaterThanOrEqual(12);
+      expect(rows).toBeLessThanOrEqual(13);
+    }
+  });
+
+  it('profil lisible côté visage : le nez dépasse d’1 px, l’arcade aussi ; menton sous la bouche', () => {
+    for (const shape of SHAPES_2D) {
+      const right = shape.down.map((r) => r.lastIndexOf('x'));
+      const nose = right.indexOf(Math.max(...right));
+      const [, ey] = shape.eye;
+      expect(nose, shape.name).toBeGreaterThan(ey);
+      expect(right[nose] - right[nose - 1], shape.name).toBe(1);
+      expect(right[nose] - right[nose + 1], shape.name).toBe(1);
+      expect(right[ey - 1], `arcade ${shape.name}`).toBeGreaterThan(right[ey]);
+      const [, my] = shape.mouth;
+      expect(right.length - 1, `menton ${shape.name}`).toBeGreaterThan(my);
+    }
+  });
+
+  it('cheveux sur la forme du crâne : front dégagé sous la ligne d’implantation, patte devant l’oreille, oreille visible', () => {
+    for (let head = 0; head < 5; head++) {
+      const shape = SHAPES_2D[head];
+      for (const hair of [0, 1, 3, 5, 7, 8]) {
+        const g = headGrid2D({ head, hair }, 'down');
+        const [ex, ey] = shape.eye;
+        const [ax, ay] = shape.ear.down;
+        const name = `${shape.name} ${HAIRS_2D[hair].name}`;
+        expect(hairTone(at(g, OX + ex, OY)) || 'sS'.includes(at(g, OX + ex, OY)), `${name} : cheveux (ou bandeau) sur le crâne`).toBe(true);
+        expect(skin(at(g, OX + ex + 1, OY + ey - 1)), `${name} : front et paupière`).toBe(true);
+        expect(hairTone(at(g, OX + ex - 2, OY + ay)), `${name} : patte`).toBe(true);
+        expect(skin(at(g, OX + ax, OY + ay + 1)), `${name} : oreille`).toBe(true);
+        expect(at(g, OX + ex - 1 + 2, OY + ey + 3), `${name} : rien devant le visage`).not.toBe('h');
+      }
+    }
+  });
+
+  it('de dos : pas de visage, l’arrière du crâne en cheveux, les deux oreilles, la nuque en peau sous la ligne des cheveux', () => {
+    for (let head = 0; head < 5; head++) {
+      const shape = SHAPES_2D[head];
+      const g = headGrid2D({ head, hair: 1 }, 'up');
+      const [ax, ay] = shape.ear.up;
+      expect(g.rows.join('').includes('n'), shape.name).toBe(false);
+      expect(hairTone(at(g, OX + 2, OY + 3)), `${shape.name} : arrière du crâne`).toBe(true);
+      expect(skin(at(g, OX + ax, OY + ay + 1)), `${shape.name} : oreille proche`).toBe(true);
+      const left = shape.up[ay].indexOf('x');
+      expect(skin(at(g, OX + left - 1, OY + ay)), `${shape.name} : oreille éloignée`).toBe(true);
+      expect(hairTone(at(g, OX + 3, OY + shape.nape - 1)), `${shape.name} : cheveux sur la nuque`).toBe(true);
+      expect(skin(at(g, OX + 3, OY + shape.nape)), `${shape.name} : nuque`).toBe(true);
+    }
+  });
+
+  it('ombre sous le menton : la tête se raccorde au cou par un ton d’ombre, sans contour entre les deux', () => {
+    for (let head = 0; head < 5; head++) {
+      const c = renderFigure2D({ ...AILIER, head }, idle[0].pose, 'down').canvas;
+      let shadow = 0;
+      c.forEach((x, y, slot) => {
+        if (y < 20 || y > 40 || !['3', 'q', 't'].includes(slot)) return;
+        if (['1', '2', '3'].includes(c.get(x, y - 1) ?? '')) shadow++;
+      });
+      expect(shadow, SHAPES_2D[head].name).toBeGreaterThan(2);
+    }
+  });
+
+  it('forme de tête, coiffure et pilosité se voient dans l’image du joueur (teint et couleurs : choisis à la cuisson)', () => {
     const base = pixels(renderFigure2D(AILIER, idle[0].pose, 'down').canvas);
-    for (const look of [{ ...AILIER, head: 3 }, { ...AILIER, hair: 2 }]) expect(pixels(renderFigure2D(look, idle[0].pose, 'down').canvas)).not.toEqual(base);
+    for (const look of [{ ...AILIER, head: 3 }, { ...AILIER, hair: 2 }, { ...AILIER, facialHair: 2 }]) expect(pixels(renderFigure2D(look, idle[0].pose, 'down').canvas)).not.toEqual(base);
   });
 });
 
