@@ -17,14 +17,12 @@ import { awayLook, contrastingTeam, drawGrid, teamLook, type TeamLook } from '..
 import { drawHoopArt } from '../render/arena/hoopArt';
 import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
-import { createControlRing, createNameLabel, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
-import { spreadLabels } from '../render/hud/labels';
+import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
-import { normalizeText } from '../render/pixelFont';
 import { AIR_FRAMES, animTimeScale, blendBall, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
-import { appearanceFor, type Appearance } from '../render/sprites/appearance';
-import { animationKey, BakeQueue, bakePlayer, bakeShadow, SheetBaker, type BakedPlayer, type Clock } from '../render/sprites/bake';
+import { appearance2DFor, appearanceFor, type Appearance } from '../render/sprites/appearance';
+import { animationKey, BakeQueue, bakePlayer, bakeShadow, SheetBaker, type BakedPlayer, type Clock, type Renderer } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME, raisedHandTop, seenFromBehind } from '../render/sprites/rig';
 import { buildBoxView, type BoxView } from '../boxView';
@@ -93,8 +91,6 @@ const GRADE_LABELS: Record<TimingGrade, string> = { perfect: 'parfait', green: '
  * arrondies. Le HUD garde ses propres tailles (repris à l'incrément 18).
  */
 const MATCH_PX = {
-  /** Étiquette du nom : sous les pieds. */
-  labelBelowFeet: 4,
   /** Annonces et messages : au-dessus de la tête. */
   overHead: 4,
   /** Montée d'une annonce (PARFAIT, BON…) pendant son affichage. */
@@ -102,7 +98,7 @@ const MATCH_PX = {
   /** Jauge du tir : écart au corps et hauteur de son bas au-dessus du sol. */
   gaugeSide: 13,
   gaugeAbove: 40,
-  /** Boîte suivie par la caméra : demi-largeur autour du joueur, sous ses pieds (étiquette). */
+  /** Boîte suivie par la caméra : demi-largeur autour du joueur, marge sous ses pieds. */
   followHalfWidth: 13,
   followBelow: 16,
   /** Ballon suivi seul (Regarder, sans porteur) : hauteur gardée au-dessus de lui. */
@@ -186,19 +182,24 @@ function targetFromUrl(perTeam: number): number {
   return Number.isInteger(value) && value >= 1 ? value : defaultTarget(perTeam);
 }
 
+/**
+ * Rendu des joueurs : le rendu 2D (une silhouette, grosse tête, `figure2d.ts`) par défaut ;
+ * `&sprites=ancien` dans l'URL garde l'ancien rig, en attendant la validation en jeu.
+ */
+export function rendererFromUrl(): Renderer {
+  return new URLSearchParams(window.location.search).get('sprites') === 'ancien' ? 'rig' : '2d';
+}
+
 const decimal = (value: number) => value.toFixed(2).replace('.', ',');
 const rounded = (p: Point): Point => ({ x: Math.round(p.x), y: Math.round(p.y) });
 
-/** Un joueur de test cuit : sprites aux couleurs de son camp, ombre, étiquette. */
+/** Un joueur cuit : sprites aux couleurs de son camp, ombre (pas de nom sur le terrain). */
 interface CastMember {
   player: Player;
   team: TeamLook;
   look: Appearance;
   baked: BakedPlayer;
   shadow: string;
-  /** Étiquette normale, et soulignée quand tu le contrôles. */
-  label: string;
-  labelOn: string;
   /** Hauteur du sprite au-dessus des pieds (px), du sommet de la tête aux semelles. */
   height: number;
 }
@@ -229,7 +230,6 @@ interface BodySprite {
   member: CastMember;
   sprite: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Image;
-  label: Phaser.GameObjects.Image;
   /** Position : diagonale haut quand il monte, bas quand il descend ; gardée à l'horizontale et à l'arrêt. */
   heading: Heading;
   /** Pieds dessinés (relevés pendant l'accroche d'un dunk) et point au sol. */
@@ -259,6 +259,8 @@ function createShotMarker(scene: Phaser.Scene, key: string): void {
 export class MatchScene extends Phaser.Scene {
   private settings!: MatchSettings;
   private seed = 0;
+  /** Rendu des joueurs (`&sprites=ancien` : ancien rig). */
+  private spriteRenderer: Renderer = rendererFromUrl();
   private rng!: Rng;
   private perTeam = 3;
   private target: number = defaultTarget(3);
@@ -654,16 +656,16 @@ export class MatchScene extends Phaser.Scene {
 
   private bakeCastMember(player: Player, key: string, team: TeamLook, sheet?: SheetBaker): CastMember {
     const look = appearanceFor(player);
-    const baked = sheet ? sheet.finish(this) : bakePlayer(this, key, look, { primary: team.primary, secondary: team.secondary });
+    const baked = sheet ? sheet.finish(this) : bakePlayer(this, key, this.spriteLook(player), { primary: team.primary, secondary: team.secondary, renderer: this.spriteRenderer });
     const shadowWidth = look.heavy ? 26 : 20;
     const shadow = `player-shadow-${shadowWidth}`;
     bakeShadow(this, shadow, shadowWidth, 5);
-    const label = `label-${key}`;
-    const labelOn = `label-${key}-on`;
-    // Nom de famille seul, en entier : l'étiquette prend la largeur du nom ; soulignée quand tu le contrôles.
-    createNameLabel(this, label, normalizeText(player.lastName), false);
-    createNameLabel(this, labelOn, normalizeText(player.lastName), true);
-    return { player, team, look, baked, shadow, label, labelOn, height: FRAME.groundY - bodyLayout(baked.dims).headTop };
+    return { player, team, look, baked, shadow, height: FRAME.groundY - (baked.metrics?.headTop ?? bodyLayout(baked.dims).headTop) };
+  }
+
+  /** Apparence dessinée dans la feuille (rendu 2D : coiffures, yeux, pilosité en plus). La carte du HUD garde `appearanceFor`. */
+  private spriteLook(player: Player): Appearance {
+    return this.spriteRenderer === '2d' ? appearance2DFor(player) : appearanceFor(player);
   }
 
   private createBodySprite(member: CastMember): BodySprite {
@@ -672,7 +674,6 @@ export class MatchScene extends Phaser.Scene {
       shadow: this.add.image(0, 0, member.shadow).setDepth(1),
       // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
       sprite: this.add.sprite(0, 0, member.baked.key, 0).setOrigin(0.5, 1),
-      label: this.add.image(0, 0, member.label).setOrigin(0.5, 0).setDepth(900),
       heading: 'down',
       feet: { x: 0, y: 0 },
       ground: { x: 0, y: 0 },
@@ -684,7 +685,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
-   * Terrain entier : joueur cuit (sprites, ombre, étiquettes). Un remplaçant encore en file (ou
+   * Terrain entier : joueur cuit (sprites, ombre). Un remplaçant encore en file (ou
    * jamais vu) est fini d'un trait à son entrée : le seul cas d'à-coup, mesuré dans `lastBakeMs`.
    */
   private castFor(team: number, player: Player): CastMember {
@@ -708,7 +709,7 @@ export class MatchScene extends Phaser.Scene {
       for (const { player } of squad.members) {
         const key = this.castKey(squad.team, player);
         if (this.castCache.has(key)) continue;
-        const sheet = new SheetBaker(key, appearanceFor(player), { primary: look.primary, secondary: look.secondary });
+        const sheet = new SheetBaker(key, this.spriteLook(player), { primary: look.primary, secondary: look.secondary, renderer: this.spriteRenderer });
         this.benchQueue.add(key, { sheet, player, team: look, step: (budget, clock) => sheet.step(budget, clock) });
       }
     }
@@ -734,7 +735,7 @@ export class MatchScene extends Phaser.Scene {
     return this.frameTimes.reduce((worst, f) => Math.max(worst, f.ms), 0);
   }
 
-  /** Terrain entier : un corps dont le joueur a changé (remplaçant entré) prend ses sprites et son étiquette. */
+  /** Terrain entier : un corps dont le joueur a changé (remplaçant entré) prend ses sprites et son ombre. */
   private syncCast() {
     if (!this.world.squads) return;
     this.bodies.forEach((view, i) => {
@@ -742,7 +743,6 @@ export class MatchScene extends Phaser.Scene {
       if (!member || view.member.player.id === member.player.id) return;
       view.member = this.castFor(this.world.team[i], member.player);
       view.shadow.setTexture(view.member.shadow);
-      view.label.setTexture(view.member.label);
     });
   }
 
@@ -896,9 +896,6 @@ export class MatchScene extends Phaser.Scene {
     this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
-    const boxes = this.bodies.map((b) => ({ x: b.ground.x, y: b.ground.y + MATCH_PX.labelBelowFeet, width: b.label.width, height: b.label.height }));
-    spreadLabels(boxes);
-    this.bodies.forEach((b, i) => b.label.setPosition(boxes[i].x, boxes[i].y));
     const me = this.bodies[this.world.controlled];
 
     // Ballon tenu : dans la main de l'image courante du porteur. Libre : à sa position physique.
@@ -936,7 +933,7 @@ export class MatchScene extends Phaser.Scene {
     this.updateDebug();
   }
 
-  /** Sprite, ombre et étiquette d'un corps ; vue et image selon son état. */
+  /** Sprite et ombre d'un corps ; vue et image selon son état. */
   private renderBody(index: number) {
     const body = this.world.players[index];
     const view = this.bodies[index];
@@ -946,7 +943,8 @@ export class MatchScene extends Phaser.Scene {
     const lifted = rounded(project(pos.x, pos.y, pos.z));
     let lift = 0;
     if (shot?.dunk) {
-      const handY = lifted.y + 1 - FRAME.height + raisedHandTop(view.member.baked.dims);
+      const { baked } = view.member;
+      const handY = lifted.y + 1 - FRAME.height + (baked.metrics?.raisedHandTop ?? raisedHandTop(baked.dims));
       lift = dunkLift(handY, project(pos.x, pos.y, RIM_HEIGHT).y, pos.z / shot.dunk.apex);
     }
     view.feet = { x: lifted.x, y: lifted.y - lift };
@@ -991,18 +989,13 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
-   * Joueur contrôlé : anneau au sol (il clignote au changement), étiquette soulignée devant les
-   * autres, carte du HUD.
+   * Joueur contrôlé : anneau au sol (il clignote au changement) et carte du HUD.
    */
   private updateControl(deltaMs: number) {
     const controlled = this.world.controlled;
-    // Regarder : ni anneau, ni étiquette soulignée, ni carte du joueur.
+    // Regarder : ni anneau, ni carte du joueur.
     if (this.watching) {
       this.ring.setVisible(false);
-      this.bodies.forEach((b) => {
-        if (b.label.texture.key !== b.member.label) b.label.setTexture(b.member.label);
-        b.label.setDepth(900);
-      });
       if (this.cardKey !== 'regarder') {
         this.cardKey = 'regarder';
         this.registry.set(HUD_KEYS.card, null);
@@ -1014,12 +1007,6 @@ export class MatchScene extends Phaser.Scene {
       this.ringBlink = RING_BLINK_MS;
     }
     this.publishCard(controlled);
-    this.bodies.forEach((b, i) => {
-      const on = i === controlled;
-      const key = on ? b.member.labelOn : b.member.label;
-      if (b.label.texture.key !== key) b.label.setTexture(key);
-      b.label.setDepth(on ? 901 : 900);
-    });
     this.ringBlink = Math.max(0, this.ringBlink - deltaMs);
     const me = this.bodies[controlled];
     this.ring.setPosition(me.ground.x, me.ground.y - 1).setVisible(this.ringBlink === 0 || Math.floor(this.ringBlink / 60) % 2 === 0);
@@ -1258,7 +1245,7 @@ export class MatchScene extends Phaser.Scene {
 
   private updateCamera(me: BodySprite, ball: Point, deltaMs: number) {
     // Boîte du joueur suivi (toi ; le porteur quand tu regardes, sinon le ballon) : du sommet de la
-    // tête à l'étiquette sous ses pieds.
+    // tête à un peu sous ses pieds.
     const holder = this.world.holder;
     const followed = this.watching ? (holder !== null ? this.bodies[holder] : null) : me;
     const playerBox = followed

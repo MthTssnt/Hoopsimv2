@@ -315,11 +315,10 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   [DAL] = pastille aux couleurs              barre d'énergie + 3 stats
 ```
 
-- **Étiquette sous chaque joueur** (validé) : nom de famille seul et en entier, en petite
-  police 3×5 maison sur fond sombre. L'étiquette prend la largeur du nom ; les noms générés
-  font 10 lettres au plus. Aucun nom de famille n'apparaît deux fois dans une ligue, donc dans
-  un match. L'étiquette du joueur contrôlé est soulignée en `yellow`, avec un anneau `yellow`
-  au sol.
+- **Pas de nom sur le terrain** (décision de Matheo) : les joueurs n'ont plus d'étiquette dans le
+  match ; les noms restent au tableau de score, sur la carte du joueur, dans les stats et les
+  menus. Le joueur contrôlé est repéré par l'anneau `yellow` au sol. (Les noms générés font
+  10 lettres au plus, et aucun nom de famille n'apparaît deux fois dans une ligue.)
 - **Texte de debug** : masqué par défaut, affiché par une touche ; la bande des 32 couleurs de
   la palette n'apparaît qu'avec lui.
 - **Jauge de tir** : barre verticale de 5×27 px cernée de `outline` (4×20 en 480×270), à côté du

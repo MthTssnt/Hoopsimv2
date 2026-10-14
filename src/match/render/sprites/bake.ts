@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { Appearance } from './appearance';
-import { colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
+import { colors2D, colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
+import { composeFrame2D, metrics2D, type ComposedFrame2D, type Metrics2D } from './sheet2d';
 import { ANIMATIONS, bodyDims, FRAME, FRAMES, framesFor, type AnimationName, type BodyDims } from './rig';
 import type { TeamRamp } from '../../../assets/palette';
 import type { SlotCanvas, Slot } from './canvas';
@@ -14,7 +15,12 @@ export interface BakedPlayer {
   /** Centre du ballon tenu pour chaque image de la feuille, ou null. */
   anchors: ({ x: number; y: number } | null)[];
   dims: BodyDims;
+  /** Rendu 2D : haut de la tête à l'arrêt et haut des mains levées (sinon, tirés de `dims` par le rig). */
+  metrics?: Metrics2D;
 }
+
+/** Rendu des joueurs : le rig en pièces (ancien) ou le rendu 2D en une silhouette (`figure2d.ts`). */
+export type Renderer = 'rig' | '2d';
 
 export interface BakeOptions {
   primary: TeamRamp;
@@ -22,6 +28,8 @@ export interface BakeOptions {
   kit?: Kit;
   /** Rejouer le tir et le dunk en boucle (scène `?style`). */
   loopAll?: boolean;
+  /** Rendu des images (par défaut, le rig). */
+  renderer?: Renderer;
 }
 
 /**
@@ -67,13 +75,15 @@ export class SheetBaker {
   readonly anchors: BakedPlayer['anchors'] = [];
   private readonly colors: SlotColors;
   private next = 0;
+  /** Rendu 2D : l'image vers la gauche, peinte avec celle vers la droite (même indice dans le bloc). */
+  private readonly mirrored = new Map<string, ComposedFrame2D>();
 
   constructor(key: string, look: Appearance, options: BakeOptions) {
     this.key = key;
     this.look = look;
     this.options = options;
     this.dims = bodyDims(look.heightCm, look.heavy);
-    this.colors = colorsFor(look, options.primary, options.secondary);
+    this.colors = (options.renderer === '2d' ? colors2D : colorsFor)(look, options.primary, options.secondary);
     this.pixels = new Uint8ClampedArray(this.width * this.height * 4);
   }
 
@@ -93,8 +103,7 @@ export class SheetBaker {
     if (this.done) return;
     const index = this.next++;
     const view = SHEET_VIEWS[Math.floor(index / FRAMES.length)];
-    const frame = framesFor(view.heading)[index % FRAMES.length];
-    const { canvas, ball } = composeFrame(this.look, frame, this.dims, this.options.kit, view.facing, view.heading);
+    const { canvas, ball } = this.options.renderer === '2d' ? this.compose2D(index % FRAMES.length, view.facing, view.heading) : composeFrame(this.look, framesFor(view.heading)[index % FRAMES.length], this.dims, this.options.kit, view.facing, view.heading);
     const cell = sheetCell(index);
     canvas.forEach((x, y, slot) => {
       const color = slotColor(slot, this.colors);
@@ -105,6 +114,19 @@ export class SheetBaker {
       this.pixels[k + 3] = 255;
     });
     this.anchors.push(ball);
+  }
+
+  /** Rendu 2D : chaque pose est peinte une fois pour les deux orientations. */
+  private compose2D(frame: number, facing: Facing, heading: Heading): ComposedFrame2D {
+    const key = `${heading}|${frame}`;
+    const kept = this.mirrored.get(key);
+    if (kept && facing === 'left') {
+      this.mirrored.delete(key);
+      return kept;
+    }
+    const both = composeFrame2D(this.look, frame, heading, this.options.kit);
+    this.mirrored.set(key, both.left);
+    return both[facing];
   }
 
   /** Termine la feuille d'un trait, puis crée la texture et les animations du joueur. */
@@ -138,7 +160,7 @@ export class SheetBaker {
         });
       });
     }
-    return { key, anchors: this.anchors, dims: this.dims };
+    return { key, anchors: this.anchors, dims: this.dims, metrics: this.options.renderer === '2d' ? metrics2D(this.look) : undefined };
   }
 }
 

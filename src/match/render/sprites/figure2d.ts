@@ -117,6 +117,8 @@ export interface Figure2D {
   canvas: SlotCanvas;
   /** Coin haut-gauche du numéro, ou null (arbitre). */
   numberAt: { x: number; y: number } | null;
+  /** Paumes à l'écran [gauche du joueur, droite du joueur] (image retournée comprise) : point d'accroche du ballon. */
+  palms: [Screen, Screen];
 }
 
 /**
@@ -141,6 +143,7 @@ interface Painted {
   canvas: SlotCanvas;
   /** Point de la poitrine (ou du dos) où se centre le numéro. */
   chest: Screen;
+  palms: [Screen, Screen];
 }
 
 function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit): Painted {
@@ -297,11 +300,11 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
   }
   colorOutline(canvas, (x, y) => headKind[y * W + x] ?? null);
   if (kit === 'referee') stripeReferee(canvas, material);
-  return { canvas, chest: S(heading === 'down' ? J.chestFront : J.chestBack) };
+  return { canvas, chest: S(heading === 'down' ? J.chestFront : J.chestBack), palms: [S(J.palms[0]), S(J.palms[1])] };
 }
 
 /** Numéro posé sur l'image (déjà retournée vers la gauche), à l'endroit, seulement sur le maillot visible. */
-function finishFigure({ chest }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit): Figure2D {
+function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit): Figure2D {
   const W = canvas.width;
   const mirror = facing === 'left';
   let numberAt: Figure2D['numberAt'] = null;
@@ -316,7 +319,8 @@ function finishFigure({ chest }: Painted, canvas: SlotCanvas, look: Appearance, 
       else if (under === 'q') canvas.set(px, py, 't');
     });
   }
-  return { canvas, numberAt };
+  const flip = (p: Screen): Screen => (mirror ? { ...p, x: W - 1 - p.x } : p);
+  return { canvas, numberAt, palms: [flip(palms[0]), flip(palms[1])] };
 }
 
 /** Le pixel (x, y) appartient à une pièce d'un autre groupe, plus proche : elle porte son ombre (lumière en haut à gauche). */
