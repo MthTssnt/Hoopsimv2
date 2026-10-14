@@ -132,17 +132,17 @@ const look2D = (o: Partial<Appearance>): Appearance => ({ ...LOOK, hair: 0, hair
 const headRow = (label: string, cells: SheetRow['cells'], z = 8): SheetRow => ({ label, zoom: z, cellW: HEAD_CELL, cellH: HEAD_CELL, cells });
 const HAIR_COLOR_ORDER = [0, 1, 5, 3, 2, 4]; // noir, brun, châtain, roux, blond, gris
 const styleLook = (hair: number, extra: Partial<Appearance> = {}) =>
-  look2D({ hair, hairColor: HAIR_COLOR_ORDER[hair % 6], skin: [2, 0, 3, 1][hair % 4], face: hair % FACE_TRAITS.length, head: hair % 5, eyeColor: hair % 4, ...extra });
+  look2D({ hair, hairColor: HAIR_COLOR_ORDER[hair % 6], skin: [2, 0, 3, 1][hair % 4], face: hair % FACE_TRAITS.length, head: hair % 5, eyeColor: [0, 1, 0, 2, 1, 3, 0, 4, 1, 0, 1, 0, 2][hair], ...extra });
 const styles = HAIRS_2D.map((_, hair) => styleLook(hair));
 // Le bandeau, option combinable : sur les cheveux longs et sur la coupe en pics.
 const banded = [styleLook(5, { headband: true }), styleLook(1, { headband: true })];
 const six = [
   look2D({ hair: 0, hairColor: 1, skin: 2, head: 0, face: 0, number: 23, eyeColor: 0 }),
   look2D({ hair: 6, hairColor: 0, skin: 3, head: 1, face: 1, number: 34, facialHair: 1, eyeColor: 0 }),
-  look2D({ hair: 3, hairColor: 2, skin: 0, head: 2, face: 3, number: 7, eyeColor: 1 }),
-  look2D({ hair: 7, hairColor: 0, skin: 3, head: 3, face: 4, number: 11, heightCm: 212, heavy: true, eyeColor: 3 }),
-  look2D({ hair: 9, hairColor: 5, skin: 1, head: 4, face: 2, number: 50, facialHair: 2, heightCm: 186, eyeColor: 2 }),
-  look2D({ hair: 12, hairColor: 3, skin: 0, head: 0, face: 5, number: 3, headband: true, eyeColor: 1 }),
+  look2D({ hair: 3, hairColor: 2, skin: 0, head: 2, face: 3, number: 7, eyeColor: 2 }),
+  look2D({ hair: 7, hairColor: 0, skin: 3, head: 3, face: 4, number: 11, heightCm: 212, heavy: true, eyeColor: 1 }),
+  look2D({ hair: 9, hairColor: 5, skin: 1, head: 4, face: 2, number: 50, facialHair: 2, heightCm: 186, eyeColor: 3 }),
+  look2D({ hair: 12, hairColor: 3, skin: 0, head: 0, face: 5, number: 3, headband: true, eyeColor: 4 }),
 ];
 const full = (label: string, z: number, looks: Appearance[], heading: Heading = 'down'): SheetRow => ({
   label,

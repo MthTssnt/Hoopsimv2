@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EYE_COLORS, HAIR_RAMPS } from '../../../assets/palette';
 import { FACE_EXPRESSIONS, FACE_TRAITS, FACIAL_HAIR_2D, HAIRS_2D, headGrid2D, SHAPES_2D, type FaceExpression } from '../../../assets/sprites/heads2d';
-import type { Appearance } from './appearance';
+import { appearance2DFor, appearanceFor, type Appearance } from './appearance';
 import type { SlotCanvas, Slot } from './canvas';
 import { colors2D } from './compose';
 import { renderFigure2D, renderFigure2DBoth } from './figure2d';
@@ -275,7 +275,21 @@ describe('têtes : visage', () => {
         expect(Math.abs(luma(c.beard![0]) - luma(c.skin[1])), `${skin} ${hairColor}`).toBeGreaterThanOrEqual(0.15);
       }
     }
-    expect(EYE_COLORS).toHaveLength(4);
+  });
+
+  it('apparences 2D variées : yeux surtout brun foncé et noisette, plus rarement bleu, vert ou gris ; 13 coiffures, pilosité, bandeau', () => {
+    const looks = Array.from({ length: 400 }, (_, k) => appearance2DFor({ id: `j${k}`, heightCm: 180 + (k % 40), weightKg: 80 + (k % 50), number: k % 100, age: 20 + (k % 16) }));
+    const eyes = EYE_COLORS.map((_, i) => looks.filter((l) => l.eyeColor === i).length);
+    expect(EYE_COLORS).toHaveLength(5);
+    expect((eyes[0] + eyes[1]) / looks.length).toBeGreaterThan(0.7);
+    for (const n of eyes) expect(n).toBeGreaterThan(0);
+    expect(new Set(looks.map((l) => l.hair)).size).toBe(HAIRS_2D.length);
+    expect(new Set(looks.map((l) => l.facialHair)).size).toBe(FACIAL_HAIR_2D.length);
+    expect(looks.some((l) => l.headband)).toBe(true);
+    expect(looks.some((l) => l.hairColor === 5)).toBe(true);
+    // Même teint et même forme de tête que l'apparence de l'ancien rendu.
+    const p = { id: 'x', heightCm: 200, weightKg: 100, number: 4 };
+    expect(appearance2DFor(p).skin).toBe(appearanceFor(p).skin);
   });
 
   it('expressions exagérées : joie et effort montrent les dents, l’effort ouvre la bouche (2×2 sombre)', () => {

@@ -281,6 +281,8 @@ export interface SlotColors {
   /** Rendu 2D : iris, et barbe (clair, ombre) d'un ton nettement différent de la peau. */
   iris?: number;
   beard?: readonly [number, number];
+  /** Rendu 2D : reflet du crâne rasé ou chauve (emplacement « 0 »). */
+  skinGloss?: number;
 }
 
 export function colorsFor(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
@@ -303,6 +305,7 @@ export function colors2D(look: Appearance, primary: TeamRamp, secondary: TeamRam
     skinEdge: mixColor(shadeColor(skin[2], 0.55), 0x5a1410, 0.3),
     iris: EYE_COLORS[(look.eyeColor ?? 0) % EYE_COLORS.length],
     beard: beardTones(ramp, skin[1]),
+    skinGloss: mixColor(skin[0], 0xffffff, 0.35),
     primary,
     secondary,
   };
@@ -359,7 +362,7 @@ export function slotColor(slot: Slot, colors: SlotColors): number {
       return colors.secondary[2];
     // Tons en plus : contours colorés et ombre profonde du rendu 2D (`colors2D`) ; sinon ramenés aux 3 tons.
     case '0':
-      return colors.skin[0];
+      return colors.skinGloss ?? colors.skin[0];
     case '4':
       return colors.skinEdge ?? colors.skin[2];
     case 'D':

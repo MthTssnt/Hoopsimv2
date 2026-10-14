@@ -1,4 +1,4 @@
-import { HAIR_COLORS, SKIN_TONES } from '../../../assets/palette';
+import { EYE_COLOR_WEIGHTS, HAIR_COLORS, SKIN_TONES } from '../../../assets/palette';
 import { HAIRS, HEADS } from '../../../assets/sprites/heads';
 import { hashSeed, Rng } from '../../../engine/rng';
 
@@ -58,6 +58,36 @@ export function appearanceFor(player: AppearanceSource): Appearance {
     hair: rng.int(0, HAIRS.length - 1),
     hairColor: Math.min(HAIR_COLORS.length - 1, pickHairColor(rng, skin, player.age)),
     number: player.number,
+  };
+}
+
+/**
+ * Apparence du rendu 2D (`figure2d.ts`) : mêmes teint, forme de tête et couleur de cheveux de base que
+ * `appearanceFor`, plus ce que le rendu 2D ajoute, tiré d'un flux à part (l'apparence de l'ancien
+ * rendu ne change pas) :
+ * - coiffure parmi les 13 du rendu 2D (`HAIRS_2D`), selon le teint ;
+ * - châtain à la place d'une partie des bruns ;
+ * - visage type, couleur des yeux (surtout brun foncé et noisette, plus rarement bleu, vert, gris),
+ *   pilosité faciale (plus fréquente avec l'âge), bandeau.
+ */
+export function appearance2DFor(player: AppearanceSource): Appearance {
+  const base = appearanceFor(player);
+  const rng = new Rng(hashSeed(`${player.id}|apparence2d`));
+  // Coiffures 2D : ebouriffe, pics, chignon, queue, mi-longs, longs, afro, dreadlocks, tresses,
+  // degrade, rase, chauve, crete.
+  const hairWeights = base.skin >= 2 ? [5, 4, 2, 1, 1, 1, 10, 8, 8, 12, 10, 5, 3] : [12, 10, 4, 4, 7, 4, 2, 2, 1, 9, 8, 4, 3];
+  const darkSkin = base.skin >= 2;
+  const eyeWeights = darkSkin ? EYE_COLOR_WEIGHTS.map((w, i) => (i <= 1 ? w : w * 0.25)) : EYE_COLOR_WEIGHTS;
+  const age = player.age ?? 25;
+  const facialWeights = [10, age >= 28 ? 3 : 1.5, 2, 1, age >= 24 ? 3 : 1.5];
+  return {
+    ...base,
+    hair: rng.weightedIndex(hairWeights),
+    hairColor: base.hairColor === 1 && rng.chance(0.4) ? 5 : base.hairColor,
+    face: rng.int(0, 5),
+    eyeColor: rng.weightedIndex([...eyeWeights]),
+    facialHair: rng.weightedIndex(facialWeights),
+    headband: rng.chance(0.12),
   };
 }
 

@@ -62,11 +62,16 @@ const EYE_Y = 7;
 const NOSE_Y = 10;
 const MOUTH_Y = 12;
 
+/**
+ * Arrière de la tête (3/4 dos) : le crâne (rangées 0-10, sans nez) puis une nuque étroite et centrée ;
+ * les cheveux couvrent tout jusqu'à la rangée `BACK_HAIRLINE`.
+ */
+const BACK_LOW = ['.xxxxxxxxxxxxxx..', '...xxxxxxxxxxx...', '.....xxxxxxx.....', '.....xxxxxxx.....', '......xxxxx......'];
+export const BACK_HAIRLINE = 12;
+
 function skullRows(shape: Shape, heading: Heading): string[] {
-  const rows = [...SKULL_TOP, ...JAWS[shape]];
-  if (heading === 'down') return rows;
-  // De 3/4 dos : pas de nez ni de creux de l'œil ; la joue et la mâchoire bordent la droite.
-  return rows.map((r, y) => (y === 6 ? r.slice(0, 15) + 'x' + r.slice(16) : y === NOSE_Y ? r.slice(0, 16) + '.' : r));
+  if (heading === 'down') return [...SKULL_TOP, ...JAWS[shape]];
+  return [...SKULL_TOP.map((r, y) => (y === 6 ? r.slice(0, 15) + 'x' + r.slice(16) : y === NOSE_Y ? r.slice(0, 16) + '.' : r)), ...BACK_LOW];
 }
 
 /** Traits qui varient d'un joueur à l'autre, visibles à l'échelle du match. */
@@ -279,7 +284,7 @@ function composeHead(shape: Shape, hair: Hair2D, face: FaceTraits, facial: numbe
       if (ch !== 'x') return;
       const left = row.indexOf('x');
       const right = row.lastIndexOf('x');
-      const shade = (y > NOSE_Y && (x === left || !skull(x, y + 1) || x === right)) || (heading === 'up' && x === right && y >= 4);
+      const shade = heading === 'down' ? y > NOSE_Y && (x === left || !skull(x, y + 1) || x === right) : !skull(x, y + 1) || (y > NOSE_Y && x === right);
       set(x, y, shade ? '3' : '2');
     }),
   );
@@ -290,8 +295,8 @@ function composeHead(shape: Shape, hair: Hair2D, face: FaceTraits, facial: numbe
   const ears = () => {
     if (heading === 'down') for (const [x, y, ch] of [[4, 7, '2'], [5, 7, '2'], [4, 8, '2'], [5, 8, '3'], [4, 9, '2'], [5, 9, '3'], [4, 10, '3'], [5, 10, '2'], [6, 8, '3'], [6, 9, '3']] as const) set(x, y, ch);
     else {
-      for (const [x, y, ch] of [[12, 7, '2'], [13, 7, '2'], [12, 8, '3'], [13, 8, '2'], [12, 9, '3'], [13, 9, '2'], [13, 10, '3'], [11, 8, '3'], [11, 9, '3']] as const) set(x, y, ch);
-      for (const y of [7, 8, 9]) set(rows[y].indexOf('x') - 1, y, y === 7 ? '2' : '3');
+      // De dos : les deux oreilles dépassent des cheveux, de chaque côté (pavillon en ombre).
+      for (const [x, y, ch] of [[16, 7, '2'], [16, 8, '3'], [16, 9, '3'], [15, 10, '3'], [-1, 7, '2'], [-1, 8, '3'], [-1, 9, '3'], [0, 10, '3']] as const) set(x, y, ch);
     }
   };
   if (hair.coversEars) ears();
