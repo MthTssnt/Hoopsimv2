@@ -641,6 +641,11 @@ export function athleteSlotColor(slot: Slot, c: AthleteColors): number {
       return PALETTE.ink;
     case 'o':
     case 'n':
+    case 'i':
       return PALETTE.outline;
+    case 'b':
+      return c.hair[1];
+    case 'B':
+      return c.hair[2];
   }
 }

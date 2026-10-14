@@ -16,6 +16,10 @@ export interface Appearance {
   facialHair?: number;
   /** Visage type du rendu 2D (`FACE_TRAITS`), par défaut celui de la forme de tête. */
   face?: number;
+  /** Couleur des yeux du rendu 2D (`EYE_COLORS`, 0 : brun). */
+  eyeColor?: number;
+  /** Bandeau aux couleurs de l'équipe (rendu 2D). */
+  headband?: boolean;
 }
 
 export interface AppearanceSource {

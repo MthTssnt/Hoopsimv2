@@ -120,6 +120,9 @@ export const HAIR_RAMPS: readonly Ramp5[] = [
   [0xc08a5a, 0x96643a, 0x6e4626, 0x4a2c16, 0x22120a],
 ];
 
+/** Couleurs d'iris du rendu 2D : brun, bleu, vert, noisette (saturées, lisibles à l'échelle du match). */
+export const EYE_COLORS: readonly number[] = [0x7a4220, 0x2f74e0, 0x34a050, 0xb08030];
+
 /** Rampe de 5 tons d'une couleur d'équipe. */
 export function teamRamp5(color: string | number): Ramp5 {
   const base = typeof color === 'number' ? color : parseInt(color.replace('#', ''), 16);

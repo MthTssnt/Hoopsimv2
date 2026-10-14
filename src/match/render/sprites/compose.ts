@@ -1,4 +1,4 @@
-import { HAIR_COLORS, HAIR_HIGHLIGHTS, HAIR_RAMPS, mixColor, PALETTE, shadeColor, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
+import { EYE_COLORS, HAIR_COLORS, HAIR_HIGHLIGHTS, HAIR_RAMPS, mixColor, PALETTE, shadeColor, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
 import { SHOES_DOWN, SHOES_UP, SHORTS_DOWN, SHORTS_UP, TORSOS_DOWN, TORSOS_UP, stretch, widen } from '../../../assets/sprites/body';
 import { EAR, EXPRESSIONS, HAIRS, HEADS, type Expression } from '../../../assets/sprites/heads';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
@@ -278,6 +278,9 @@ export interface SlotColors {
   /** Rendu 2D : contour coloré de la peau (brun-rouge foncé), ombre profonde et contour des cheveux. */
   skinEdge?: number;
   hairDeep?: readonly [number, number];
+  /** Rendu 2D : iris, et barbe (clair, ombre) d'un ton nettement différent de la peau. */
+  iris?: number;
+  beard?: readonly [number, number];
 }
 
 export function colorsFor(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
@@ -298,9 +301,27 @@ export function colors2D(look: Appearance, primary: TeamRamp, secondary: TeamRam
     hair: [ramp[0], ramp[1], ramp[2]],
     hairDeep: [ramp[3], ramp[4]],
     skinEdge: mixColor(shadeColor(skin[2], 0.55), 0x5a1410, 0.3),
+    iris: EYE_COLORS[(look.eyeColor ?? 0) % EYE_COLORS.length],
+    beard: beardTones(ramp, skin[1]),
     primary,
     secondary,
   };
+}
+
+/** Luminance perçue (0-1) d'une couleur 0xRRGGBB. */
+function luma(c: number): number {
+  return (0.299 * ((c >> 16) & 0xff) + 0.587 * ((c >> 8) & 0xff) + 0.114 * (c & 0xff)) / 255;
+}
+
+/**
+ * Barbe : les tons des cheveux quand ils tranchent sur la peau ; sinon (barbe noire sur peau
+ * foncée, barbe blonde sur peau claire) des tons plus clairs ou plus foncés, pour qu'elle se lise.
+ */
+function beardTones(ramp: readonly number[], skin: number): readonly [number, number] {
+  const s = luma(skin);
+  for (const [a, b] of [[1, 2], [2, 3], [0, 1], [3, 4]] as const) if (Math.abs(luma(ramp[a]) - s) >= 0.2 && Math.abs(luma(ramp[b]) - s) >= 0.12) return [ramp[a], ramp[b]];
+  // Aucun ton ne tranche assez : barbe éclaircie (comme une barbe grisonnante).
+  return s < 0.5 ? [mixColor(ramp[0], 0xe8e4f0, 0.55), mixColor(ramp[1], 0xc8c4d4, 0.5)] : [ramp[3], ramp[4]];
 }
 
 export function slotColor(slot: Slot, colors: SlotColors): number {
@@ -355,5 +376,11 @@ export function slotColor(slot: Slot, colors: SlotColors): number {
       return PALETTE.mist;
     case 'G':
       return PALETTE.slate;
+    case 'i':
+      return colors.iris ?? PALETTE.outline;
+    case 'b':
+      return colors.beard?.[0] ?? colors.hair[1];
+    case 'B':
+      return colors.beard?.[1] ?? colors.hair[2];
   }
 }

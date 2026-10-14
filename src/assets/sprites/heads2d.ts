@@ -31,104 +31,148 @@ export const SHAPES_2D = ['normale', 'carree', 'fine', 'ronde', 'large'] as cons
 type Shape = (typeof SHAPES_2D)[number];
 
 /**
- * Silhouette du crâne de 3/4 face (« x ») : arcade (rangée 5), creux de l'œil (6), nez qui dépasse
- * d'1 px (rangée 8, colonne 11), bouche (9), menton (10). Les rangées 0-7 sont communes.
+ * Crâne de 3/4 face (« x »), 17 colonnes sur 16 rangées : front (rangées 3-4, sous la frange),
+ * sourcils (5), yeux (7-9), nez en bosse d'1 px (rangée 10, colonne 16), bouche (12), menton (15).
+ * Les rangées 0-10 sont communes à toutes les formes ; la mâchoire (11-15) varie.
  */
-const SKULL_TOP = ['...xxxxx....', '..xxxxxxxx..', '.xxxxxxxxxx.', '.xxxxxxxxxx.', '.xxxxxxxxxx.', '.xxxxxxxxxx.', '.xxxxxxxxx..', '.xxxxxxxxxx.'];
+const SKULL_TOP = [
+  '.....xxxxxxx.....',
+  '...xxxxxxxxxxx...',
+  '..xxxxxxxxxxxxx..',
+  '.xxxxxxxxxxxxxxx.',
+  '.xxxxxxxxxxxxxxx.',
+  'xxxxxxxxxxxxxxxx.',
+  'xxxxxxxxxxxxxxx..',
+  'xxxxxxxxxxxxxxxx.',
+  'xxxxxxxxxxxxxxxx.',
+  'xxxxxxxxxxxxxxxx.',
+  'xxxxxxxxxxxxxxxxx',
+];
 const JAWS: Readonly<Record<Shape, readonly string[]>> = {
-  normale: ['..xxxxxxxxxx', '...xxxxxxxx.', '.....xxxxx..'],
-  carree: ['.xxxxxxxxxxx', '..xxxxxxxxx.', '...xxxxxxx..'],
-  fine: ['..xxxxxxxxxx', '....xxxxxxx.', '......xxxx..'],
-  ronde: ['.xxxxxxxxxxx', '..xxxxxxxxx.', '....xxxxx...'],
-  large: ['xxxxxxxxxxxx', '.xxxxxxxxxx.', '...xxxxxxx..'],
+  normale: ['.xxxxxxxxxxxxxxx.', '..xxxxxxxxxxxxxx.', '...xxxxxxxxxxxx..', '.....xxxxxxxxxx..', '.......xxxxxxx...'],
+  carree: ['xxxxxxxxxxxxxxxx.', '.xxxxxxxxxxxxxxx.', '..xxxxxxxxxxxxxx.', '...xxxxxxxxxxxx..', '.....xxxxxxxxxx..'],
+  fine: ['.xxxxxxxxxxxxxxx.', '...xxxxxxxxxxxxx.', '.....xxxxxxxxxx..', '.......xxxxxxxx..', '.........xxxxx...'],
+  ronde: ['xxxxxxxxxxxxxxxx.', '.xxxxxxxxxxxxxxx.', '..xxxxxxxxxxxxx..', '....xxxxxxxxxx...', '......xxxxxxx....'],
+  large: ['xxxxxxxxxxxxxxxx.', 'xxxxxxxxxxxxxxxx.', '.xxxxxxxxxxxxxx..', '...xxxxxxxxxxxx..', '.....xxxxxxxxx...'],
 };
 
+/** Rangées du crâne : sourcils, haut et bas des yeux, nez, bouche (diagonale bas). */
+const BROW_Y = 5;
+const EYE_Y = 7;
+const NOSE_Y = 10;
+const MOUTH_Y = 12;
+
 function skullRows(shape: Shape, heading: Heading): string[] {
-  const top = shape === 'large' || shape === 'ronde' ? SKULL_TOP.map((r, y) => (y >= 3 ? 'x' + r.slice(1) : r)) : [...SKULL_TOP];
-  const rows = [...top, ...JAWS[shape]];
+  const rows = [...SKULL_TOP, ...JAWS[shape]];
   if (heading === 'down') return rows;
   // De 3/4 dos : pas de nez ni de creux de l'œil ; la joue et la mâchoire bordent la droite.
-  return rows.map((r, y) => (y === 6 ? r.slice(0, 10) + 'x' + r.slice(11) : y === 8 ? r.slice(0, 11) + '.' : r));
+  return rows.map((r, y) => (y === 6 ? r.slice(0, 15) + 'x' + r.slice(16) : y === NOSE_Y ? r.slice(0, 16) + '.' : r));
 }
 
-/** Traits qui varient d'un joueur à l'autre, visibles à l'échelle du match (plusieurs pixels à la fois). */
+/** Traits qui varient d'un joueur à l'autre, visibles à l'échelle du match. */
 export interface FaceTraits {
-  /** Œil rond (2×2), étroit (2×1) ou à paupière lourde. */
-  eyes: 'rond' | 'etroit' | 'lourd';
-  /**
-   * Rangée des yeux : 6 (hauts) ou 7 ; colonne de l'œil proche : 5 (écartés) ou 6 (rapprochés).
-   * L'œil rond (2 rangées) est toujours en 7, pour garder la peau entre sourcil, œil et frange.
-   */
-  eyeY: 6 | 7;
-  eyeX: 5 | 6;
+  /** Œil en amande (coins arrière en peau) ou rond (blanc plein). */
+  eyes: 'amande' | 'rond';
+  /** Sourcils fins (1 rangée) ou épais (2 rangées côté nez). */
   brows: 'fin' | 'epais';
+  /** Bosse du nez seule, ou bosse et ombre sous le nez. */
   nose: 'fin' | 'large';
   mouth: 'fine' | 'pleine';
 }
 
 /** Visages types (le joueur en reçoit un, d'après son apparence). */
 export const FACE_TRAITS: readonly FaceTraits[] = [
-  { eyes: 'etroit', eyeY: 7, eyeX: 6, brows: 'fin', nose: 'fin', mouth: 'fine' },
-  { eyes: 'rond', eyeY: 7, eyeX: 5, brows: 'epais', nose: 'large', mouth: 'pleine' },
-  { eyes: 'lourd', eyeY: 7, eyeX: 5, brows: 'epais', nose: 'large', mouth: 'fine' },
-  { eyes: 'rond', eyeY: 7, eyeX: 6, brows: 'fin', nose: 'fin', mouth: 'pleine' },
-  { eyes: 'etroit', eyeY: 6, eyeX: 5, brows: 'epais', nose: 'fin', mouth: 'pleine' },
-  { eyes: 'lourd', eyeY: 6, eyeX: 6, brows: 'fin', nose: 'large', mouth: 'pleine' },
+  { eyes: 'amande', brows: 'fin', nose: 'fin', mouth: 'fine' },
+  { eyes: 'rond', brows: 'epais', nose: 'large', mouth: 'pleine' },
+  { eyes: 'amande', brows: 'epais', nose: 'large', mouth: 'fine' },
+  { eyes: 'rond', brows: 'fin', nose: 'fin', mouth: 'pleine' },
+  { eyes: 'amande', brows: 'epais', nose: 'fin', mouth: 'pleine' },
+  { eyes: 'rond', brows: 'fin', nose: 'large', mouth: 'fine' },
 ];
 
 type Pixel = readonly [number, number, string];
 
+/** Colonnes des yeux : l'œil proche (3 de large) à l'arrière, l'œil éloigné (2 de large) près du profil. */
+const NEAR_EYE = [8, 9, 10] as const;
+const FAR_EYE = [12, 13] as const;
+
 /**
- * Traits du visage (diagonale bas), exagérés comme dans un jeu d'arcade : sourcils (E) séparés de
- * l'œil et de la frange par la peau ; yeux en blanc cassé + pupille ; nez en ombrage ; bouche en
- * ombre foncée ; pommette éclairée.
+ * Traits du visage (diagonale bas), d'après les principes de la référence de Matheo : grands yeux
+ * (blanc, iris de couleur « i », pupille « n »), sourcils francs de 3 px au ton le plus foncé des
+ * cheveux (E), séparés de l'œil et de la frange par la peau ; bouche dessinée (intérieur « 4 »,
+ * dents « w ») ; nez minimal ; peau en 2 tons, sans trait sombre à l'intérieur du visage.
+ * Le joueur regarde dans le sens de la course : iris et pupilles du côté du profil.
  */
 function faceFeatures(t: FaceTraits, e: FaceExpression): Pixel[] {
   const px: Pixel[] = [];
-  const { eyeX: x, eyeY: y } = t;
-  // Modelé et nez.
-  px.push([x - 1, y + 1, '1'], [10, 7, '1'], [10, 9, '3']);
-  if (t.nose === 'large') px.push([10, 8, '3'], [9, 9, '3'], [11, 9, '2']);
-  // Yeux (l'œil éloigné, colonne 9, est plus étroit).
-  const eyes: Pixel[] =
-    e === 'joyeuse'
-      ? [[x, y, '4'], [x + 1, y, '4'], [x + 1, y - 1, '4'], [9, y, '4'], [9, y - 1, '4']]
-      : e === 'effort'
-        ? [...(y >= 7 ? ([[x, y - 1, 'w'], [x + 1, y - 1, 'w'], [9, y - 1, 'w']] as Pixel[]) : []), [x, y, 'w'], [x + 1, y, 'n'], [9, y, 'w'], [10, y, 'n']]
-        : e === 'concentree'
-          ? [[x, y - 1, '3'], [x + 1, y - 1, '3'], [x, y, 'w'], [x + 1, y, 'n'], [9, y - 1, '3'], [9, y, 'n']]
-          : t.eyes === 'rond'
-            ? [[x, y - 1, 'w'], [x + 1, y - 1, '2'], [x, y, 'w'], [x + 1, y, 'n'], [9, y - 1, '2'], [9, y, 'n']]
-            : t.eyes === 'lourd'
-              ? [[x, y - 1, '4'], [x + 1, y - 1, '4'], [x, y, 'w'], [x + 1, y, 'n'], [9, y - 1, '4'], [9, y, 'n']]
-              : [[x, y - 1, '3'], [x + 1, y - 1, '3'], [x, y, 'w'], [x + 1, y, 'n'], [9, y, 'n']];
-  px.push(...eyes);
-  // Sourcils : rangée de base 2 au-dessus de l'œil (une rangée de peau entre les deux).
-  const b = t.eyes === 'rond' && e !== 'concentree' && e !== 'joyeuse' ? y - 3 : y - 2;
-  // Le sourcil épais s'allonge vers le nez (jamais sur la patte, colonne 4).
-  const near = t.brows === 'epais' ? [5, 6, 7] : [x, x + 1];
-  const far = t.brows === 'epais' ? [8, 9] : [9];
-  // Sourcils relevés : jamais au-dessus de la rangée 4 (la frange s'arrête en 2, une rangée de peau entre les deux).
-  const up = (r: number) => Math.max(4, r);
-  const brows: Point[] =
-    e === 'concentree'
-      ? [...near.map((c): Point => [c, b]), [x + 2, b + 1], [8, b + 1], [9, b]]
-      : e === 'joyeuse'
-        ? [...near.map((c, i): Point => [c, i === 0 ? b : up(b - 1)]), ...far.map((c): Point => [c, up(b - 1)])]
-        : e === 'effort'
-          ? [...near.map((c): Point => [c, up(y - 4)]), ...far.map((c): Point => [c, up(y - 4)])]
-          : e === 'decu'
-            ? [...near.map((c, i): Point => [c, i === near.length - 1 ? up(b - 1) : b]), [8, up(b - 1)], [9, b]]
-            : [...near.map((c): Point => [c, b]), ...far.map((c): Point => [c, b])];
+  const [a, b, c] = NEAR_EYE;
+  const [f, g] = FAR_EYE;
+  const y = EYE_Y;
+  // Nez : bosse dans la silhouette (le crâne) et une ombre dessous.
+  px.push([15, NOSE_Y + 1, '3']);
+  if (t.nose === 'large') px.push([14, NOSE_Y + 1, '3'], [15, NOSE_Y, '3']);
+
+  // Yeux.
+  if (e === 'joyeuse') {
+    // Yeux plissés en arc (^), au ton foncé de la peau.
+    px.push([a, y + 2, '4'], [b, y + 1, '4'], [c, y + 1, '4'], [c + 1, y + 2, '4'], [f, y + 1, '4'], [g, y + 1, '4'], [g + 1, y + 2, '4']);
+  } else {
+    // Œil ouvert : blanc, iris (2 colonnes à l'œil proche, 1 à l'œil éloigné), pupille côté profil.
+    const lid = e === 'concentree' || e === 'decu';
+    const low = e === 'decu';
+    const top = lid ? y + 1 : y;
+    for (let yy = top; yy <= y + 2; yy++) {
+      px.push([a, yy, 'w'], [b, yy, 'i'], [c, yy, 'i'], [f, yy, 'w'], [g, yy, 'i']);
+    }
+    const pupil = low ? y + 2 : e === 'effort' ? y + 1 : y + 1;
+    px.push([c, pupil, 'n'], [g, pupil, 'n']);
+    if (e === 'effort') {
+      // Yeux écarquillés : le blanc tout autour de l'iris.
+      px.push([b, y, 'w'], [c, y, 'w'], [b, y + 2, 'w'], [c, y + 2, 'w'], [g, y, 'w'], [g, y + 2, 'w'], [c, y + 1, 'i'], [b, y + 1, 'n'], [g, y + 1, 'n']);
+    }
+    if (lid) px.push([a, y, '3'], [b, y, '3'], [c, y, '3'], [f, y, '3'], [g, y, '3']);
+    // Œil en amande : les coins arrière (haut et bas) restent en peau.
+    else if (t.eyes === 'amande' && e !== 'effort') px.push([a, y, '2'], [a, y + 2, '2']);
+  }
+
+  // Sourcils : 3 px pour l'œil proche, 3 px pour l'œil éloigné (jusqu'au bord du profil).
+  const B = BROW_Y;
+  const near: Point[] = [[a, B], [b, B], [c, B]];
+  const far: Point[] = [[f, B], [g, B], [g + 1, B]];
+  let brows: Point[];
+  switch (e) {
+    case 'concentree':
+      // Froncés : en pente vers le nez.
+      brows = [[a, B], [b, B], [c, B + 1], [f, B + 1], [g, B], [g + 1, B]];
+      break;
+    case 'joyeuse':
+      // Relevés en arc.
+      brows = [[a, B], [b, B - 1], [c, B - 1], [f, B - 1], [g, B - 1], [g + 1, B]];
+      break;
+    case 'effort':
+      // Très relevés.
+      brows = [...near, ...far].map(([x]) => [x, B - 1] as Point);
+      break;
+    case 'decu':
+      // En accent circonflexe : le bout côté nez relevé.
+      brows = [[a, B + 1], [b, B], [c, B - 1], [f, B - 1], [g, B], [g + 1, B + 1]];
+      break;
+    default:
+      brows = [...near, ...far];
+  }
+  // Sourcils épais : une rangée de plus au-dessus (le front garde une rangée de peau sous la frange).
+  if (t.brows === 'epais' && e === 'neutre') brows.push([b, B - 1], [c, B - 1], [g, B - 1]);
   for (const [bx, by] of brows) px.push([bx, by, 'E']);
-  // Bouche (rangée 9) en ombre foncée de la peau ; lèvre plus claire dessous pour les lèvres pleines.
+
+  // Bouche (rangée 12), décalée vers le profil : intérieur sombre (4), dents (w).
+  const M = MOUTH_Y;
   const lip = t.mouth === 'pleine';
   const mouths: Record<FaceExpression, Pixel[]> = {
-    neutre: lip ? [[6, 9, '4'], [7, 9, '4'], [8, 9, '4'], [7, 10, '1']] : [[6, 9, '4'], [7, 9, '4']],
-    concentree: [[5, 9, '4'], [6, 9, '4'], [7, 9, '4'], [8, 9, '4']],
-    joyeuse: [[5, 8, '4'], [6, 9, 'w'], [7, 9, 'w'], [8, 9, 'w'], [9, 8, '4'], [7, 10, '4']],
-    effort: [[6, 9, '4'], [7, 9, '4'], [6, 10, '4'], [7, 10, '4'], [8, 9, 'w']],
-    decu: [[5, 10, '4'], [6, 9, '4'], [7, 9, '4'], [8, 10, '4']],
+    neutre: [[10, M, '4'], [11, M, '4'], [12, M, '4'], ...(lip ? ([[13, M, '4'], [11, M + 1, '3']] as Pixel[]) : [])],
+    concentree: [[9, M, '4'], [10, M, '4'], [11, M, '4'], [12, M, '4'], [13, M, '4']],
+    joyeuse: [[9, M - 1, '4'], [10, M, 'w'], [11, M, 'w'], [12, M, 'w'], [13, M, 'w'], [14, M - 1, '4'], [10, M + 1, '4'], [11, M + 1, '4'], [12, M + 1, '4'], [13, M + 1, '4']],
+    effort: [[10, M, 'w'], [11, M, 'w'], [12, M, 'w'], [9, M + 1, '4'], [10, M + 1, '4'], [11, M + 1, '4'], [12, M + 1, '4'], [13, M + 1, '4'], [10, M + 2, '4'], [11, M + 2, '4'], [12, M + 2, '4']],
+    decu: [[10, M, '4'], [11, M, '4'], [12, M, '4'], [9, M + 1, '4'], [13, M + 1, '4']],
   };
   px.push(...mouths[e]);
   return px;
@@ -140,21 +184,30 @@ function faceFeatures(t: FaceTraits, e: FaceExpression): Pixel[] {
 /** Pilosité faciale, combinable avec toute tête et toute coiffure. */
 export const FACIAL_HAIR_2D = ['aucune', 'barbe courte', 'bouc', 'moustache', 'barbe de 3 jours'] as const;
 
+/**
+ * Pilosité dans les tons de barbe (b clair, B ombre), qui tranchent toujours sur la peau (voir
+ * `colors2D`) ; la barbe de 3 jours est l'ombre de la peau.
+ */
 function facialHair(kind: number, heading: Heading, skin: (x: number, y: number) => boolean): Pixel[] {
   const px: Pixel[] = [];
-  const under = (x: number, y: number) => !skin(x, y + 1);
+  const edge = (x: number, y: number) => !skin(x, y + 1) || !skin(x + 1, y);
+  const tone = (x: number, y: number) => (kind === 4 ? '3' : edge(x, y) ? 'B' : 'b');
   if (heading === 'up') {
     // De dos, seul le bord de la mâchoire, côté course, se voit.
-    if (kind === 1 || kind === 4) for (let y = 8; y <= 10; y++) for (let x = 8; x <= 11; x++) if (skin(x, y)) px.push([x, y, kind === 4 ? '3' : under(x, y) ? 'D' : 'H']);
+    if (kind === 1 || kind === 4) for (let y = 11; y <= 15; y++) for (let x = 11; x <= 16; x++) if (skin(x, y)) px.push([x, y, tone(x, y)]);
     return px;
   }
   if (kind === 1 || kind === 4) {
-    // Mâchoire et menton, reliés à la patte devant l'oreille.
-    for (let y = 8; y <= 10; y++) for (let x = 2; x <= 11; x++) if (skin(x, y) && !(y === 8 && x >= 9)) px.push([x, y, kind === 4 ? '3' : under(x, y) ? 'D' : 'H']);
-    for (const y of [6, 7]) if (skin(4, y)) px.push([4, y, kind === 4 ? '3' : 'H']);
+    // Joues, mâchoire et menton, reliés à la patte devant l'oreille.
+    for (let y = 11; y <= 15; y++) for (let x = 0; x <= 16; x++) if (skin(x, y) && (y >= 12 || x <= 8)) px.push([x, y, tone(x, y)]);
+    for (let y = 8; y <= 10; y++) if (skin(7, y)) px.push([7, y, kind === 4 ? '3' : 'b']);
   }
-  if (kind === 1 || kind === 3) px.push([6, 8, 'D'], [7, 8, 'D'], [8, 8, 'D']);
-  if (kind === 2) px.push([6, 8, 'D'], [7, 8, 'D'], [5, 9, 'H'], [9, 9, 'H'], [6, 10, 'H'], [7, 10, 'D'], [8, 10, 'H']);
+  // Moustache sous le nez.
+  if (kind === 1 || kind === 3) px.push([10, 11, 'b'], [11, 11, 'b'], [12, 11, 'b'], [13, 11, 'B']);
+  if (kind === 2) {
+    px.push([10, 11, 'b'], [11, 11, 'b'], [12, 11, 'b'], [13, 11, 'B']);
+    for (let y = 13; y <= 15; y++) for (let x = 9; x <= 13; x++) if (skin(x, y)) px.push([x, y, y === 15 || x === 13 ? 'B' : 'b']);
+  }
   return px;
 }
 
@@ -167,10 +220,15 @@ export { HAIRS_2D, type Hair2D } from './hairs2d';
 // Composition
 
 /** Marge de la grille composée autour du crâne (volume des coiffures au-dessus, cheveux longs dessous). */
-const PAD_X = 3;
-const PAD_Y = 7;
-const SIZE_W = 19;
-const SIZE_H = 26;
+const PAD_X = 5;
+const PAD_Y = 10;
+const SIZE_W = 28;
+const SIZE_H = 36;
+/** Point du cou dans le repère du crâne : il se pose sur le haut du cou du squelette. */
+const NECK: Point = [8, 13];
+/** Colonnes du visage (diagonale bas) : la frange s'y arrête à la rangée 2. */
+const FACE_X = 7;
+const FRINGE_Y = 2;
 
 export interface Head2D {
   rows: string[];
@@ -212,48 +270,59 @@ function composeHead(shape: Shape, hair: Hair2D, face: FaceTraits, facial: numbe
   };
   const rows = skullRows(shape, heading);
   const skull = (x: number, y: number) => (rows[y]?.[x] ?? '.') === 'x';
-  const isSkin = (x: number, y: number) => get(x, y) !== '.' && '1234'.includes(get(x, y));
+  const isSkin = (x: number, y: number) => get(x, y) !== '.' && '23'.includes(get(x, y));
 
-  // Peau à plat : ombre sur le côté et sous la mâchoire, et sur la joue côté ombre (vue de dos).
+  // Peau en 2 tons, à plat : ombre sur le côté et sous la mâchoire (lumière en haut à gauche), et sur
+  // la joue qui tourne (vue de dos).
   rows.forEach((row, y) =>
     [...row].forEach((ch, x) => {
       if (ch !== 'x') return;
       const left = row.indexOf('x');
       const right = row.lastIndexOf('x');
-      const shade = (y >= 8 && (x === left || !skull(x, y + 1) || (x === right && !(heading === 'down' && y === 8)))) || (heading === 'up' && x === right && y >= 4);
+      const shade = (y > NOSE_Y && (x === left || !skull(x, y + 1) || x === right)) || (heading === 'up' && x === right && y >= 4);
       set(x, y, shade ? '3' : '2');
     }),
   );
 
-  // Oreilles : de face, l'oreille proche à l'arrière du visage ; de dos, l'oreille proche côté course
-  // et le bord de l'oreille éloignée qui dépasse à gauche. Posées par-dessus les cheveux, sauf
-  // quand la coiffure tombe dessus.
+  // Oreilles : de face, l'oreille proche à l'arrière du visage (pavillon en ombre) ; de dos,
+  // l'oreille proche côté course et le bord de l'oreille éloignée qui dépasse à gauche. Posées
+  // par-dessus les cheveux, sauf quand la coiffure tombe dessus.
   const ears = () => {
-    if (heading === 'down') for (const [x, y, ch] of [[3, 5, '2'], [3, 6, '3'], [4, 6, '2'], [3, 7, '3']] as const) set(x, y, ch);
+    if (heading === 'down') for (const [x, y, ch] of [[4, 7, '2'], [5, 7, '2'], [4, 8, '2'], [5, 8, '3'], [4, 9, '2'], [5, 9, '3'], [4, 10, '3'], [5, 10, '2'], [6, 8, '3'], [6, 9, '3']] as const) set(x, y, ch);
     else {
-      for (const [x, y, ch] of [[9, 5, '2'], [9, 6, '3'], [10, 5, '2'], [10, 6, '3']] as const) set(x, y, ch);
-      for (const y of [5, 6]) set(rows[y].indexOf('x') - 1, y, y === 5 ? '2' : '3');
+      for (const [x, y, ch] of [[12, 7, '2'], [13, 7, '2'], [12, 8, '3'], [13, 8, '2'], [12, 9, '3'], [13, 9, '2'], [13, 10, '3'], [11, 8, '3'], [11, 9, '3']] as const) set(x, y, ch);
+      for (const y of [7, 8, 9]) set(rows[y].indexOf('x') - 1, y, y === 7 ? '2' : '3');
     }
   };
   if (hair.coversEars) ears();
 
-  // Cheveux, puis ombre de la ligne des cheveux sur la peau juste dessous.
+  // Cheveux ; de face, la frange s'arrête au-dessus du front (une rangée de peau avant les sourcils).
   const view = hair[heading];
-  view.rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && set(view.at[0] + x, view.at[1] + y, ch)));
+  view.rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      const hx = view.at[0] + x;
+      const hy = view.at[1] + y;
+      if (ch === '.' || (heading === 'down' && hx >= FACE_X && hy > FRINGE_Y && hy <= MOUTH_Y + 3 && skull(hx, hy))) return;
+      set(hx, hy, ch);
+    }),
+  );
   if (!hair.coversEars) ears();
-  for (let y = 0; y < rows.length; y++) for (let x = 0; x < 12; x++) if (get(x, y) === '2' && get(x, y - 1) !== '.' && HAIR_CHARS.includes(get(x, y - 1))) set(x, y, '3');
+  // Ombre de la ligne des cheveux sur la peau juste dessous.
+  for (let y = 0; y < rows.length; y++) for (let x = 0; x < 17; x++) if (get(x, y) === '2' && HAIR_CHARS.includes(get(x, y - 1)) && get(x, y - 1) !== '.') set(x, y, '3');
 
   // Visage, pilosité.
   if (heading === 'down') {
     const features = faceFeatures(face, expression);
-    const mouth = features.filter(([, y, ch]) => y >= 8 && (ch === '4' || ch === 'w'));
-    for (const [x, y, ch] of features) if (skull(x, y) || isSkin(x, y)) set(x, y, ch);
-    if (facial) for (const [x, y, ch] of facialHair(facial, heading, isSkin)) if (!mouth.some(([mx, my]) => mx === x && my === y)) set(x, y, ch);
+    const mouth = features.filter(([, y, ch]) => y >= MOUTH_Y - 1 && (ch === '4' || ch === 'w'));
+    if (facial) for (const [x, y, ch] of facialHair(facial, heading, isSkin)) set(x, y, ch);
+    for (const [x, y, ch] of features) if (skull(x, y) && (get(x, y) === '.' || !HAIR_CHARS.includes(get(x, y)) || y >= BROW_Y)) set(x, y, ch);
+    // La bouche passe devant la barbe ; les lèvres pleines restent dans la barbe.
+    for (const [x, y, ch] of mouth) set(x, y, ch);
   } else if (facial) for (const [x, y, ch] of facialHair(facial, heading, isSkin)) set(x, y, ch);
 
   // Bandeau : deux rangées sur le haut du front, tout autour de la tête.
   if (headband) {
-    for (let x = -3; x < 13; x++) {
+    for (let x = -PAD_X; x < SIZE_W - PAD_X; x++) {
       if (get(x, 1) !== '.') set(x, 1, 's');
       if (get(x, 2) !== '.') set(x, 2, 'S');
     }
@@ -263,5 +332,5 @@ function composeHead(shape: Shape, hair: Hair2D, face: FaceTraits, facial: numbe
   const used = g.map((r) => r.some((c) => c !== '.'));
   const top = used.indexOf(true);
   const bottom = used.lastIndexOf(true);
-  return { rows: g.slice(top, bottom + 1).map((r) => r.join('')), anchor: { x: 5 + PAD_X, y: 9 + PAD_Y - top } };
+  return { rows: g.slice(top, bottom + 1).map((r) => r.join('')), anchor: { x: NECK[0] + PAD_X, y: NECK[1] + PAD_Y - top } };
 }

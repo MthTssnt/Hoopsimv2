@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HAIR_RAMPS } from '../../../assets/palette';
+import { EYE_COLORS, HAIR_RAMPS } from '../../../assets/palette';
 import { FACE_EXPRESSIONS, FACE_TRAITS, FACIAL_HAIR_2D, HAIRS_2D, headGrid2D, SHAPES_2D, type FaceExpression } from '../../../assets/sprites/heads2d';
 import type { Appearance } from './appearance';
 import type { SlotCanvas, Slot } from './canvas';
+import { colors2D } from './compose';
 import { renderFigure2D, renderFigure2DBoth } from './figure2d';
 import { poses2D } from './poses2d';
 import { FRAME, type Heading } from './rig';
@@ -33,11 +34,11 @@ function pixels(c: SlotCanvas): string[] {
 const height = (look: Appearance, heading: Heading = 'down') => FRAME.groundY - renderFigure2D({ ...look, hair: 10 }, idle[0].pose, heading).canvas.bounds()!.top;
 
 describe('rendu 2D : proportions et cadre', () => {
-  it('ailier ~42 px à l’arrêt (comme les sprites actuels), meneur 2-3 de moins, pivot 2-4 de plus', () => {
+  it('ailier ~45 px à l’arrêt (corps d’origine, tête agrandie), meneur 2-3 de moins, pivot 2-4 de plus', () => {
     for (const heading of HEADINGS) {
       const ailier = height(AILIER, heading);
-      expect(ailier, heading).toBeGreaterThanOrEqual(41);
-      expect(ailier).toBeLessThanOrEqual(44);
+      expect(ailier, heading).toBeGreaterThanOrEqual(44);
+      expect(ailier).toBeLessThanOrEqual(47);
       expect(height({ ...AILIER, heightCm: 186 }, heading) - ailier).toBeGreaterThanOrEqual(-3);
       expect(height({ ...AILIER, heightCm: 186 }, heading) - ailier).toBeLessThanOrEqual(-1);
       expect(height({ ...AILIER, heightCm: 212 }, heading) - ailier).toBeGreaterThanOrEqual(2);
@@ -45,11 +46,11 @@ describe('rendu 2D : proportions et cadre', () => {
     }
   });
 
-  it('tête ~1/4 du joueur (coupe sans volume au-dessus)', () => {
+  it('tête ~1/3 du joueur (coupe sans volume au-dessus)', () => {
     const head = headGrid2D({ ...AILIER, hair: 10 }, 'down');
     const rows = head.rows.filter((r) => /[^.]/.test(r)).length;
-    expect(rows / height(AILIER)).toBeGreaterThan(0.22);
-    expect(rows / height(AILIER)).toBeLessThanOrEqual(0.31);
+    expect(rows / height(AILIER)).toBeGreaterThan(0.31);
+    expect(rows / height(AILIER)).toBeLessThanOrEqual(0.38);
   });
 
   it('pieds sur la rangée du sol (contour dessous) au sol, en l’air à l’envol ; tout tient dans le cadre', () => {
@@ -240,6 +241,41 @@ describe('têtes : visage', () => {
         expect(diff, `${a} / ${b}`).toBeGreaterThanOrEqual(4);
       }
     }
+  });
+
+  it('grands yeux : blanc, iris de couleur et pupille ; l’œil éloigné plus étroit que l’œil proche', () => {
+    for (let face = 0; face < FACE_TRAITS.length; face++) {
+      const rows = headGrid2D({ head: 0, hair: BALD, face }, 'down').rows;
+      // Colonnes peintes en blanc, iris ou pupille, regroupées par œil (séparées par une colonne de peau).
+      const cols = [...new Set(rows.flatMap((r) => [...r].flatMap((c, x) => ('win'.includes(c) ? [x] : []))))].sort((a, b) => a - b);
+      const eyes: number[][] = [];
+      for (const x of cols) (eyes.length && x === eyes[eyes.length - 1].at(-1)! + 1 ? eyes[eyes.length - 1] : (eyes[eyes.length] = [])).push(x);
+      expect(eyes, `visage ${face}`).toHaveLength(2);
+      expect(eyes[0].length).toBeGreaterThan(eyes[1].length);
+      const tall = (xs: number[]) => rows.filter((r) => xs.some((x) => 'win'.includes(r[x]))).length;
+      expect(tall(eyes[0])).toBe(3);
+      for (const ch of 'win') expect(count(rows, ch), `visage ${face} : ${ch}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('peau du visage en 2 tons (base et ombre), sans ton clair ni trait sombre isolé', () => {
+    for (let face = 0; face < FACE_TRAITS.length; face++) {
+      for (const e of FACE_EXPRESSIONS) {
+        const rows = headGrid2D({ head: 0, hair: 0, face }, 'down', e).rows;
+        expect(count(rows, '1'), `visage ${face} ${e}`).toBe(0);
+      }
+    }
+  });
+
+  it('barbe d’un ton nettement différent de la peau, pour tous les teints et toutes les couleurs de cheveux', () => {
+    const luma = (c: number) => (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
+    for (let skin = 0; skin < 4; skin++) {
+      for (let hairColor = 0; hairColor < HAIR_RAMPS.length; hairColor++) {
+        const c = colors2D({ ...AILIER, skin, hairColor }, [0, 0, 0], [0, 0, 0]);
+        expect(Math.abs(luma(c.beard![0]) - luma(c.skin[1])), `${skin} ${hairColor}`).toBeGreaterThanOrEqual(0.15);
+      }
+    }
+    expect(EYE_COLORS).toHaveLength(4);
   });
 
   it('expressions exagérées : joie et effort montrent les dents, l’effort ouvre la bouche (2×2 sombre)', () => {
