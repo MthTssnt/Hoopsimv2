@@ -11,8 +11,8 @@
  * Vers la gauche, l'image est retournée (comme dans un jeu 2D), puis le numéro est reposé.
  * Même cadre et même format que `composeFrame` (rig.ts), pour la feuille de `SheetBaker`.
  */
-import { headGrid2D } from '../../../assets/sprites/heads2d';
-import { drawJerseyNumber, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
+import { headGrid2D, type FaceExpression, type Head2D, type HeadLook } from '../../../assets/sprites/heads2d';
+import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
 import type { Appearance } from './appearance';
 import { SlotCanvas, slotOf, type Slot } from './canvas';
 import type { Facing, Kit } from './compose';
@@ -110,8 +110,32 @@ function hull(points: { x: number; y: number }[]): Pick<Part, 'inside' | 'box'> 
   return { inside, box };
 }
 
-/** Cadre du rendu : sol à la rangée du contour sous la semelle (comme le rig actuel). */
-const GROUND = FRAME.groundY;
+/**
+ * Densité de dessin : tout le sprite (corps, tête, numéro) est dessiné à la même densité.
+ * `DENSITY_1` est celle du match (cadre 56×64) ; un prototype peut dessiner plus fin (cadre et
+ * géométrie ×k), avec sa propre tête et ses propres chiffres.
+ */
+export interface Density2D {
+  k: number;
+  /** Cadre : sol à la rangée du contour sous la semelle (comme le rig actuel). */
+  frame: { readonly width: number; readonly height: number; readonly centerX: number; readonly groundY: number };
+  head: (look: HeadLook, heading: Heading, expression: FaceExpression) => Head2D;
+  digits: { height: number; width: (value: number) => number; draw: (value: number, x: number, y: number, plot: (x: number, y: number) => void) => void };
+}
+
+export const DENSITY_1: Density2D = {
+  k: 1,
+  frame: FRAME,
+  head: headGrid2D,
+  digits: { height: JERSEY_DIGIT_HEIGHT, width: jerseyNumberWidth, draw: drawJerseyNumber },
+};
+
+/** Articulations agrandies d'un facteur k (toutes les mesures du squelette sont en pixels). */
+function scaleDeep<T>(value: T, k: number): T {
+  if (Array.isArray(value)) return (typeof value[0] === 'number' ? value.map((v: number) => v * k) : value.map((v) => scaleDeep(v, k))) as T;
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, scaleDeep(v, k)])) as T;
+  return value;
+}
 
 export interface Figure2D {
   canvas: SlotCanvas;
@@ -125,17 +149,17 @@ export interface Figure2D {
  * Rend une image du joueur : squelette posé, pièces peintes de l'arrière vers l'avant dans un seul
  * calque, ombrage à plat, tête, contour unique, puis miroir et numéro.
  */
-export function renderFigure2D(look: Appearance, pose: Pose2D, heading: Heading, facing: Facing = 'right', kit: Kit = 'team'): Figure2D {
-  const painted = paintFigure(look, pose, heading, kit);
-  return finishFigure(painted, facing === 'left' ? painted.canvas.mirrored() : painted.canvas, look, facing, kit);
+export function renderFigure2D(look: Appearance, pose: Pose2D, heading: Heading, facing: Facing = 'right', kit: Kit = 'team', density: Density2D = DENSITY_1): Figure2D {
+  const painted = paintFigure(look, pose, heading, kit, density);
+  return finishFigure(painted, facing === 'left' ? painted.canvas.mirrored() : painted.canvas, look, facing, kit, density);
 }
 
 /** Les deux orientations d'une image, peintes une seule fois : vers la gauche, c'est le miroir (numéro reposé à l'endroit). */
-export function renderFigure2DBoth(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit = 'team'): Record<Facing, Figure2D> {
-  const painted = paintFigure(look, pose, heading, kit);
+export function renderFigure2DBoth(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit = 'team', density: Density2D = DENSITY_1): Record<Facing, Figure2D> {
+  const painted = paintFigure(look, pose, heading, kit, density);
   // Le miroir d'abord : l'image vers la droite reçoit ensuite son numéro sur place.
-  const left = finishFigure(painted, painted.canvas.mirrored(), look, 'left', kit);
-  return { right: finishFigure(painted, painted.canvas, look, 'right', kit), left };
+  const left = finishFigure(painted, painted.canvas.mirrored(), look, 'left', kit, density);
+  return { right: finishFigure(painted, painted.canvas, look, 'right', kit, density), left };
 }
 
 interface Painted {
@@ -146,14 +170,17 @@ interface Painted {
   palms: [Screen, Screen];
 }
 
-function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit): Painted {
-  const b = build2D(look.heightCm, look.heavy);
-  const J = joints2D(b, pose, heading);
+function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit, density: Density2D): Painted {
+  const { k, frame } = density;
+  const base = build2D(look.heightCm, look.heavy);
+  // À une autre densité, le squelette (posé en pixels de la densité 1) et les épaisseurs sont agrandis.
+  const b = k === 1 ? base : { ...base, r: scaleDeep(base.r, k) };
+  const J = k === 1 ? joints2D(base, pose, heading) : scaleDeep(joints2D(base, pose, heading), k);
   // Calage au sol à l'écran : la semelle la plus basse (le pied le plus proche) touche la rangée
   // du sol, comme le rig actuel ; `lift` la soulève.
-  const lift = (pose.lift ?? 0) * Math.cos(PITCH_2D);
+  const lift = (pose.lift ?? 0) * Math.cos(PITCH_2D) * k;
   const sole = Math.max(...J.shoes.flat().map((p) => project2D(p, 0, 0).y)) + lift;
-  const S = (p: Vec3): Screen => project2D(p, FRAME.centerX, GROUND - sole);
+  const S = (p: Vec3): Screen => project2D(p, frame.centerX, frame.groundY - sole);
   const disc = (p: Vec3, r: number): Disc => {
     const s = S(p);
     return { x: s.x, y: s.y, r };
@@ -169,7 +196,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
     const far = i === farSide;
     const legNear = nearOf(J.knees[i], J.ankles[i]);
     add({ group: `leg${i}`, far, near: legNear, material: 'skin', ...taper([disc(J.knees[i], b.r.knee), disc(J.calves[i], b.r.calf), disc(J.ankles[i], b.r.ankle)]) });
-    add({ group: `leg${i}`, far, near: legNear + 0.01, material: 'sock', ...taper([disc(J.sockTops[i], b.r.ankle + 0.35), disc(J.ankles[i], b.r.ankle + 0.25)]) });
+    add({ group: `leg${i}`, far, near: legNear + 0.01, material: 'sock', ...taper([disc(J.sockTops[i], b.r.ankle + 0.35 * k), disc(J.ankles[i], b.r.ankle + 0.25 * k)]) });
     add({ group: `foot${i}`, far, near: legNear + 0.02, material: 'shoe', ...hull(J.shoes[i].map(S)) });
     // Le short est une seule pièce de tissu avec la jambe proche ; la jambe éloignée s'en détache par l'ombre.
     add({ group: far ? 'shorts-far' : 'shorts', far, near: nearOf(J.hips[i], J.shortsHems[i]) + 0.03, material: 'jersey', shadow: 2, ...taper([disc(J.hips[i], b.r.shorts), disc(J.shortsHems[i], b.r.shortsHem)]) });
@@ -194,18 +221,18 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
   add({ group: 'shorts', far: false, near: pelvisNear, material: 'jersey', shadow: 2, ...hull(J.shorts.map(S)) });
   const torsoNear = nearOf(J.neckBase, J.chestFront, J.chestBack) + 0.05;
   // Ceinture du short par-dessus le bas du maillot (maillot rentré).
-  add({ group: 'shorts', far: false, near: torsoNear + 0.03, material: 'trim', ...taper(J.waistband.map((p) => disc(p, 0.55))) });
+  add({ group: 'shorts', far: false, near: torsoNear + 0.03, material: 'trim', ...taper(J.waistband.map((p) => disc(p, 0.55 * k))) });
   add({ group: 'torso', far: false, near: torsoNear, material: 'skin', shadow: 2, ...hull(J.torso.map(S)) });
-  add({ group: 'torso', far: false, near: torsoNear + 0.01, material: 'skin', ...taper([disc(J.neckBase, b.r.neck + 0.3), disc(J.neckTop, b.r.neck)]) });
+  add({ group: 'torso', far: false, near: torsoNear + 0.01, material: 'skin', ...taper([disc(J.neckBase, b.r.neck + 0.3 * k), disc(J.neckTop, b.r.neck)]) });
   add({ group: 'torso', far: false, near: torsoNear + 0.02, material: 'jersey', ...hull(J.jersey.map(S)) });
   // Encolure : la peau du cou, bordée du liseré.
   add({ group: 'torso', far: false, near: torsoNear + 0.03, material: 'skin', ...hull([...J.collar.map(S), S(J.neckBase)]) });
-  add({ group: 'torso', far: false, near: torsoNear + 0.04, material: 'trim', ...taper(J.collar.map((p) => disc(p, 0.5))) });
+  add({ group: 'torso', far: false, near: torsoNear + 0.04, material: 'trim', ...taper(J.collar.map((p) => disc(p, 0.5 * k))) });
 
   // Peinture de l'arrière vers l'avant, dans un seul calque ; on garde la boîte de la silhouette
   // pour ne parcourir qu'elle ensuite.
-  const W = FRAME.width;
-  const H = FRAME.height;
+  const W = frame.width;
+  const H = frame.height;
   const owner = new Int16Array(W * H).fill(-1);
   const order = parts.map((_, k) => k).sort((a, c) => parts[a].near - parts[c].near);
   const box: { x0: number; x1: number; y0: number; y1: number } = { x0: W, x1: -1, y0: H, y1: -1 };
@@ -255,7 +282,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
   }
 
   // Tête dessinée, posée au cou : devant le corps, sauf là où une pièce plus proche passe devant (bras levé).
-  const head = headGrid2D(look, heading, pose.expression ?? 'neutre');
+  const head = density.head(look, heading, pose.expression ?? 'neutre');
   const neck = S(J.neckTop);
   const headNear = neck.near + 0.6;
   const hx = Math.round(neck.x) - head.anchor.x;
@@ -304,16 +331,17 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
 }
 
 /** Numéro posé sur l'image (déjà retournée vers la gauche), à l'endroit, seulement sur le maillot visible. */
-function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit): Figure2D {
+function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit, density: Density2D): Figure2D {
+  const { digits } = density;
   const W = canvas.width;
   const mirror = facing === 'left';
   let numberAt: Figure2D['numberAt'] = null;
   if (kit === 'team') {
     const cx = mirror ? W - 1 - chest.x : chest.x;
-    const x = Math.round(cx - jerseyNumberWidth(look.number) / 2);
-    const y = Math.round(chest.y - 3);
+    const x = Math.round(cx - digits.width(look.number) / 2);
+    const y = Math.round(chest.y - digits.height / 2);
     numberAt = { x, y };
-    drawJerseyNumber(look.number, x, y, (px, py) => {
+    digits.draw(look.number, x, y, (px, py) => {
       const under = canvas.get(px, py);
       if (under === 'p' || under === 'P') canvas.set(px, py, 'S');
       else if (under === 'q') canvas.set(px, py, 't');
