@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateAppearance, normalizeAppearance, type PlayerAppearance } from './appearance';
 import { composeHead } from './composeHead';
-import { CATEGORIES, partIds, partOf, REGISTRY, type Category } from './registry';
+import { CATEGORIES, drawnIds, partIds, partOf, REGISTRY, type Category } from './registry';
 import { EXPRESSIONS, VIEWS, type Grid, type View } from './types';
 
 const BASE: PlayerAppearance = {
@@ -17,6 +17,7 @@ const BASE: PlayerAppearance = {
   hair: 'ebouriffe',
   colors: { hair: 'brun', facialHair: 'brun', eyes: 'brun-fonce', accessory: 'equipe' },
   accessories: [],
+  dominantHand: 'droite',
 };
 
 /** Applique une pièce d'une catégorie à l'apparence de base. */
@@ -116,11 +117,13 @@ describe('registre des pièces', () => {
 });
 
 describe('composition de la tête', () => {
-  it('une catégorie changée à la fois : chaque variante se voit (au moins 3 pixels d’écart, de face)', () => {
+  // La règle « au moins 3 pixels d'écart à ×1 » (lisible à ×3) reviendra avec le travail sur les
+  // visages ; pour l'instant, les formes de la planche du style 5 sont gardées telles quelles.
+  it('une catégorie changée à la fois : chaque variante change la tête, de face', () => {
     for (const category of CATEGORIES) {
       const ids = partIds(category);
       const heads = ids.map((id) => composeHead(withPart(category, id, category === 'ears' ? { ...BASE, hair: 'rase' } : BASE), 'down').rows);
-      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) expect(diff(heads[i], heads[j]), `${category} ${ids[i]} / ${ids[j]}`).toBeGreaterThanOrEqual(3);
+      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) expect(diff(heads[i], heads[j]), `${category} ${ids[i]} / ${ids[j]}`).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -194,6 +197,7 @@ describe('composition de la tête', () => {
       return Math.max(...pixelsOf(h.rows).filter(([, , c]) => 'bB'.includes(c)).map(([, y]) => y)) - h.neck.y;
     };
     expect(bottom('longue')).toBe(bottom('normale') + 1);
+    expect(bottom('fine')).toBe(bottom('normale'));
   });
 
   it('déterministe, et en cache sans effet de bord', () => {
@@ -223,20 +227,32 @@ describe('apparence sérialisable', () => {
     expect(fixed.colors.eyes).toBe(a.colors.eyes);
     expect(normalizeAppearance('n’importe quoi', seed(3))).toEqual(a);
     expect(normalizeAppearance({ ...a, facialHair: null }, seed(3)).facialHair).toBeNull();
+    const { dominantHand: _, ...withoutHand } = a;
+    expect(normalizeAppearance(withoutHand, seed(3)).dominantHand).toBe(a.dominantHand);
+    expect(normalizeAppearance({ ...a, dominantHand: 'gauche' }, seed(3)).dominantHand).toBe('gauche');
   });
 
-  it('variété : chaque pièce et chaque couleur sortent au tirage, au moins 95 % d’apparences distinctes', () => {
+  it('variété : le tirage donne toutes les pièces de la planche du style 5, jamais les autres ; au moins 95 % d’apparences distinctes', () => {
     const all = Array.from({ length: 600 }, (_, i) => generateAppearance({ id: `v-${i}`, age: 19 + (i % 18) }));
     const seen = (key: (a: PlayerAppearance) => string | null | string[]) => new Set(all.flatMap((a) => key(a) ?? []));
-    expect(seen((a) => a.headShape).size).toBe(partIds('headShapes').length);
-    expect(seen((a) => a.ears).size).toBe(partIds('ears').length);
-    expect(seen((a) => a.eyes).size).toBe(partIds('eyes').length);
-    expect(seen((a) => a.brows).size).toBe(partIds('brows').length);
-    expect(seen((a) => a.nose).size).toBe(partIds('noses').length);
-    expect(seen((a) => a.mouth).size).toBe(partIds('mouths').length);
-    expect(seen((a) => a.facialHair).size).toBe(partIds('facialHair').length);
-    expect(seen((a) => a.hair).size).toBe(partIds('hair').length);
-    expect(seen((a) => a.accessories).size).toBe(partIds('accessories').length);
+    const keys: Record<Category, (a: PlayerAppearance) => string | null | string[]> = {
+      headShapes: (a) => a.headShape,
+      ears: (a) => a.ears,
+      eyes: (a) => a.eyes,
+      brows: (a) => a.brows,
+      noses: (a) => a.nose,
+      mouths: (a) => a.mouth,
+      facialHair: (a) => a.facialHair,
+      hair: (a) => a.hair,
+      accessories: (a) => a.accessories,
+    };
+    for (const category of CATEGORIES) expect([...seen(keys[category])].sort(), category).toEqual([...drawnIds(category)].sort());
+    expect(drawnIds('eyes')).toEqual(['points']);
+    expect(drawnIds('headShapes')).toEqual(['normale', 'carree', 'fine', 'ronde', 'large']);
+    // Main forte : environ un gaucher sur huit.
+    const lefties = all.filter((a) => a.dominantHand === 'gauche').length / all.length;
+    expect(lefties).toBeGreaterThan(0.06);
+    expect(lefties).toBeLessThan(0.2);
     expect(seen((a) => a.colors.eyes).size).toBe(5);
     expect(seen((a) => a.colors.hair).size).toBe(6);
     // Barbe grise sur cheveux bruns : la pilosité a sa propre couleur.

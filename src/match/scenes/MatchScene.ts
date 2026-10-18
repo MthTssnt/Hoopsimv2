@@ -19,7 +19,7 @@ import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
-import { AIR_FRAMES, animTimeScale, blendBall, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
+import { animTimeScale, blendBall, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearance2DFor, appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, BakeQueue, bakePlayer, bakeShadow, SHADOWS, SheetBaker, type BakedPlayer, type Clock, type Renderer } from '../render/sprites/bake';
@@ -880,7 +880,7 @@ export class MatchScene extends Phaser.Scene {
       sprite.play(animationKey(baked.key, state.name, state.facing, state.heading), true);
       return;
     }
-    const index = frameIndex(state);
+    const index = frameIndex(state, baked.layout);
     if (sprite.anims.isPlaying) sprite.anims.stop();
     if (sprite.texture.key !== baked.key || Number(sprite.frame.name) !== index) sprite.setTexture(baked.key, index);
   }
@@ -918,9 +918,13 @@ export class MatchScene extends Phaser.Scene {
       if (this.blendClock >= PLAYER_VIEW_TUNING.ballBlendMs) this.blendFrom = null;
     }
     this.ballDrawn = drawn;
-    // De dos, le ballon tenu passe derrière le porteur (ballon levé derrière la tête).
+    // Ballon tenu devant ou derrière le porteur : le rendu 2D le dit pour chaque image (main forte
+    // proche ou éloignée de la caméra) ; le rig le passe derrière de dos (ballon levé derrière la tête).
     let depth = depthOf(ball.y);
-    if (owner !== null && holder) depth = depthOf(this.world.players[owner].pos.y) + (seenFromBehind(holder.heading) ? -0.05 : 0.05);
+    if (owner !== null && holder) {
+      const behind = anchor?.behind ?? seenFromBehind(holder.heading);
+      depth = depthOf(this.world.players[owner].pos.y) + (behind ? -0.05 : 0.05);
+    }
     this.ballImage.setPosition(Math.round(drawn.x), Math.round(drawn.y)).setDepth(depth);
     // Ballon tenu : son ombre suit le ballon dessiné (dans la main de l'image, quelle que soit la
     // vue), au sol du porteur ; ballon libre : sous sa position physique.
@@ -969,7 +973,7 @@ export class MatchScene extends Phaser.Scene {
     const aiming = ft && ft.shooter === index && ft.aim !== null && this.world.holder === index;
     if (aiming || (this.freeThrowPose[index] > 0 && !body.airborne && this.world.holder !== index)) {
       view.heading = headingFor(towardRim(this.world.hoopFor(index).rim), view.heading);
-      state = { kind: 'frame', frame: aiming ? AIR_FRAMES.withBall : AIR_FRAMES.empty, facing, heading: view.heading };
+      state = { kind: 'frame', pose: aiming ? 'withBall' : 'release', facing, heading: view.heading };
     }
     // Passe et geste de vol (poses provisoires) : le bras du lâcher, au sol, tourné vers le
     // receveur ; le vol tend le bras vers le ballon.
@@ -980,7 +984,7 @@ export class MatchScene extends Phaser.Scene {
       const toward = target ? { x: target.x - pos.x, y: target.y - pos.y } : { x: body.facing, y: 0 };
       view.heading = headingFor(toward, view.heading);
       const side = Math.sign(toward.x) || body.facing;
-      state = { kind: 'frame', frame: AIR_FRAMES.empty, facing: side < 0 ? 'left' : 'right', heading: view.heading };
+      state = { kind: 'frame', pose: 'release', facing: side < 0 ? 'left' : 'right', heading: view.heading };
     }
     this.applySprite(view.sprite, view.member.baked, state);
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.

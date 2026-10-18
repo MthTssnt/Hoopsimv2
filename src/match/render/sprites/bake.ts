@@ -3,7 +3,8 @@ import type { Appearance } from './appearance';
 import { colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
 import { colorsPainted } from './paintedColors';
 import { composeFrame2D, metrics2D, type ComposedFrame2D, type Metrics2D } from './sheet2d';
-import { ANIMATIONS, bodyDims, FRAME, FRAMES, framesFor, type AnimationName, type BodyDims } from './rig';
+import { LAYOUT_2D, RIG_LAYOUT, sheetFrameCount, type SheetLayout } from './layout';
+import { bodyDims, FRAME, framesFor, type AnimationName, type BodyDims } from './rig';
 import type { TeamRamp } from '../../../assets/palette';
 import type { SlotCanvas, Slot } from './canvas';
 
@@ -13,9 +14,14 @@ export interface BakedPlayer {
    * gauche, haut droite, haut gauche ; voir `sheetIndex`). Animations : voir `animationKey`.
    */
   key: string;
-  /** Centre du ballon tenu pour chaque image de la feuille, ou null. */
-  anchors: ({ x: number; y: number } | null)[];
+  /**
+   * Centre du ballon tenu pour chaque image de la feuille, ou null ; `behind` (rendu 2D) : la main
+   * qui le tient est plus loin de la caméra que le corps, le ballon passe derrière le porteur.
+   */
+  anchors: ({ x: number; y: number; behind?: boolean } | null)[];
   dims: BodyDims;
+  /** Disposition de la feuille (images par bloc, animations, images fixes). */
+  layout: SheetLayout;
   /** Rendu 2D : haut de la tête à l'arrêt et haut des mains levées (sinon, tirés de `dims` par le rig). */
   metrics?: Metrics2D;
 }
@@ -41,19 +47,24 @@ export function animationKey(key: string, name: AnimationName, facing: Facing, h
   return `${key}:${name}${heading === 'up' ? ':up' : ''}${facing === 'left' ? ':left' : ''}`;
 }
 
-/** Nombre d'images d'une feuille : 19 images dans chacun des 4 blocs (2 diagonales, 2 orientations). */
-const SHEET_FRAMES = FRAMES.length * SHEET_VIEWS.length;
+/** Disposition de la feuille d'un rendu. */
+export function layoutFor(renderer: Renderer = 'rig'): SheetLayout {
+  return renderer === '2d' ? LAYOUT_2D : RIG_LAYOUT;
+}
 
 /**
- * Position d'une image dans la texture : une rangée par bloc (19 images). En une seule bande, une
- * feuille trop longue dépasserait la taille maximale d'une texture (souvent 8 192, parfois
- * 4 096 px) et s'afficherait en noir.
+ * Position d'une image dans la texture : une rangée par bloc. En une seule bande, une feuille trop
+ * longue dépasserait la taille maximale d'une texture (souvent 8 192, parfois 4 096 px) et
+ * s'afficherait en noir.
  */
-export function sheetCell(index: number): { x: number; y: number } {
-  return { x: (index % FRAMES.length) * FRAME.width, y: Math.floor(index / FRAMES.length) * FRAME.height };
+export function sheetCell(index: number, layout: SheetLayout = RIG_LAYOUT): { x: number; y: number } {
+  return { x: (index % layout.framesPerBlock) * FRAME.width, y: Math.floor(index / layout.framesPerBlock) * FRAME.height };
 }
+
 /** Taille de la texture d'une feuille (px). */
-export const SHEET_SIZE = { width: FRAMES.length * FRAME.width, height: SHEET_VIEWS.length * FRAME.height } as const;
+export function sheetSize(layout: SheetLayout = RIG_LAYOUT): { width: number; height: number } {
+  return { width: layout.framesPerBlock * FRAME.width, height: SHEET_VIEWS.length * FRAME.height };
+}
 
 /** Horloge en millisecondes (injectée dans les tests). */
 export type Clock = () => number;
@@ -70,8 +81,9 @@ export class SheetBaker {
   readonly look: Appearance;
   readonly options: BakeOptions;
   readonly dims: BodyDims;
-  readonly width = SHEET_SIZE.width;
-  readonly height = SHEET_SIZE.height;
+  readonly layout: SheetLayout;
+  readonly width: number;
+  readonly height: number;
   readonly pixels: Uint8ClampedArray;
   readonly anchors: BakedPlayer['anchors'] = [];
   private readonly colors: SlotColors;
@@ -84,12 +96,14 @@ export class SheetBaker {
     this.look = look;
     this.options = options;
     this.dims = bodyDims(look.heightCm, look.heavy);
+    this.layout = layoutFor(options.renderer);
+    ({ width: this.width, height: this.height } = sheetSize(this.layout));
     this.colors = (options.renderer === '2d' ? colorsPainted : colorsFor)(look, options.primary, options.secondary);
     this.pixels = new Uint8ClampedArray(this.width * this.height * 4);
   }
 
   get done(): boolean {
-    return this.next >= SHEET_FRAMES;
+    return this.next >= sheetFrameCount(this.layout);
   }
 
   /** Compose des images tant que le budget (ms) n'est pas épuisé, au moins une ; vrai quand la feuille est complète. */
@@ -103,9 +117,10 @@ export class SheetBaker {
   private composeNext(): void {
     if (this.done) return;
     const index = this.next++;
-    const view = SHEET_VIEWS[Math.floor(index / FRAMES.length)];
-    const { canvas, ball } = this.options.renderer === '2d' ? this.compose2D(index % FRAMES.length, view.facing, view.heading) : composeFrame(this.look, framesFor(view.heading)[index % FRAMES.length], this.dims, this.options.kit, view.facing, view.heading);
-    const cell = sheetCell(index);
+    const per = this.layout.framesPerBlock;
+    const view = SHEET_VIEWS[Math.floor(index / per)];
+    const { canvas, ball } = this.options.renderer === '2d' ? this.compose2D(index % per, view.facing, view.heading) : composeFrame(this.look, framesFor(view.heading)[index % per], this.dims, this.options.kit, view.facing, view.heading);
+    const cell = sheetCell(index, this.layout);
     canvas.forEach((x, y, slot) => {
       const color = slotColor(slot, this.colors);
       const k = ((cell.y + y) * this.width + cell.x + x) * 4;
@@ -117,7 +132,7 @@ export class SheetBaker {
     this.anchors.push(ball);
   }
 
-  /** Rendu 2D : chaque pose est peinte une fois pour les deux orientations. */
+  /** Rendu 2D : les deux orientations d'une image sont composées ensemble ; celle vers la gauche est gardée pour son bloc. */
   private compose2D(frame: number, facing: Facing, heading: Heading): ComposedFrame2D {
     const key = `${heading}|${frame}`;
     const kept = this.mirrored.get(key);
@@ -140,12 +155,13 @@ export class SheetBaker {
     image.data.set(this.pixels);
     texture.putData(image, 0, 0);
     texture.refresh();
-    for (let i = 0; i < SHEET_FRAMES; i++) {
-      const cell = sheetCell(i);
+    const per = this.layout.framesPerBlock;
+    for (let i = 0; i < sheetFrameCount(this.layout); i++) {
+      const cell = sheetCell(i, this.layout);
       texture.add(i, 0, cell.x, cell.y, FRAME.width, FRAME.height);
     }
 
-    for (const [name, def] of Object.entries(ANIMATIONS) as [AnimationName, (typeof ANIMATIONS)[AnimationName]][]) {
+    for (const [name, def] of Object.entries(this.layout.animations) as [AnimationName, SheetLayout['animations'][AnimationName]][]) {
       SHEET_VIEWS.forEach(({ facing, heading }, v) => {
         const animKey = animationKey(key, name, facing, heading);
         if (scene.anims.exists(animKey)) scene.anims.remove(animKey);
@@ -154,14 +170,14 @@ export class SheetBaker {
         const base = Math.min(...def.durations);
         scene.anims.create({
           key: animKey,
-          frames: def.frames.map((frame, j) => ({ key, frame: v * FRAMES.length + frame, duration: def.durations[j] - base })),
+          frames: def.frames.map((frame, j) => ({ key, frame: v * per + frame, duration: def.durations[j] - base })),
           frameRate: 1000 / base,
           repeat: def.loop || this.options.loopAll ? -1 : 0,
           repeatDelay: def.loop ? 0 : 400,
         });
       });
     }
-    return { key, anchors: this.anchors, dims: this.dims, metrics: this.options.renderer === '2d' ? metrics2D(this.look) : undefined };
+    return { key, anchors: this.anchors, dims: this.dims, layout: this.layout, metrics: this.options.renderer === '2d' ? metrics2D(this.look) : undefined };
   }
 }
 

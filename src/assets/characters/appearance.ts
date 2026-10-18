@@ -28,6 +28,8 @@ export interface PlayerAppearance {
     accessory: AccessoryColorId;
   };
   accessories: string[];
+  /** Main forte : elle dribble et elle tire (rendu seulement, le moteur ne la voit pas). */
+  dominantHand: 'droite' | 'gauche';
 }
 
 /** Ce que le tirage reçoit du joueur. `skin` et `hairColor` : indices déjà tirés ailleurs (portrait du HUD). */
@@ -74,24 +76,36 @@ export function generateAppearance(seed: AppearanceSeed): PlayerAppearance {
   const facialColor: HairColorId = hairColor === 'gris' || (age >= 31 && rng.chance(0.35)) ? 'gris' : hairColor === 'blond' && rng.chance(0.4) ? 'chatain' : hairColor;
   const eyeWeights = [0.55, 0.25, 0.08, 0.07, 0.05].map((w, i) => (dark && i >= 2 ? w * 0.25 : w));
   const accessories = rng.chance(0.12) ? [pick(rng, REGISTRY.accessories)] : [];
+  const headShape = pick(rng, REGISTRY.headShapes);
+  const ears = pick(rng, REGISTRY.ears);
+  const eyes = pick(rng, REGISTRY.eyes);
+  const brows = pick(rng, REGISTRY.brows);
+  const nose = pick(rng, REGISTRY.noses);
+  const mouth = pick(rng, REGISTRY.mouths);
+  const eyeColor = EYE_COLOR_IDS[rng.weightedIndex(eyeWeights)];
+  // Couleur d'accessoire : celle de l'équipe (comme la planche du style 5) ; les autres, à l'éditeur.
+  const accessoryColor = ACCESSORY_COLOR_IDS[rng.weightedIndex([1, 0, 0, 0])];
+  // Tirée en dernier : ajouter ce champ n'a pas changé le reste de l'apparence.
+  const dominantHand = rng.chance(0.12) ? 'gauche' : 'droite';
   return {
     version: 1,
-    headShape: pick(rng, REGISTRY.headShapes),
+    headShape,
     skin,
-    ears: pick(rng, REGISTRY.ears),
-    eyes: pick(rng, REGISTRY.eyes),
-    brows: pick(rng, REGISTRY.brows),
-    nose: pick(rng, REGISTRY.noses),
-    mouth: pick(rng, REGISTRY.mouths),
+    ears,
+    eyes,
+    brows,
+    nose,
+    mouth,
     facialHair,
     hair,
     colors: {
       hair: hairColor,
       facialHair: facialColor,
-      eyes: EYE_COLOR_IDS[rng.weightedIndex(eyeWeights)],
-      accessory: ACCESSORY_COLOR_IDS[rng.weightedIndex([0.6, 0.25, 0.1, 0.05])],
+      eyes: eyeColor,
+      accessory: accessoryColor,
     },
     accessories,
+    dominantHand,
   };
 }
 
@@ -125,5 +139,6 @@ export function normalizeAppearance(data: unknown, seed: AppearanceSeed): Player
       accessory: oneOf(ACCESSORY_COLOR_IDS, c.accessory, base.colors.accessory),
     },
     accessories: Array.isArray(d.accessories) ? d.accessories.filter((a): a is string => typeof a === 'string' && hasPart('accessories', a)) : base.accessories,
+    dominantHand: d.dominantHand === 'droite' || d.dominantHand === 'gauche' ? d.dominantHand : base.dominantHand,
   };
 }
