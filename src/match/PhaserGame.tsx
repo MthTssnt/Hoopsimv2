@@ -16,7 +16,7 @@ const isPauseKey = (event: KeyboardEvent) => event.key === 'Escape' || event.key
 
 /**
  * Monte une instance Phaser dans React et la détruit proprement au démontage. Le match est en
- * 480×270, mis à l'échelle entière (pixels nets) ; F bascule en plein écran, panneau compris.
+ * 640×360, mis à l'échelle entière (pixels nets) ; F bascule en plein écran, panneau compris.
  * Les réglages vivent ici (sauvegardés) et passent au jeu par `game.registry`. Échap ou P (ou le
  * bouton) met le match en pause : le match s'arrête et publie son box score, affiché par le menu.
  *

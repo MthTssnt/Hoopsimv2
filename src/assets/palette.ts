@@ -67,6 +67,9 @@ export const HAIR_COLORS: [number, number][] = [
   [PALETTE.silver, PALETTE.slate],
 ];
 
+/** Reflet de chaque couleur de cheveux (même ordre que `HAIR_COLORS`), pris dans la palette. */
+export const HAIR_HIGHLIGHTS: number[] = [PALETTE.slate, PALETTE.woodDark, PALETTE.woodLight, PALETTE.orangeDark, PALETTE.mist];
+
 /** Rampe d'équipe : clair, base, sombre. */
 export type TeamRamp = [number, number, number];
 
@@ -87,4 +90,46 @@ export function teamRamp(color: string | number): TeamRamp {
   const base = typeof color === 'number' ? color : parseInt(color.replace('#', ''), 16);
   // Ton clair : mélange vers le blanc (lisible même pour une couleur presque noire).
   return [mixColor(base, 0xffffff, 0.3), base, shadeColor(base, 0.65)];
+}
+
+/**
+ * Style en volumes (15 quinquies) : rampes de 5 tons (reflet, clair, base, ombre, ombre profonde).
+ * L'ombre profonde sert aussi de contour coloré. Elles s'ajoutent à la palette maîtresse, sans la
+ * changer : les sprites actuels ne s'en servent pas.
+ */
+export type Ramp5 = readonly [number, number, number, number, number];
+
+/** 4 teintes de peau, de la plus claire à la plus foncée. */
+export const SKIN_RAMPS: readonly Ramp5[] = [
+  [0xfff1dc, 0xffd2a8, 0xf0a878, 0xc47a4e, 0x5e2c1a],
+  [0xffe0b8, 0xf2b884, 0xd68f58, 0xa8643a, 0x4e2414],
+  [0xf0c08a, 0xcf935c, 0xa86c3e, 0x7c4a28, 0x3a1c0e],
+  [0xc88a58, 0x9c6438, 0x774626, 0x522e18, 0x26130a],
+];
+
+/**
+ * Cheveux (même ordre que `HAIR_COLORS`) : noir, brun, blond, roux, gris ; puis châtain, propre au
+ * rendu 2D (les couleurs de `HAIR_COLORS` ne changent pas).
+ */
+export const HAIR_RAMPS: readonly Ramp5[] = [
+  [0x6a6478, 0x3a3444, 0x262030, 0x18121e, 0x0a060c],
+  [0xb07c4c, 0x84552f, 0x5f3a1f, 0x3e2412, 0x1c0e06],
+  [0xfff0a8, 0xf4cf6a, 0xd4a444, 0x9c6c26, 0x4a2c0c],
+  [0xf08a4a, 0xc45a2a, 0x943a18, 0x62220c, 0x2c0e04],
+  [0xffffff, 0xdcdae4, 0xaeacba, 0x7a7888, 0x34323e],
+  [0xc08a5a, 0x96643a, 0x6e4626, 0x4a2c16, 0x22120a],
+];
+
+/**
+ * Couleurs d'iris du rendu 2D : brun foncé, noisette, bleu, vert, gris (saturées et assez sombres pour
+ * se détacher du blanc de l'œil et de la peau, à l'échelle du match).
+ */
+export const EYE_COLORS: readonly number[] = [0x4a2814, 0x8a5c1c, 0x2f74e0, 0x34a050, 0x8a98aa];
+/** Fréquence de chaque couleur d'iris (même ordre) : surtout brun foncé et noisette. */
+export const EYE_COLOR_WEIGHTS: readonly number[] = [0.55, 0.25, 0.08, 0.07, 0.05];
+
+/** Rampe de 5 tons d'une couleur d'équipe. */
+export function teamRamp5(color: string | number): Ramp5 {
+  const base = typeof color === 'number' ? color : parseInt(color.replace('#', ''), 16);
+  return [mixColor(base, 0xffffff, 0.45), mixColor(base, 0xffffff, 0.2), base, shadeColor(base, 0.66), mixColor(shadeColor(base, 0.3), PALETTE.outline, 0.4)];
 }

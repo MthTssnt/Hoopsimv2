@@ -1,6 +1,6 @@
 /**
- * Corps des joueurs vus de face : torses, shorts et chaussures, en grilles originales indexées
- * sur les emplacements de couleur. Deux corpulences (léger / lourd) ; les gabarits plus grands
+ * Corps des joueurs vus en diagonale (bas : de 3/4 face ; haut : de 3/4 dos) : torses, shorts et
+ * chaussures, en grilles originales indexées sur les emplacements de couleur. Deux corpulences (léger / lourd) ; les gabarits plus grands
  * répètent la rangée « étirable » du torse, les plus larges sa colonne étirable (bras et
  * jambes, de longueur fixe, sont tracés par le rig).
  *   p/P/q équipe primaire claire/base/sombre · S secondaire (col, liseré) · k encre · w craie
@@ -15,52 +15,66 @@ export interface StretchGrid {
 }
 
 /**
- * Torse vu de face, à la largeur et à la hauteur minimales (meneur léger : 10×7) ; col rond sur
- * la rangée du haut, emmanchures aux deux coins, une rangée libre avant le numéro, ourlet sombre.
+ * Torse en diagonale bas (de 3/4 face, le joueur tourné vers la droite ; vers la gauche, l'image
+ * est retournée), à la largeur et à la hauteur minimales (meneur léger : 11×9). Le flanc qui
+ * s'éloigne (2 colonnes à gauche) est au ton sombre ; le devant commence par son bord clair. Le
+ * col, centré sur le devant, est décalé vers le sens de la course ; emmanchures aux deux coins,
+ * une rangée libre avant le numéro, ourlet sombre.
  */
-export const TORSOS: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
+export const TORSOS_DOWN: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
   light: {
-    stretchRow: 2,
-    stretchCol: 2,
-    rows: ['sPPSSSSPPs', 'sPPPPPPPPs', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'qqPPPPPPqq'],
+    stretchRow: 3,
+    stretchCol: 3,
+    rows: ['sqPPPSSSSPs', 'sqPPPPSSPPs', 'qqpPPPPPPPq', 'qqpPPPPPPPq', 'qqpPPPPPPPq', 'qqpPPPPPPPq', 'qqpPPPPPPPq', 'qqpPPPPPPqq', 'qqqPPPPPPqq'],
   },
   heavy: {
-    stretchRow: 2,
-    stretchCol: 2,
-    rows: ['sPPPSSSSPPs', 'sPPPPPPPPPs', 'pPPPPPPPPPq', 'pPPPPPPPPPq', 'pPPPPPPPPPq', 'pPPPPPPPPqq', 'qqPPPPPPPqq'],
+    stretchRow: 3,
+    stretchCol: 3,
+    rows: ['sqPPPPSSSSPs', 'sqPPPPPSSPPs', 'qqpPPPPPPPPq', 'qqpPPPPPPPPq', 'qqpPPPPPPPPq', 'qqpPPPPPPPPq', 'qqpPPPPPPPPq', 'qqpPPPPPPPqq', 'qqqPPPPPPPqq'],
   },
 };
 
-/** Torse vu de dos : col droit et étroit (pas d'encolure), le reste comme de face ; le numéro va dans le dos. */
-export const TORSOS_BACK: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
+/**
+ * Torse en diagonale haut (de 3/4 dos, le joueur monte vers la droite) : col droit de dos décalé
+ * vers l'arrière, flanc du côté de la course (2 colonnes à droite) au ton sombre ; le numéro va
+ * dans le dos.
+ */
+export const TORSOS_UP: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
   light: {
-    stretchRow: 2,
-    stretchCol: 2,
-    rows: ['sPPPSSPPPs', 'sPPPPPPPPs', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'pPPPPPPPPq', 'qqPPPPPPqq'],
+    stretchRow: 3,
+    stretchCol: 6,
+    rows: ['sPSSSPPPPqs', 'sPPPPPPPPqs', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPPqq', 'pPPPPPPPqqq', 'qqPPPPPPqqq'],
   },
   heavy: {
-    stretchRow: 2,
-    stretchCol: 2,
-    rows: ['sPPPPSSPPPs', 'sPPPPPPPPPs', 'pPPPPPPPPPq', 'pPPPPPPPPPq', 'pPPPPPPPPPq', 'pPPPPPPPPqq', 'qqPPPPPPPqq'],
+    stretchRow: 3,
+    stretchCol: 6,
+    rows: ['sPSSSPPPPPqs', 'sPPPPPPPPPqs', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPPqq', 'pPPPPPPPPqqq', 'qqPPPPPPPqqq'],
   },
 };
 
-/** Short de 3 rangées : ceinture sombre, bandes latérales, liseré du bas ouvert entre les jambes. */
-export const SHORTS: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
-  light: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqq', 'psPPPPPPsq', 'SSSS..SSSS'] },
-  heavy: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqqq', 'psPPPPPPPsq', 'SSSS...SSSS'] },
+/**
+ * Short de 4 rangées : ceinture sombre, bandes latérales, liseré du bas ouvert entre les jambes ;
+ * le même flanc de 2 colonnes que le torse (à gauche en diagonale bas, à droite en diagonale haut).
+ */
+export const SHORTS_DOWN: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
+  light: { stretchRow: 1, stretchCol: 3, rows: ['qqqqqqqqqqq', 'qqsPPPPPPsq', 'qqsPPPPPPsq', 'SSSS...SSSS'] },
+  heavy: { stretchRow: 1, stretchCol: 3, rows: ['qqqqqqqqqqqq', 'qqsPPPPPPPsq', 'qqsPPPPPPPsq', 'SSSSS...SSSS'] },
+};
+export const SHORTS_UP: Readonly<Record<'light' | 'heavy', StretchGrid>> = {
+  light: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqqq', 'psPPPPPPsqq', 'psPPPPPPsqq', 'SSSS...SSSS'] },
+  heavy: { stretchRow: 1, stretchCol: 2, rows: ['qqqqqqqqqqqq', 'psPPPPPPPsqq', 'psPPPPPPPsqq', 'SSSSS...SSSS'] },
 };
 
-/** Chaussure (2 rangées : dessus encre, semelle craie), la pointe vers la droite. */
-export const SHOES: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
-  light: ['kkkk.', 'wwwww'],
-  heavy: ['kkkkk.', 'wwwwww'],
+/** Chaussure en diagonale bas : la pointe vers la caméra et le sens de la course (5 px de long). */
+export const SHOES_DOWN: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
+  light: ['kkkk.', 'kkkkk', 'wwwww'],
+  heavy: ['kkkkk.', 'kkkkkk', 'wwwwww'],
 };
 
-/** Chaussure vue du talon, à la largeur de la jambe (3 ou 4 px). */
-export const SHOES_BACK: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
-  light: ['kkk', 'www'],
-  heavy: ['kkkk', 'wwww'],
+/** Chaussure en diagonale haut : vue du talon, avec un bout de pointe du côté de la course. */
+export const SHOES_UP: Readonly<Record<'light' | 'heavy', readonly string[]>> = {
+  light: ['kkk.', 'kkkk', 'wwww'],
+  heavy: ['kkkk.', 'kkkkk', 'wwwww'],
 };
 
 /** Allonge une grille en répétant sa rangée étirable jusqu'à `height` rangées. */

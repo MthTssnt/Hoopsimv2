@@ -34,11 +34,11 @@ function paintBuffer(width: number, height: number) {
 const home = teamLook(TEAM_SEEDS[0]);
 
 describe('arène', () => {
-  it('garde la mise en page validée de ?style (ligne de fond à 440 px, ligne du fond à 41 px)', () => {
-    const proj = makeProjection(440 - COURT_LENGTH * ART_PPM, 41);
+  it('garde la mise en page validée de ?style (ligne de fond à 587 px, ligne du fond à 55 px)', () => {
+    const proj = makeProjection(587 - COURT_LENGTH * ART_PPM, 55);
     const a = arenaLayout(proj, makeCourt('pro'), STYLE_APRON);
-    expect(a.rightBaseline).toBe(440);
-    expect(a.farLine).toBe(41);
+    expect(a.rightBaseline).toBe(587);
+    expect(a.farLine).toBe(55);
     expect(a.nearLine).toBeLessThan(ART_VIEW.height);
     expect(a.farApronTop).toBeGreaterThan(0);
   });

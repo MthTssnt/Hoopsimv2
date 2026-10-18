@@ -35,8 +35,8 @@ export const HUD_KEYS = {
 const TEXT_STYLE = { fontFamily: 'monospace', fontSize: '8px', color: '#f6f2ea', backgroundColor: '#18203acc' };
 const SCOREBOARD_AT = { x: 4, y: 4 };
 const CARD_AT = { x: 4, y: VIEW_HEIGHT - 32 };
-/** Haut du bandeau de fin, au-dessus du centre de l'écran (le terrain reste visible dessous). */
-const BANNER_Y = 84;
+/** Haut du bandeau de fin, au-dessus du centre de l'écran (le terrain reste visible dessous) : 31 % de la hauteur. */
+const BANNER_Y = 112;
 
 /**
  * HUD par-dessus le match, dans une scène à part : il ne suit ni le défilement ni le zoom de la

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "calibrate": "tsx scripts/calibrate.ts"
+    "calibrate": "tsx scripts/calibrate.ts",
+    "sprites": "tsx scripts/spritesheet.ts"
   },
   "dependencies": {
     "phaser": "^4.2.1",

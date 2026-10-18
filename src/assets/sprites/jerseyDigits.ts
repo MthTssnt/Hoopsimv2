@@ -1,21 +1,21 @@
 /**
  * Chiffres des numéros de maillot (asset original), dessinés pour l'échelle des sprites :
- * 5 rangées de haut, « 1 » étroit (2 px) sans empattement, 0, 6, 8 et 9 arrondis pour qu'ils
+ * 6 rangées de haut, « 1 » étroit (2 px) sans empattement, 0, 6, 8 et 9 arrondis pour qu'ils
  * ne se confondent pas. Un pixel d'écart entre deux chiffres.
  */
-export const JERSEY_DIGIT_HEIGHT = 5;
+export const JERSEY_DIGIT_HEIGHT = 6;
 
 export const JERSEY_DIGITS: readonly (readonly string[])[] = [
-  ['.#.', '#.#', '#.#', '#.#', '.#.'],
-  ['.#', '##', '.#', '.#', '.#'],
-  ['##.', '..#', '.#.', '#..', '###'],
-  ['##.', '..#', '.#.', '..#', '##.'],
-  ['#.#', '#.#', '###', '..#', '..#'],
-  ['###', '#..', '##.', '..#', '##.'],
-  ['.##', '#..', '##.', '#.#', '.#.'],
-  ['###', '..#', '.#.', '.#.', '.#.'],
-  ['.#.', '#.#', '.#.', '#.#', '.#.'],
-  ['.#.', '#.#', '.##', '..#', '##.'],
+  ['.#.', '#.#', '#.#', '#.#', '#.#', '.#.'],
+  ['.#', '##', '.#', '.#', '.#', '.#'],
+  ['##.', '..#', '..#', '.#.', '#..', '###'],
+  ['##.', '..#', '.#.', '..#', '..#', '##.'],
+  ['#.#', '#.#', '#.#', '###', '..#', '..#'],
+  ['###', '#..', '##.', '..#', '..#', '##.'],
+  ['.##', '#..', '##.', '#.#', '#.#', '.#.'],
+  ['###', '..#', '..#', '.#.', '.#.', '.#.'],
+  ['.#.', '#.#', '.#.', '#.#', '#.#', '.#.'],
+  ['.#.', '#.#', '#.#', '.##', '..#', '##.'],
 ];
 
 const digitsOf = (value: number): number[] => [...String(Math.abs(Math.trunc(value)))].map(Number);

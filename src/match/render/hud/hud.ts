@@ -65,11 +65,12 @@ export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: num
 }
 
 /** Taille du portrait (px) : la tête 14×14, contour compris, avec une marge. */
-export const PORTRAIT_SIZE = 16;
+/** Portrait : la tête de 16×16 et son contour (18×18). */
+export const PORTRAIT_SIZE = 18;
 
 /** Portrait (tête, cheveux, expression neutre) dessiné à partir de l'apparence du joueur. */
 export function drawPortrait(g: Phaser.GameObjects.Graphics, look: Appearance, team: TeamLook, x: number, y: number): void {
-  const c = headLayer(look, 'neutre', 2, 2, PORTRAIT_SIZE, PORTRAIT_SIZE);
+  const c = headLayer(look, 'neutre', 1, 1, PORTRAIT_SIZE, PORTRAIT_SIZE);
   const colors = colorsFor(look, team.primary, team.secondary);
   c.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px, y + py, 1, 1));
 }

@@ -13,10 +13,11 @@
   - toute la profondeur du terrain tient à l'écran, avec ~22 à 26 m de long visibles ;
   - joueurs à grosse tête, à leur taille réelle ;
   - nom sous les joueurs, marqueur au sol sous le joueur contrôlé.
-- Vue retenue (validée dans `?style`, appliquée au match en S4) : 480×270 à 22,5 px/m, soit
-  ~21 m de long visibles et toute la profondeur du terrain ; mise à l'échelle entière (pixels
-  nets), F pour le plein écran. Les joueurs ont la taille de leur gabarit (meneur ~30 px,
-  ailier ~32 px, pivot ~35 px) ; la physique garde les vraies tailles.
+- Vue retenue (validée dans `?style`, appliquée au match en S4, puis passée à 640×360 aux
+  incréments 14-15) : 640×360 à 30 px/m, soit ~21 m de long visibles et toute la profondeur du
+  terrain ; mise à l'échelle entière (pixels nets), F pour le plein écran. Les joueurs ont la
+  taille de leur gabarit (meneur 40 px, ailier 43 px, pivot 46 px) ; la physique garde les
+  vraies tailles.
 - Caméra (suit le ballon ?, zoom ?) : ?
 - Nombre de joueurs à l'écran / taille relative : ?
 - Durée : réglable. On règle la durée totale du match, en 2 mi-temps ou 4 quart-temps
@@ -228,6 +229,24 @@
     ses couleurs, ou passe à sa couleur secondaire (sinon un maillot clair) si elles sont trop
     proches ; ton équipe toujours à gauche du tableau de score ;
   - un rechargement de la page pendant le match : rien n'est enregistré, le match reste à jouer.
+
+## Phase 3 — décisions de Matheo
+- **Vues de 3/4 (incrément 15 bis)** : les joueurs ont quatre vues, profil, 3/4 face, 3/4 dos
+  et dos, choisies en 8 directions.
+  - Les diagonales vers le bas et la descente tout droit sont en 3/4 face ; les diagonales vers
+    le haut en 3/4 dos ; la montée tout droit de dos.
+  - Toutes les poses existent dans les quatre vues ; celles du 16 y seront dessinées aussi.
+  - Le tireur fait face au panier dans la vue de son secteur.
+- **Quatre positions en diagonale (incrément 15 ter, remplace le 15 bis)** : les 3/4 du 15 bis ne
+  se voyaient pas assez. Il n'y a plus que quatre positions, toutes en diagonale : plus de profil,
+  plus de vue de face ni de dos plein.
+  - Tourné vers la droite : en montant, diagonale haut droite (vu de dos, en diagonale) ; en
+    descendant, diagonale bas droite (vu de face, en diagonale). Pareil vers la gauche.
+  - Les visages aussi sont vus en diagonale.
+  - À l'horizontale, le joueur garde sa dernière diagonale (haut ou bas) et ne change que de
+    côté ; au départ, diagonale bas.
+  - Le portrait du HUD est de 3/4 aussi.
+  - Les poses du 16 seront dessinées dans les deux diagonales.
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

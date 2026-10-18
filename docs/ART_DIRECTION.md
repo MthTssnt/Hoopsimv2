@@ -13,69 +13,82 @@ Ce qu'on ne reprend **jamais** : sprites, palette, police, logos, mise en page d
 personnages, noms d'équipes ou de joueurs, décors précis de Hoop Land ou d'un autre jeu.
 Tout est dessiné par nous (en code pour l'instant), avec notre palette et notre police.
 
-## 2. Résolution et cadrage (validé)
+## 2. Résolution et cadrage
 
-Cadrage validé par Matheo : celui de 384×216 à 18 px/m (21,3 m visibles, toute la profondeur).
-Avec les règles chiffrées des sprites (joueur standard d'environ 32 px), la résolution
-retenue est **480×270**. Le passage par 640×360 est abandonné.
+Cadrage validé par Matheo : 21,3 m de terrain visibles en largeur et toute la profondeur (celui
+de 384×216 à 18 px/m). Depuis l'incrément 14 (redesign des joueurs), la résolution interne passe
+à **640×360 à 30 px/m** : même cadrage, un tiers de pixels en plus partout, pour des joueurs
+mieux définis (et plus minces) sans les grossir à l'écran.
 
 | Réglage | Valeur | Pourquoi |
 | --- | --- | --- |
-| Résolution interne | **480×270** | Celle du match ; mise à l'échelle entière : ×4 en 1080p plein écran, ×3 dans une fenêtre de navigateur, ×2 sur un portable 1366×768 |
+| Résolution interne | **640×360** | Mise à l'échelle entière : ×3 en 1080p plein écran, ×2 dans une fenêtre de navigateur 1080p et sur un portable 1366×768, ×4 en 1440p, ×6 en 4K |
 | Mise à l'échelle | entière uniquement (`Scale.NONE` + zoom entier, recalculé au redimensionnement) | Pixels nets, jamais de pixel étiré |
-| Échelle du terrain | **22,5 px/m** en longueur | ~21,3 m de terrain visibles en largeur |
+| Échelle du terrain | **30 px/m** en longueur | ~21,3 m de terrain visibles en largeur |
 | Vue 3/4 | profondeur ×0,66, hauteur ×0,68 | Toute la profondeur du terrain à l'écran |
 
 La touche **F** passe en plein écran. Les épaisseurs du décor (lattes, public, poteau,
 poutre, panneaux) sont proportionnelles à l'échelle (`artPx`) : elles suivent la résolution.
+En fenêtre 1080p, le jeu passe de ×3 (480×270) à ×2 (1280×720) ; l'option « remplir l'écran »
+(incrément 18) rattrapera la fenêtre.
 
-Ordres de grandeur à 22,5 px/m :
+Ordres de grandeur à 30 px/m :
 
 | Élément | Taille à l'écran |
 | --- | --- |
-| Profondeur du terrain (15,24 m) | ~226 px, soit 84 % de la hauteur de l'écran |
-| Hauteur du cercle (3,05 m) | ~47 px au-dessus du sol |
-| Joueur standard (ailier) | 32 px, contour compris |
+| Profondeur du terrain (15,24 m) | ~302 px, soit 84 % de la hauteur de l'écran |
+| Hauteur du cercle (3,05 m) | ~62 px au-dessus du sol |
+| Joueur standard (ailier) | 43 px, contour compris |
 
-## 3. Règles chiffrées des personnages (font foi)
+## 3. Règles chiffrées des personnages (font foi une fois validées)
 
-Les sprites ont leurs propres règles en pixels, données par Matheo. La physique garde les
+Les sprites ont leurs propres règles en pixels. Celles de l'incrément 14 (redesign) reprennent
+les proportions données par Matheo en S3d, avec plus de pixels et une silhouette plus mince ;
+elles sont à valider sur `?style` (vues gros plan et avant / après). La physique garde les
 vraies tailles : seul le dessin suit ces règles.
 
-**Joueur standard (ailier), 32 px contour compris, ~2,5 têtes de haut** :
+**Joueur standard (ailier), 43 px contour compris, même taille par rapport au terrain qu'en
+480×270, tête ~40 % de la hauteur** :
 
 | Partie | Taille |
 | --- | --- |
-| Tête, cheveux compris | 13 rangées de haut (contour du haut + 12), 14 de large avec le contour, soit ~40 % de la hauteur |
+| Tête, cheveux compris | 17 rangées de haut (contour du haut + 16), 18 de large avec le contour |
 | Cou | 1 rangée |
-| Torse (maillot) | 8 rangées |
-| Short | 3 rangées |
-| Jambes (chaussette comprise) | 4 rangées |
-| Chaussures | 2 rangées, puis le contour au sol |
+| Torse (maillot) | 11 rangées, 11 px de large (26 % de la hauteur : plus mince qu'avant) |
+| Short | 4 rangées |
+| Jambes (chaussette comprise) | 6 rangées |
+| Chaussures | 3 rangées (dessus `ink` sur 2, semelle `chalk`), puis le contour au sol |
 
-- **Bras** : 2 px de remplissage et un contour de chaque côté, jamais 1 px. Ils mesurent 9 px
+- **Bras** : 2 px de remplissage et un contour de chaque côté, jamais 1 px. Ils mesurent 12 px
   de l'épaule à la main, quel que soit le gabarit. La main (le bout de 2×2) arrive au niveau
   de la taille.
-- **Jambes** : 3 px de large (4 px chez les pivots et les lourds), plus le contour. Elles sont
-  écartées, genoux fléchis vers l'extérieur.
+- **Jambes** : 3 px de large (4 px chez les pivots et les lourds), plus le contour, séparées
+  par leurs contours.
+  - À l'arrêt, elles sont droites, et l'entrejambe reste un trait droit (pas de croix sombre).
+    Le genou de la jambe avant est marqué d'un pixel d'ombre côté extérieur.
+  - Les genoux ne se plient vraiment qu'en course, en flexion et en l'air.
 - **Membres dans leur propre calque** : chaque bras et chaque jambe a son contour. Un bras
   qui passe devant le maillot en reste séparé par un trait sombre.
+- **Largeur** : 19 px au plus pour l'ailier à l'arrêt, bras compris (18 avant, pour 32 px de
+  haut).
 
 **Gabarits** (taille de la tête et longueur des bras identiques, membres jamais allongés) :
 
 | Gabarit | Taille du joueur | Torse | Jambes | Hauteur | Largeur du torse |
 | --- | --- | --- | --- | --- | --- |
-| Meneur | < 1,93 m | 7 | 3 | 30 px (−2) | 10 px |
-| Ailier | 1,93–2,05 m | 8 | 4 | 32 px | 10 px |
-| Pivot | > 2,05 m | 10 | 5 | 35 px (+3) | 11 px (+1) |
+| Meneur | < 1,93 m | 9 | 5 | 40 px (−3) | 11 px |
+| Ailier | 1,93–2,05 m | 11 | 6 | 43 px | 11 px |
+| Pivot | > 2,05 m | 13 | 7 | 46 px (+3) | 12 px (+1) |
 
 Corpulence lourde : +1 colonne au torse et au short.
 
-- **Ballon** : 6×6. Le ballon tenu est dessiné à la main du sprite (point d'accroche de chaque
-  image). Au lâcher, il rejoindra sa position physique en ~80 ms.
-- **Cadre des sprites** : 40×48 px, pieds au milieu du bord bas.
+- **Ballon** : 8×8 (10×10 avec le contour), deux coutures `ink`, un reflet en haut à gauche,
+  l'ombre en bas à droite. Le ballon tenu est dessiné à la main du sprite (point d'accroche de
+  chaque image). Au lâcher, il rejoint sa position physique en ~80 ms.
+- **Cadre des sprites** : 56×64 px, pieds au milieu du bord bas.
 - **Contrôle** : la vue gros plan de `?style` (touche V) affiche les trois gabarits ×2 avec une
-  règle par rangée. Les tests de `sprites.test.ts` mesurent chaque règle.
+  règle par rangée ; la vue avant / après montre l'ailier de 480×270 (×4) et celui de 640×360
+  (×3) à la même taille à l'écran. Les tests de `sprites.test.ts` mesurent chaque règle.
 
 ## 4. Palette maîtresse (32 couleurs, la nôtre)
 
@@ -121,16 +134,26 @@ Règles :
 
 ## 5. Personnages
 
-### Visage (de face, symétrique)
-- **Yeux** : 2×2 de blanc, avec une colonne d'iris sombre côté intérieur ; 2 px d'écart entre
-  les deux yeux, sur la même rangée.
-- **Sourcils** : une rangée sombre de 3 px au-dessus de chaque œil. C'est ce qui donne
-  l'expression.
-- **Nez** : 1 px d'ombre de peau, décalé d'un pixel vers la droite : très léger trois-quarts.
-- **Bouche** : ligne fermée de 4 px. Un grand sourire seulement pour « joyeuse » ; jamais de
-  bouche ouverte au repos.
+### Visage (de 3/4, tourné dans le sens de la course)
+Le visage n'est jamais vu de face : il est toujours tourné en diagonale (incrément 15 ter,
+décision de Matheo). Il est dessiné tourné vers la droite ; vers la gauche, le dessin est
+retourné.
+- **Yeux**, sur les mêmes rangées (7 à 9) :
+  - l'œil proche (du côté qui s'éloigne) a 2×3 de blanc et une colonne d'iris ;
+  - l'œil éloigné, raccourci, n'a qu'une colonne de blanc et son iris, contre le bord de la
+    tête du côté de la course ;
+  - les iris regardent dans le sens de la course.
+- **Sourcils** : une rangée sombre de 4 px sur l'œil proche, de 2 px sur l'œil éloigné. C'est ce
+  qui donne l'expression.
+- **Nez** : 3 px d'ombre de peau en équerre, à au moins 2 colonnes du centre, vers le sens de la
+  course.
+- **Bouche** : ligne fermée de 3 px, décalée comme le nez. Un sourire avec dents seulement pour
+  « joyeuse » ; jamais de bouche ouverte au repos.
+- **Oreille** : 3 px au ton d'ombre de la peau, du côté qui s'éloigne (colonne 1, rangées 8 à
+  10), posée seulement sur la peau : une coiffure qui couvre les côtés la cache.
 - **Ombrage** : un ton plus foncé sur un seul côté (le droit, lumière en haut à gauche).
-  Aucun pixel sombre isolé sur les joues, pas d'oreille dessinée.
+  Aucun pixel sombre isolé sur les joues.
+- **Portrait du HUD** : le même visage de 3/4 (diagonale bas, tourné vers la droite).
 - **Contour** : 1 px fermé tout autour de la tête et du corps, ajouté automatiquement.
 - **3 expressions** :
   - neutre, par défaut ;
@@ -138,18 +161,57 @@ Règles :
   - joyeuse (sourire avec dents), pour les célébrations, à brancher dans le match.
 
 ### Orientation et sol
-- **De profil** : corps vu de face, légèrement penché dans le sens du jeu par les poses.
-  C'est la vue en course vers la gauche ou la droite, et en descendant.
-- **De dos** : dès que le joueur monte (diagonales comprises). La tête est vue de dos (chaque
-  coiffure a sa grille de dos, la nuque en peau, pas de visage), le col est droit, le numéro
-  est dans le dos, les chaussures sont vues du talon et les deux bras passent derrière le
-  torse. À l'arrêt, le joueur garde sa dernière vue.
-- Tournés vers la gauche, les joueurs ont leurs propres images, de profil comme de dos : le
-  dessin est retourné, puis le numéro est reposé à l'endroit. La feuille compte 4 blocs de
-  18 images.
-- **Ballon au dribble** : de profil, la main revient devant le corps et le ballon rebondit
-  devant les jambes, un peu en avant dans le sens de la course, dessiné par-dessus elles. De
-  dos, il rebondit sur le côté de la hanche.
+Quatre positions, toutes en diagonale (incrément 15 ter, décision de Matheo) : il n'y a plus ni
+profil, ni vue de face, ni dos plein.
+
+| Position | Déplacement | Vu |
+| --- | --- | --- |
+| diagonale bas droite | descend vers la droite | de face, en diagonale |
+| diagonale bas gauche | descend vers la gauche | de face, en diagonale |
+| diagonale haut droite | monte vers la droite | de dos, en diagonale |
+| diagonale haut gauche | monte vers la gauche | de dos, en diagonale |
+
+- **Choix de la position** (`headingFor`, `render/playerView.ts`) :
+  - en montant à plus de 15° au-dessus de l'horizontale : diagonale haut ; en descendant à plus
+    de 15° : diagonale bas ; montée et descente tout droit comprises ;
+  - entre les deux (course horizontale, zone morte de ±15°), le joueur garde sa diagonale et ne
+    change que de côté. La zone morte évite aussi tout clignotement ;
+  - à l'arrêt et en l'air, il garde sa position ; au départ, diagonale bas ;
+  - le côté (gauche ou droite) est celui du corps : la dernière direction horizontale ;
+  - le tireur (tir, layup, dunk, lancer franc), le passeur et le voleur prennent la même règle
+    sur la direction du cercle, du receveur ou du ballon : diagonale haut depuis l'aile proche,
+    diagonale bas depuis l'aile du fond, position gardée de face au panier.
+- **Repères communs**, dessinés vers la droite (vers la gauche, le dessin est retourné, puis le
+  numéro est reposé à l'endroit) :
+  - la tête est décalée d'1 px vers le sens de la course par rapport au torse ;
+  - le torse et le short ont un flanc de 2 colonnes au ton sombre ;
+  - les membres sont étagés : le bras et la jambe éloignés de la caméra passent derrière, au ton
+    d'ombre de la peau, et le pied éloigné est dessiné 2 px plus haut (le pied proche reste sur
+    la rangée du sol, le cadre ne change pas) ;
+  - à l'arrêt, les jambes restent droites (entrejambe droit).
+- **Diagonale bas** (de face, 3/4) :
+  - visage de 3/4 (voir « Visage ») sur la tête et la coiffure de face ;
+  - flanc du côté qui s'éloigne, col et numéro décalés vers le sens de la course ;
+  - le bras du côté de la course passe derrière le torse, épaule rentrée de 2 px : on voit
+    l'avant-bras et la main ; le bras proche passe devant le torse ;
+  - la jambe du côté de la course est l'éloignée : hanche rentrée d'1 px, pied 2 px plus haut ;
+  - chaussures de 3/4, pointe de 5 px ;
+  - le ballon du dribble rebondit devant les jambes, dessiné devant le corps.
+- **Diagonale haut** (de dos, 3/4) :
+  - tête et coiffure de dos ; du côté de la course, la joue, la mâchoire et l'oreille dépassent
+    sur 3 colonnes (rangées 7 à 12), l'oreille au ton d'ombre : on devine le profil ;
+  - flanc du côté de la course, col et numéro décalés vers l'arrière ;
+  - les deux bras passent derrière le torse ; l'épaule du bras éloigné (côté opposé à la course)
+    est rentrée de 2 px ;
+  - la jambe éloignée est celle du côté opposé à la course (pied 2 px plus haut) ;
+  - chaussures vues du talon, avec un bout de pointe ;
+  - le ballon du dribble rebondit sur le côté de la hanche, dessiné derrière le corps.
+- Un bras levé (tir, dunk, contre) n'est jamais rentré : il passe devant la tête et le torse.
+- Tir, dunk et contre gardent leurs poses dans les deux diagonales, avec la tête, le torse, les
+  jambes et les chaussures de la diagonale.
+- **Feuille** : 4 blocs (bas droite, bas gauche, haut droite, haut gauche) de 19 images, soit
+  76 images rangées en grille (une rangée par bloc, 1 064×256 px). En une seule bande, une
+  feuille dépasserait la taille maximale d'une texture.
 - **Course** : les foulées montent tout le corps d'un pixel (suspension), sans rien allonger.
   Les pas s'accélèrent avec la vitesse au sol (foulée d'environ 0,9 m), pour que les pieds
   accrochent le parquet.
@@ -160,7 +222,9 @@ Tout est tiré de l'identifiant du joueur, déterministe :
 - 4 teintes de peau ;
 - 5 formes de tête ;
 - 10 coiffures (ras, court, afro, tresses, chignon, bandeau, chauve, frange, dégradé, barbe),
-  toutes dans la boîte de la tête ;
+  toutes dans la boîte de la tête (16×16), de face et de dos, avec un ton de reflet (gris
+  ardoise sur les cheveux noirs, bois clair ou foncé sur les blonds et les bruns, orange sombre
+  sur les roux, brume sur les gris) ;
 - 5 couleurs de cheveux ;
 - gabarit et numéro de maillot.
 
@@ -171,11 +235,11 @@ plus une variante d'identité : c'est un état.
 - **Maillot et short** : rampe primaire de l'équipe (clair, base, sombre) ; ceinture du
   short sombre.
 - **Col, emmanchures, bande latérale du short, liseré du bas et numéro** : rampe secondaire.
-- **Numéro** : police de chiffres dédiée (`jerseyDigits.ts`), 5 rangées, « 1 » étroit de
-  2 px, 0/6/8/9 arrondis pour ne pas se confondre. Il commence une rangée sous le col rond et
-  se centre sur la poitrine. Il ne peint que le maillot encore visible : un bras qui passe
+- **Numéro** : police de chiffres dédiée (`jerseyDigits.ts`), 6 rangées, « 1 » étroit de
+  2 px, 0/6/8/9 arrondis pour ne pas se confondre. Il commence une rangée sous le col rond (sur
+  2 rangées) et se centre sur la poitrine. Il ne peint que le maillot encore visible : un bras qui passe
   devant le cache.
-- **Chaussures** : `ink` avec semelle `chalk`.
+- **Chaussures** : `ink` sur 2 rangées avec semelle `chalk`.
 - **Équipe à l'extérieur** : rampes inversées (maillot clair) si les deux équipes sont trop
   proches.
 - **1 contre 1 de test (7a)** : tes trois joueurs (1-3) portent la tenue de l'équipe à
@@ -192,8 +256,13 @@ plus une variante d'identité : c'est un état.
 | Dunk | 3 | élan, bras tendu vers le cercle, accroché ~0,3 s au cercle (deux bras) | Visage concentré ; en match, sprite monté pour que les mains touchent le cercle |
 | Contre (image 18) | 1 | tout le saut sans le ballon | Deux bras tendus vers le haut, jambes du saut, visage concentré ; contre, contestation, rebond. Après son lâcher, le tireur garde l'image 14 (bras du lâcher) jusqu'au sol |
 
-Planche complète : vue « poses » de `?style` (touche V), les 19 images des trois gabarits et
-vers la gauche ; vue « dos » pour les mêmes images vues de dos.
+Planches complètes (touche V de `?style`) :
+- vue « gros-plan » : les trois gabarits en diagonale bas, avec la règle des proportions, et les
+  3 expressions de 3/4 en grand ;
+- vue « poses » : les 19 images des trois gabarits en diagonale bas, et l'ailier vers la gauche ;
+- vue « dos » : les mêmes images en diagonale haut ;
+- vue « directions » : les trois gabarits courent ou dribblent, animés, dans les 8 directions
+  (les 4 positions en diagonale).
 
 ## 6. Panier et terrain
 - **Panier massif** :
@@ -231,6 +300,12 @@ Notre mise en page, différente de la référence : tableau de score compact **e
 gauche**, carte du joueur **en bas à gauche**. La police HoopSim fait 5×7, et les panneaux
 sont `navy` avec un liseré `ink`.
 
+Depuis le passage à 640×360 (incrément 15), le HUD, les étiquettes et les messages gardent
+leurs tailles en pixels : ils paraissent ~25 % plus petits à l'écran et laissent plus de place
+au jeu, jusqu'à la reprise du HUD (incrément 18). Les distances du rendu autour des joueurs
+(étiquette sous les pieds, messages au-dessus de la tête, jauge, secousse, boîte suivie par la
+caméra) sont, elles, passées à l'échelle (× 4/3, `MATCH_PX` dans `MatchScene`).
+
 ```
 Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 px)
 +------------------------------+          +--------------------------------+
@@ -240,15 +315,15 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   [DAL] = pastille aux couleurs              barre d'énergie + 3 stats
 ```
 
-- **Étiquette sous chaque joueur** (validé) : nom de famille seul et en entier, en petite
-  police 3×5 maison sur fond sombre. L'étiquette prend la largeur du nom ; les noms générés
-  font 10 lettres au plus. Aucun nom de famille n'apparaît deux fois dans une ligue, donc dans
-  un match. L'étiquette du joueur contrôlé est soulignée en `yellow`, avec un anneau `yellow`
-  au sol.
+- **Pas de nom sur le terrain** (décision de Matheo) : les joueurs n'ont plus d'étiquette dans le
+  match ; les noms restent au tableau de score, sur la carte du joueur, dans les stats et les
+  menus. Le joueur contrôlé est repéré par l'anneau `yellow` au sol. (Les noms générés font
+  10 lettres au plus, et aucun nom de famille n'apparaît deux fois dans une ligue.)
 - **Texte de debug** : masqué par défaut, affiché par une touche ; la bande des 32 couleurs de
   la palette n'apparaît qu'avec lui.
-- **Jauge de tir** : barre verticale de 4×20 px cernée de `outline`, à côté du tireur, du côté
-  opposé au panier, posée à hauteur du torse et sur le sol (elle ne suit pas le saut).
+- **Jauge de tir** : barre verticale de 5×27 px cernée de `outline` (4×20 en 480×270), à côté du
+  tireur, du côté opposé au panier, posée à hauteur du torse et sur le sol (elle ne suit pas le
+  saut).
   - Fond `navy`, zone verte `green` sur toute la largeur, remplissage `chalk` au centre (le
     vert reste visible sur les bords), trait `yellow` au lâcher.
   - Le sommet du saut est à ~70 % de la hauteur.
@@ -256,7 +331,8 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
 - **Annonce du lâcher** : PARFAIT (`yellow`), BON (`green`), TÔT / TARD (`silver`), en petite
   police sur fond sombre, au-dessus de la tête ; elle monte de 4 px et s'efface en 0,9 s.
 - **Pose du tir** : ballon levé (tir en suspension) ou bras tendu vers le cercle (layup), visage
-  concentré, toujours de profil tourné vers le panier.
+  concentré, tourné vers le panier dans la diagonale de la direction du cercle (voir
+  « Orientation et sol »).
 - **Dunk réussi** : annonce « DUNK » (`yellow`, même style que PARFAIT) et secousse de caméra de
   ±2 px entiers pendant 0,15 s (le pixel-art reste net), pour toi comme pour l'IA.
 - **1 contre 1 (7a)** :
@@ -289,7 +365,7 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
   « DÉVIÉE » (`silver`) au-dessus de celui qui la touche sans la garder ; une faute de main
   reprend « FAUTE » (`red`) au-dessus du défenseur. Mêmes règles que les messages du 7b (montée,
   effacement en 1,5 s, pile). Pose provisoire du geste de vol : l'image 14 (bras tendu) pendant
-  0,25 s, de profil, tournée vers le ballon ; une vraie pose viendra en phase 3. Le déséquilibre
+  0,25 s, dans la diagonale de la direction du ballon ; une vraie pose viendra en phase 3. Le déséquilibre
   après un vol raté (0,3 s) n'a pas encore de pose : il se voit au ralentissement.
 - **Terrain entier (incrément 10)** :
   - **tableau de score vivant** : période (QT1 à QT4, puis P1, P2… en prolongation), chrono
@@ -320,8 +396,13 @@ Tableau de score (116×25 px)              Carte du joueur contrôlé (150×28 p
     l'adversaire aux lancers ; « 6 FAUTES » (`red`) au-dessus de l'éliminé ; « CHANGEMENT »
     (`chalk`) au-dessus de chaque joueur qui entre. Mêmes règles que les autres messages
     (montée, effacement en 1,5 s, pile) ;
-  - **remplaçants** : cuits à leur première entrée (sprites, ombre, étiquette), pendant le
-    ballon mort ; le corps garde sa place, seuls le sprite et l'étiquette changent ;
+  - **remplaçants** : le corps garde sa place, seuls le sprite et l'étiquette changent. Une
+    feuille de 76 images coûte ~21 ms dans le navigateur (composition bornée à la boîte de
+    chaque calque, 15 bis ; 4 blocs depuis le 15 ter) : les dix titulaires sont cuits au
+    chargement (~0,2 s), le banc en
+    tâche de fond (~4 ms par image). Un remplaçant pas encore
+    prêt serait fini d'un trait à son entrée (le debug H compte ces cas et affiche la plus
+    longue image des 5 dernières secondes) ;
   - **menu pause** (React, superposé au match comme le panneau des réglages, qui reste
     accessible) : score par période et fautes d'équipe (avec « bonus »), puis un tableau par
     équipe (MIN, PTS, REB, OFF/DÉF, PD, INT, CTR, BP, F, TIRS, 3 PTS, LF, +/-, énergie), titulaires

@@ -16,8 +16,12 @@ export const PLAYER_VIEW_TUNING = {
   strideSpeed: 5,
   /** Bornes de l'accélération des pas. */
   cadence: [0.6, 1.6] as const,
-  /** Vue de dos quand le joueur monte : |vy| ≥ pente × |vx| (diagonales comprises). */
-  backSlope: 0.4,
+  /**
+   * Position du joueur, toujours en diagonale : au-delà de cet angle (degrés) au-dessus de
+   * l'horizontale, diagonale haut (de dos) ; au-delà en dessous, diagonale bas (de face). Entre
+   * les deux (course horizontale), il garde sa position : c'est aussi l'hystérésis.
+   */
+  deadZone: 15,
 } as const;
 
 /**
@@ -49,13 +53,27 @@ export type SpriteState =
   | { kind: 'frame'; frame: number; facing: Facing; heading: Heading };
 
 /**
- * Vue du joueur : de dos dès qu'il monte (diagonales comprises), de profil sinon. À l'arrêt et
- * en l'air, il garde la vue précédente. Un tireur est toujours de profil, tourné vers le panier.
+ * Position pour une direction au sol (vitesse, ou direction vers le panier, le receveur, le
+ * ballon) : diagonale haut en montant, diagonale bas en descendant ; à l'horizontale (à moins de
+ * `deadZone` degrés), la position précédente est gardée. Le côté (gauche ou droite) est celui du
+ * corps (`facing`).
  */
-export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean, shooting = false): Heading {
-  if (shooting) return 'side';
+export function headingFor(direction: { x: number; y: number }, previous: Heading): Heading {
+  // y croît vers la caméra : monter, c'est aller vers les y négatifs.
+  const angle = (Math.atan2(-direction.y, Math.abs(direction.x)) * 180) / Math.PI;
+  if (angle > PLAYER_VIEW_TUNING.deadZone) return 'up';
+  if (angle < -PLAYER_VIEW_TUNING.deadZone) return 'down';
+  return previous;
+}
+
+/**
+ * Position du joueur d'après sa course (voir `headingFor`). À l'arrêt et en l'air, il la garde.
+ * Un tireur (tir, layup, dunk) fait face au panier : `faceToward` est la direction du cercle.
+ */
+export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean, faceToward: { x: number; y: number } | null = null): Heading {
+  if (faceToward) return headingFor(faceToward, previous);
   if (airborne || Math.hypot(vel.x, vel.y) <= PLAYER_VIEW_TUNING.runSpeed) return previous;
-  return vel.y < 0 && -vel.y >= PLAYER_VIEW_TUNING.backSlope * Math.abs(vel.x) ? 'back' : 'side';
+  return headingFor(vel, previous);
 }
 
 /**

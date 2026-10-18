@@ -5,9 +5,9 @@ import { StyleScene } from './scenes/StyleScene';
 import { attachIntegerScaling, integerZoom } from './screen';
 
 /**
- * Scène `?style` : validation à l'œil de la direction artistique, en 480×270 mis à l'échelle
- * entière. F bascule en plein écran (×4 en 1080p, alors qu'une fenêtre de navigateur n'offre
- * souvent que ×3).
+ * Scène `?style` : validation à l'œil de la direction artistique, en 640×360 mis à l'échelle
+ * entière. F bascule en plein écran (×3 en 1080p, alors qu'une fenêtre de navigateur n'offre
+ * souvent que ×2).
  */
 export default function StyleGame() {
   const parentRef = useRef<HTMLDivElement>(null);

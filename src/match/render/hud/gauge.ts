@@ -4,9 +4,9 @@ import type { TimingGrade } from '../../../engine/shot';
 
 /** Jauge de tir : barre verticale à côté du tireur (valeurs provisoires, réglables à l'œil). */
 export const GAUGE = {
-  /** Intérieur de la barre (px), sans le contour. */
-  width: 4,
-  height: 20,
+  /** Intérieur de la barre (px), sans le contour : 4×20 en 480×270, × 4/3 en 640×360. */
+  width: 5,
+  height: 27,
   /** La barre couvre `span` × la durée de la jauge : le sommet du saut tombe à ~70 % de la hauteur. */
   span: 1.4,
   /** La jauge reste affichée après le lâcher (ms). */

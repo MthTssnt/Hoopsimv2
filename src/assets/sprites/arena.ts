@@ -2,7 +2,7 @@
  * Petits sprites de l'arène (originaux) : spectateurs vus de face, photographe accroupi
  * (tourné vers la droite), ballon. Mêmes symboles que les joueurs :
  *   1/2/3 peau · h/H cheveux · n œil · P couleur du vêtement · S casquette ou détail
- *   k encre · w craie · g gris clair · G gris foncé · b/B orange/orange sombre (ballon)
+ *   k encre · w craie · g gris clair · G gris foncé · b/B orange/orange sombre, l reflet (ballon)
  */
 
 /** Spectateurs assis, 8×10 : tête et épaules. */
@@ -35,5 +35,5 @@ export const PHOTOGRAPHER: readonly string[] = [
   '.wwww...wwww..',
 ];
 
-/** Ballon, 6×6 : coutures en orange sombre, ombre en bas à droite. */
-export const BALL: readonly string[] = ['.bbBb.', 'bbbBbB', 'BBBBBB', 'bbbBbB', 'bbbBBB', '.bBBB.'];
+/** Ballon, 8×8 : coutures `n` (encre), reflet `l`, ombre en bas à droite. */
+export const BALL: readonly string[] = ['..bnbb..', '.lbnbbb.', 'blbnbbbB', 'nnnnnnnn', 'bbbnbbbB', 'bbbnbbBB', '.bbnbBB.', '..BnBB..'];

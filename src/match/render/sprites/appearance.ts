@@ -1,3 +1,6 @@
+import { generateAppearance, type PlayerAppearance } from '../../../assets/characters/appearance';
+import { EYE_COLOR_IDS, HAIR_COLOR_IDS, SKIN_IDS, type HairColorId } from '../../../assets/characters/colors';
+import { partIds } from '../../../assets/characters/registry';
 import { HAIR_COLORS, SKIN_TONES } from '../../../assets/palette';
 import { HAIRS, HEADS } from '../../../assets/sprites/heads';
 import { hashSeed, Rng } from '../../../engine/rng';
@@ -12,6 +15,11 @@ export interface Appearance {
   hair: number;
   hairColor: number;
   number: number;
+  /**
+   * Personnage du rendu 2D (style 5) : pièces et couleurs (`src/assets/characters/`). Absent :
+   * déduit des champs ci-dessus (`characterOf`).
+   */
+  character?: PlayerAppearance;
 }
 
 export interface AppearanceSource {
@@ -53,7 +61,46 @@ export function appearanceFor(player: AppearanceSource): Appearance {
   };
 }
 
+/**
+ * Apparence du rendu 2D (`figure2d.ts`) : mêmes teint et couleur de cheveux de base que
+ * `appearanceFor` (le portrait du HUD reste cohérent), plus le personnage complet, tiré de
+ * l'identifiant du joueur par `generateAppearance`.
+ */
+export function appearance2DFor(player: AppearanceSource): Appearance {
+  const base = appearanceFor(player);
+  return { ...base, character: generateAppearance({ id: player.id, age: player.age, skin: base.skin, hairColor: base.hairColor }) };
+}
+
+const LEGACY_HAIR_COLORS: readonly HairColorId[] = ['noir', 'brun', 'blond', 'roux', 'gris', 'chatain'];
+
+/**
+ * Personnage d'une apparence : le sien, sinon déduit des champs de l'ancien rendu (forme de
+ * tête, coiffure, teint, couleur de cheveux), avec le premier visage de chaque catégorie.
+ */
+export function characterOf(look: Appearance): PlayerAppearance {
+  if (look.character) return look.character;
+  const shapes = partIds('headShapes');
+  const hairs = partIds('hair');
+  const hair = LEGACY_HAIR_COLORS[look.hairColor] ?? HAIR_COLOR_IDS[0];
+  return {
+    version: 1,
+    headShape: shapes[look.head % shapes.length],
+    skin: SKIN_IDS[look.skin] ?? SKIN_IDS[0],
+    ears: partIds('ears')[0],
+    eyes: partIds('eyes')[0],
+    brows: partIds('brows')[0],
+    nose: partIds('noses')[0],
+    mouth: partIds('mouths')[0],
+    facialHair: null,
+    hair: hairs[look.hair % hairs.length],
+    colors: { hair, facialHair: hair, eyes: EYE_COLOR_IDS[0], accessory: 'equipe' },
+    accessories: [],
+  };
+}
+
 /** Ce qui distingue deux joueurs à l'œil (hors numéro de maillot). */
 export function appearanceSignature(a: Appearance): string {
-  return [a.heightClass, a.heavy ? 'lourd' : 'léger', a.skin, a.head, a.hair, a.hairColor].join('/');
+  const c = a.character;
+  const head = c ? [c.headShape, c.skin, c.eyes, c.brows, c.nose, c.mouth, c.ears, c.facialHair ?? '-', c.hair, c.colors.hair, c.colors.facialHair, c.colors.eyes, ...c.accessories] : [a.skin, a.head, a.hair, a.hairColor];
+  return [a.heightClass, a.heavy ? 'lourd' : 'léger', ...head].join('/');
 }
