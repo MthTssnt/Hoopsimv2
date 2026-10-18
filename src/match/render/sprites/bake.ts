@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { Appearance } from './appearance';
-import { colors2D, colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
+import { colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
+import { colorsPainted } from './paintedColors';
 import { composeFrame2D, metrics2D, type ComposedFrame2D, type Metrics2D } from './sheet2d';
 import { ANIMATIONS, bodyDims, FRAME, FRAMES, framesFor, type AnimationName, type BodyDims } from './rig';
 import type { TeamRamp } from '../../../assets/palette';
@@ -83,7 +84,7 @@ export class SheetBaker {
     this.look = look;
     this.options = options;
     this.dims = bodyDims(look.heightCm, look.heavy);
-    this.colors = (options.renderer === '2d' ? colors2D : colorsFor)(look, options.primary, options.secondary);
+    this.colors = (options.renderer === '2d' ? colorsPainted : colorsFor)(look, options.primary, options.secondary);
     this.pixels = new Uint8ClampedArray(this.width * this.height * 4);
   }
 
@@ -214,11 +215,14 @@ export class BakeQueue<T extends Stepper> {
   }
 }
 
+/** Ombre au sol : noir léger (rig), ou violet profond et marqué (rendu 2D du style 5, qui n'a pas de contour sombre). */
+export const SHADOWS = { rig: { color: 0x000000, alpha: 0.32 }, painted: { color: 0x241640, alpha: 0.6 } } as const;
+
 /** Ombre ovale au sol, à la largeur du joueur. */
-export function bakeShadow(scene: Phaser.Scene, key: string, width: number, height = 6): void {
+export function bakeShadow(scene: Phaser.Scene, key: string, width: number, height = 6, shade: { color: number; alpha: number } = SHADOWS.rig): void {
   if (scene.textures.exists(key)) return;
   const g = scene.add.graphics();
-  g.fillStyle(0x000000, 0.32);
+  g.fillStyle(shade.color, shade.alpha);
   const rx = width / 2;
   const ry = height / 2;
   for (let y = 0; y < height; y++) {

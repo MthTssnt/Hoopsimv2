@@ -1,0 +1,46 @@
+import { EMPTY, grid, type HairPart } from '../../types';
+
+/** Rasé : crâne rasé de près. */
+export const rase: HairPart = {
+  id: 'rase',
+  name: 'Rasé',
+  views: {
+    down: {
+      back: EMPTY,
+      front: grid([-2, 0],
+        '..hhhH...',
+        '.hrhhhHH.',
+        'HhhHhHHDH',
+        'HHDH.....',
+        'HDHD.....',
+        'HD.......',
+        'DH.......',
+        'D........',
+      ),
+    },
+    up: {
+      back: grid([0, -1],
+        'EDDDE....',
+        '.........',
+        '.........',
+        '.........',
+        '........E',
+        '........D',
+        '........D',
+        '........D',
+        '........E',
+      ),
+      front: grid([-3, 0],
+        '...hhhHD...',
+        '..hrhhhHHE.',
+        '.HhhHhHHDHH',
+        'HHHDHHHDHHH',
+        'HHDHHDHHHDH',
+        'DHHHDHHHDED',
+        'EDHHHDHHDDD',
+        'DHDHHHDHDDD',
+        '.DDDDDDDDDE',
+      ),
+    },
+  },
+};

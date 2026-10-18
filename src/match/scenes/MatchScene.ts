@@ -22,7 +22,7 @@ import type { Point } from '../render/pixelDraw';
 import { AIR_FRAMES, animTimeScale, blendBall, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearance2DFor, appearanceFor, type Appearance } from '../render/sprites/appearance';
-import { animationKey, BakeQueue, bakePlayer, bakeShadow, SheetBaker, type BakedPlayer, type Clock, type Renderer } from '../render/sprites/bake';
+import { animationKey, BakeQueue, bakePlayer, bakeShadow, SHADOWS, SheetBaker, type BakedPlayer, type Clock, type Renderer } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/compose';
 import { bodyLayout, FRAME, raisedHandTop, seenFromBehind } from '../render/sprites/rig';
 import { buildBoxView, type BoxView } from '../boxView';
@@ -658,12 +658,13 @@ export class MatchScene extends Phaser.Scene {
     const look = appearanceFor(player);
     const baked = sheet ? sheet.finish(this) : bakePlayer(this, key, this.spriteLook(player), { primary: team.primary, secondary: team.secondary, renderer: this.spriteRenderer });
     const shadowWidth = look.heavy ? 26 : 20;
-    const shadow = `player-shadow-${shadowWidth}`;
-    bakeShadow(this, shadow, shadowWidth, 5);
+    const painted = this.spriteRenderer === '2d';
+    const shadow = `player-shadow-${shadowWidth}${painted ? '-peint' : ''}`;
+    bakeShadow(this, shadow, shadowWidth, 5, painted ? SHADOWS.painted : SHADOWS.rig);
     return { player, team, look, baked, shadow, height: FRAME.groundY - (baked.metrics?.headTop ?? bodyLayout(baked.dims).headTop) };
   }
 
-  /** Apparence dessinée dans la feuille (rendu 2D : coiffures, yeux, pilosité en plus). La carte du HUD garde `appearanceFor`. */
+  /** Apparence dessinée dans la feuille (rendu 2D : le personnage complet, en pièces). La carte du HUD garde `appearanceFor`. */
   private spriteLook(player: Player): Appearance {
     return this.spriteRenderer === '2d' ? appearance2DFor(player) : appearanceFor(player);
   }

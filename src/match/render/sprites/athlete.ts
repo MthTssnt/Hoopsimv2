@@ -647,5 +647,8 @@ export function athleteSlotColor(slot: Slot, c: AthleteColors): number {
       return c.hair[1];
     case 'B':
       return c.hair[2];
+    default:
+      // Emplacements du style 5 (rendu 2D) : absents du style en volumes.
+      return PALETTE.outline;
   }
 }

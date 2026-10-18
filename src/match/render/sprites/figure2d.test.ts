@@ -1,18 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { EYE_COLORS, HAIR_RAMPS } from '../../../assets/palette';
-import { FACE_EXPRESSIONS, FACE_TRAITS, FACIAL_HAIR_2D, HAIRS_2D, headGrid2D, SHAPES_2D, type FaceExpression } from '../../../assets/sprites/heads2d';
-import { appearance2DFor, appearanceFor, type Appearance } from './appearance';
+import type { PlayerAppearance } from '../../../assets/characters/appearance';
+import { HAIR_COLOR_IDS, SKIN_IDS } from '../../../assets/characters/colors';
+import { composeHead } from '../../../assets/characters/composeHead';
+import { appearance2DFor, characterOf, type Appearance } from './appearance';
 import type { SlotCanvas, Slot } from './canvas';
-import { colors2D } from './compose';
-import { renderFigure2D, renderFigure2DBoth } from './figure2d';
+import { slotColor } from './compose';
+import { headSprite, renderFigure2D, renderFigure2DBoth } from './figure2d';
+import { colorsPainted } from './paintedColors';
 import { poses2D } from './poses2d';
 import { FRAME, type Heading } from './rig';
 import { build2D, joints2D, project2D } from './skeleton2d';
 
 const AILIER: Appearance = { heightCm: 200, heavy: false, heightClass: 'moyen', skin: 1, head: 0, hair: 1, hairColor: 0, number: 23 };
 const HEADINGS: readonly Heading[] = ['down', 'up'];
-/** Pixels de bord permis : contour du corps (o) et contours colorés de la tête (cheveux E/D, peau 4/3). */
-const EDGE: ReadonlySet<Slot> = new Set<Slot>(['o', 'E', 'D', '4', '3']);
+/** Contour doux : le ton le plus profond de chaque matière (peau, cheveux, maillot, short liseré, chaussette, chaussure, pilosité, accessoire). */
+const DEEP: ReadonlySet<Slot> = new Set<Slot>(['4', 'E', 'Q', 'T', 'Y', 'J', 'F', 'K']);
 
 const idle = poses2D('idle');
 const run = poses2D('run');
@@ -34,11 +36,11 @@ function pixels(c: SlotCanvas): string[] {
 const height = (look: Appearance, heading: Heading = 'down') => FRAME.groundY - renderFigure2D({ ...look, hair: 10 }, idle[0].pose, heading).canvas.bounds()!.top;
 
 describe('rendu 2D : proportions et cadre', () => {
-  it('ailier ~45 px à l’arrêt (corps d’origine, tête agrandie), meneur 2-3 de moins, pivot 2-4 de plus', () => {
+  it('ailier ~42 px à l’arrêt (tête à ~25 %), meneur 1-3 de moins, pivot 2-4 de plus', () => {
     for (const heading of HEADINGS) {
       const ailier = height(AILIER, heading);
-      expect(ailier, heading).toBeGreaterThanOrEqual(44);
-      expect(ailier).toBeLessThanOrEqual(47);
+      expect(ailier, heading).toBeGreaterThanOrEqual(40);
+      expect(ailier).toBeLessThanOrEqual(44);
       expect(height({ ...AILIER, heightCm: 186 }, heading) - ailier).toBeGreaterThanOrEqual(-3);
       expect(height({ ...AILIER, heightCm: 186 }, heading) - ailier).toBeLessThanOrEqual(-1);
       expect(height({ ...AILIER, heightCm: 212 }, heading) - ailier).toBeGreaterThanOrEqual(2);
@@ -46,11 +48,12 @@ describe('rendu 2D : proportions et cadre', () => {
     }
   });
 
-  it('tête ~1/3 du joueur (coupe sans volume au-dessus)', () => {
-    const head = headGrid2D({ ...AILIER, hair: 10 }, 'down');
-    const rows = head.rows.filter((r) => /[^.]/.test(r)).length;
-    expect(rows / height(AILIER)).toBeGreaterThan(0.31);
-    expect(rows / height(AILIER)).toBeLessThanOrEqual(0.38);
+  it('tête à ~25 % du joueur (crâne de 12×11, coupe rase)', () => {
+    for (const heading of HEADINGS) {
+      const ratio = composeHead(characterOf({ ...AILIER, hair: 10 }), heading).rows.length / height(AILIER, heading);
+      expect(ratio, heading).toBeGreaterThanOrEqual(0.24);
+      expect(ratio, heading).toBeLessThanOrEqual(0.31);
+    }
   });
 
   it('pieds sur la rangée du sol (contour dessous) au sol, en l’air à l’envol ; tout tient dans le cadre', () => {
@@ -70,16 +73,14 @@ describe('rendu 2D : proportions et cadre', () => {
 describe('rendu 2D : une seule silhouette', () => {
   const frames = HEADINGS.flatMap((heading) => all.map((f) => renderFigure2D(AILIER, f.pose, heading).canvas));
 
-  it('un seul contour, à l’extérieur : tout bord est du contour, aucun trait sombre isolé dans le corps', () => {
+  it('un seul contour doux, à l’extérieur : tout bord est le ton le plus profond d’une matière', () => {
     const bad: string[] = [];
     frames.forEach((c, i) => {
       c.forEach((x, y, slot) => {
         const n4 = [c.get(x + 1, y), c.get(x - 1, y), c.get(x, y + 1), c.get(x, y - 1)];
-        // Contour : sombre autour du corps, coloré autour de la tête (ton le plus foncé de chaque matière).
-        if (!EDGE.has(slot) && n4.includes(null)) bad.push(`bord ${i}:${x},${y}`);
-        // Le contour ne sert qu'autour de la silhouette (ou d'un vide entre deux membres), jamais entre deux pièces.
-        if (slot === 'o' && !n4.some((n) => n === null || n === 'o' || n === 'E' || n === '4')) bad.push(`intérieur ${i}:${x},${y}`);
+        if (!DEEP.has(slot) && n4.includes(null)) bad.push(`bord ${i}:${x},${y} ${slot}`);
       });
+      expect(count(c, ['o'])).toBe(0);
     });
     expect(bad).toEqual([]);
   });
@@ -103,27 +104,50 @@ describe('rendu 2D : une seule silhouette', () => {
     });
   });
 
-  it('palette actuelle : aucun ton du style en volumes (seuls les contours colorés et l’ombre profonde des cheveux s’ajoutent)', () => {
-    const extra: readonly Slot[] = ['0', 'a', 'Q', 'T'];
-    for (const c of frames) expect(count(c, extra)).toBe(0);
+  it('modelé peint : 4 à 5 tons de peau et de maillot dans chaque image', () => {
+    for (const c of frames) {
+      expect(['1', '5', '2', '3', '4'].filter((t) => count(c, [t as Slot]) > 0).length).toBeGreaterThanOrEqual(4);
+      expect(['a', 'p', 'P', 'q', 'Q'].filter((t) => count(c, [t as Slot]) > 0).length).toBeGreaterThanOrEqual(4);
+    }
   });
 
-  it('lumière en haut à gauche : jamais de ton clair sur le bord droit ou le bord bas d’une pièce', () => {
+  it('lumière en haut à gauche : jamais de reflet ni de clair sur le bord droit ou le bord bas de la silhouette', () => {
     const lit: string[] = [];
     frames.forEach((c, i) => {
       c.forEach((x, y, slot) => {
-        if (slot !== '1' && slot !== 'p') return;
-        const edge = (n: Slot | null) => n === null || n === 'o';
-        if (edge(c.get(x + 1, y)) || edge(c.get(x, y + 1))) lit.push(`${i}:${slot}@${x},${y}`);
+        // (les liserés d'un pixel, ceinture et col, n'ont pas d'épaisseur à modeler)
+        if (!['1', 'a', 'x', 'z'].includes(slot)) return;
+        const edge = (n: Slot | null) => n === null || DEEP.has(n);
+        if (edge(c.get(x + 1, y)) && edge(c.get(x, y + 1))) lit.push(`${i}:${slot}@${x},${y}`);
       });
     });
     expect(lit).toEqual([]);
   });
 
+  it('membres éloignés plus sombres : le bras éloigné a moins de tons clairs que le bras proche', () => {
+    // Bras le long du corps, à l'arrêt : tons de peau à gauche (bras éloigné) et à droite (bras proche) du torse.
+    for (const heading of HEADINGS) {
+      const c = renderFigure2D(AILIER, idle[0].pose, heading).canvas;
+      const b = c.bounds()!;
+      const J = joints2D(build2D(200, false), idle[0].pose, heading);
+      // Côté de l'écran du bras proche (épaule droite du joueur, index 1).
+      const nearSide = Math.sign(project2D(J.shoulders[1], 0, 0).x - project2D(J.shoulders[0], 0, 0).x);
+      const mid = Math.round((b.left + b.right) / 2);
+      let farLight = 0;
+      let nearLight = 0;
+      c.forEach((x, y, slot) => {
+        if (y < b.top + 14 || y > b.bottom - 14 || !['1', '5', '2'].includes(slot)) return;
+        if (Math.sign(x - mid) === nearSide && Math.abs(x - mid) > 4) nearLight++;
+        if (Math.sign(x - mid) === -nearSide && Math.abs(x - mid) > 4) farLight++;
+      });
+      expect(nearLight, heading).toBeGreaterThan(farLight);
+    }
+  });
+
   it('chaussures à semelle blanche, chaussettes visibles', () => {
     for (const c of frames) {
-      expect(count(c, ['G', 'k'])).toBeGreaterThan(6);
-      expect(count(c, ['w', 'm'])).toBeGreaterThan(4);
+      expect(count(c, ['z', 'Z', 'G', 'j'])).toBeGreaterThan(6);
+      expect(count(c, ['x', 'w', 'y', 'Y'])).toBeGreaterThan(4);
     }
   });
 });
@@ -131,8 +155,8 @@ describe('rendu 2D : une seule silhouette', () => {
 describe('rendu 2D : tête, numéro, orientation', () => {
   it('visage en diagonale bas (yeux), aucun visage de dos', () => {
     for (const f of all) {
-      expect(count(renderFigure2D(AILIER, f.pose, 'down').canvas, ['n'])).toBeGreaterThanOrEqual(2);
-      expect(count(renderFigure2D(AILIER, f.pose, 'up').canvas, ['n'])).toBe(0);
+      expect(count(renderFigure2D(AILIER, f.pose, 'down').canvas, ['n', 'i'])).toBeGreaterThanOrEqual(2);
+      expect(count(renderFigure2D(AILIER, f.pose, 'up').canvas, ['n', 'i'])).toBe(0);
     }
   });
 
@@ -141,7 +165,7 @@ describe('rendu 2D : tête, numéro, orientation', () => {
       for (const facing of ['right', 'left'] as const) {
         const { canvas, numberAt } = renderFigure2D(AILIER, idle[0].pose, heading, facing);
         expect(numberAt).not.toBeNull();
-        expect(count(canvas, ['S', 't']), `${heading} ${facing}`).toBeGreaterThanOrEqual(14);
+        expect(count(canvas, ['s', 'T']), `${heading} ${facing}`).toBeGreaterThanOrEqual(14);
       }
     }
     expect(renderFigure2D(AILIER, idle[0].pose, 'down', 'right', 'referee').numberAt).toBeNull();
@@ -172,179 +196,12 @@ describe('rendu 2D : tête, numéro, orientation', () => {
   });
 });
 
-describe('têtes : variantes', () => {
-  const count = (rows: string[], chars: string) => rows.join('').split('').filter((c) => chars.includes(c)).length;
-  const HAIR_NAMES = HAIRS_2D.map((h) => h.name);
-
-  it('5 formes × 13 coiffures × 6 visages × 5 pilosités × bandeau, dans les deux diagonales : grilles valides', () => {
-    expect(SHAPES_2D).toHaveLength(5);
-    expect(HAIRS_2D.length).toBeGreaterThanOrEqual(12);
-    expect(FACE_TRAITS.length).toBeGreaterThanOrEqual(4);
-    expect(FACIAL_HAIR_2D).toHaveLength(5);
-    for (const heading of HEADINGS) {
-      for (let head = 0; head < 5; head++) {
-        for (let hair = 0; hair < HAIRS_2D.length; hair++) {
-          for (let facialHair = 0; facialHair < 5; facialHair++) {
-            const g = headGrid2D({ head, hair, facialHair, face: (head + hair) % FACE_TRAITS.length, headband: facialHair === 2 }, heading);
-            expect(g.rows.every((r) => r.length === g.rows[0].length)).toBe(true);
-            expect(g.rows[g.anchor.y][g.anchor.x], `${heading} ${head} ${HAIR_NAMES[hair]}`).not.toBe('.');
-          }
-        }
-      }
-    }
-  });
-
-  it('13 coiffures aux silhouettes différentes, de face comme de dos ; reflet et 3 tons au moins (sauf le crâne chauve)', () => {
-    for (const heading of HEADINGS) {
-      // Le rasé garde la silhouette du crâne, comme le chauve : on le compare aux autres seulement.
-      const styles = HAIRS_2D.map((h, hair) => ({ h, hair })).filter(({ h }) => h.name !== 'chauve');
-      const shapes = styles.map(({ hair }) => headGrid2D({ head: 0, hair }, heading).rows.map((r) => r.replace(/[^.]/g, 'x')).join('/'));
-      expect(new Set(shapes).size, heading).toBe(styles.length);
-    }
-    for (const hair of HAIRS_2D) {
-      if (hair.name === 'chauve') continue;
-      for (const heading of HEADINGS) {
-        const rows = hair[heading].rows;
-        const tones = new Set(rows.join('').split('').filter((c) => 'rhHD'.includes(c)));
-        expect(tones.size, `${hair.name} ${heading}`).toBeGreaterThanOrEqual(3);
-        expect(tones.has('r') || tones.has('h'), `${hair.name} ${heading} : reflet`).toBe(true);
-      }
-    }
-  });
-
-  it('6 couleurs de cheveux (noir, brun, blond, roux, gris, châtain)', () => {
-    expect(HAIR_RAMPS).toHaveLength(6);
-  });
-
-  it('bandeau et pilosité : options combinables qui se voient', () => {
-    for (let hair = 0; hair < HAIRS_2D.length; hair++) {
-      const plain = headGrid2D({ head: 0, hair }, 'down').rows.join('/');
-      const band = headGrid2D({ head: 0, hair, headband: true }, 'down').rows;
-      expect(count(band, 'sS'), HAIR_NAMES[hair]).toBeGreaterThan(6);
-      expect(band.join('/')).not.toBe(plain);
-    }
-    const faces = [0, 1, 2, 3, 4].map((facialHair) => headGrid2D({ head: 0, hair: 0, facialHair }, 'down').rows.join('/'));
-    expect(new Set(faces).size).toBe(5);
-  });
-});
-
-describe('têtes : visage', () => {
-  const count = (rows: string[], chars: string) => rows.join('').split('').filter((c) => chars.includes(c)).length;
-  const BALD = HAIRS_2D.findIndex((h) => h.name === 'chauve');
-
-  it('visages types différents d’au moins 4 pixels deux à deux (lisibles à l’échelle du match)', () => {
-    const grids = FACE_TRAITS.map((_, face) => headGrid2D({ head: 0, hair: BALD, face }, 'down').rows.join(''));
-    for (let a = 0; a < grids.length; a++) {
-      for (let b = a + 1; b < grids.length; b++) {
-        let diff = 0;
-        for (let i = 0; i < Math.min(grids[a].length, grids[b].length); i++) diff += grids[a][i] !== grids[b][i] ? 1 : 0;
-        expect(diff, `${a} / ${b}`).toBeGreaterThanOrEqual(4);
-      }
-    }
-  });
-
-  it('grands yeux : blanc, iris de couleur et pupille ; l’œil éloigné plus étroit que l’œil proche', () => {
-    for (let face = 0; face < FACE_TRAITS.length; face++) {
-      const rows = headGrid2D({ head: 0, hair: BALD, face }, 'down').rows;
-      // Colonnes peintes en blanc, iris ou pupille, regroupées par œil (séparées par une colonne de peau).
-      const cols = [...new Set(rows.flatMap((r) => [...r].flatMap((c, x) => ('win'.includes(c) ? [x] : []))))].sort((a, b) => a - b);
-      const eyes: number[][] = [];
-      for (const x of cols) (eyes.length && x === eyes[eyes.length - 1].at(-1)! + 1 ? eyes[eyes.length - 1] : (eyes[eyes.length] = [])).push(x);
-      expect(eyes, `visage ${face}`).toHaveLength(2);
-      expect(eyes[0].length).toBeGreaterThan(eyes[1].length);
-      const tall = (xs: number[]) => rows.filter((r) => xs.some((x) => 'win'.includes(r[x]))).length;
-      expect(tall(eyes[0])).toBe(3);
-      for (const ch of 'win') expect(count(rows, ch), `visage ${face} : ${ch}`).toBeGreaterThan(0);
-    }
-  });
-
-  it('peau du visage en 2 tons (base et ombre), sans ton clair ni trait sombre isolé', () => {
-    for (let face = 0; face < FACE_TRAITS.length; face++) {
-      for (const e of FACE_EXPRESSIONS) {
-        const rows = headGrid2D({ head: 0, hair: 0, face }, 'down', e).rows;
-        expect(count(rows, '1'), `visage ${face} ${e}`).toBe(0);
-      }
-    }
-  });
-
-  it('barbe d’un ton nettement différent de la peau, pour tous les teints et toutes les couleurs de cheveux', () => {
-    const luma = (c: number) => (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
-    for (let skin = 0; skin < 4; skin++) {
-      for (let hairColor = 0; hairColor < HAIR_RAMPS.length; hairColor++) {
-        const c = colors2D({ ...AILIER, skin, hairColor }, [0, 0, 0], [0, 0, 0]);
-        expect(Math.abs(luma(c.beard![0]) - luma(c.skin[1])), `${skin} ${hairColor}`).toBeGreaterThanOrEqual(0.15);
-      }
-    }
-  });
-
-  it('apparences 2D variées : yeux surtout brun foncé et noisette, plus rarement bleu, vert ou gris ; 13 coiffures, pilosité, bandeau', () => {
-    const looks = Array.from({ length: 400 }, (_, k) => appearance2DFor({ id: `j${k}`, heightCm: 180 + (k % 40), weightKg: 80 + (k % 50), number: k % 100, age: 20 + (k % 16) }));
-    const eyes = EYE_COLORS.map((_, i) => looks.filter((l) => l.eyeColor === i).length);
-    expect(EYE_COLORS).toHaveLength(5);
-    expect((eyes[0] + eyes[1]) / looks.length).toBeGreaterThan(0.7);
-    for (const n of eyes) expect(n).toBeGreaterThan(0);
-    expect(new Set(looks.map((l) => l.hair)).size).toBe(HAIRS_2D.length);
-    expect(new Set(looks.map((l) => l.facialHair)).size).toBe(FACIAL_HAIR_2D.length);
-    expect(looks.some((l) => l.headband)).toBe(true);
-    expect(looks.some((l) => l.hairColor === 5)).toBe(true);
-    // Même teint et même forme de tête que l'apparence de l'ancien rendu.
-    const p = { id: 'x', heightCm: 200, weightKg: 100, number: 4 };
-    expect(appearance2DFor(p).skin).toBe(appearanceFor(p).skin);
-  });
-
-  it('expressions exagérées : joie et effort montrent les dents, l’effort ouvre la bouche (2×2 sombre)', () => {
-    const grid = (e: FaceExpression) => headGrid2D({ head: 0, hair: 0, face: 3 }, 'down', e).rows;
-    expect(new Set(FACE_EXPRESSIONS.map((e) => grid(e).join('/'))).size).toBe(FACE_EXPRESSIONS.length);
-    expect(count(grid('joyeuse'), 'w')).toBeGreaterThanOrEqual(3);
-    const effort = grid('effort');
-    const open = effort.some((r, y) => [...r].some((c, x) => c === '4' && r[x + 1] === '4' && effort[y + 1]?.[x] === '4' && effort[y + 1]?.[x + 1] === '4'));
-    expect(open).toBe(true);
-  });
-
-  it('noir réservé aux pupilles, sourcils séparés de l’œil et de la frange par la peau, sur toutes les coiffures', () => {
-    for (let hair = 0; hair < HAIRS_2D.length; hair++) {
-      for (let face = 0; face < FACE_TRAITS.length; face++) {
-        for (const e of FACE_EXPRESSIONS) {
-          const bald = headGrid2D({ head: 0, hair: BALD, face }, 'down', e);
-          const g = headGrid2D({ head: 0, hair, face }, 'down', e);
-          expect(count(g.rows, 'n'), `${HAIRS_2D[hair].name} ${face} ${e}`).toBeLessThanOrEqual(2);
-          // Sourcils : les pixels E du crâne chauve, recalés sur le cou.
-          const dy = g.anchor.y - bald.anchor.y;
-          bald.rows.forEach((r, y) =>
-            [...r].forEach((c, x) => {
-              if (c !== 'E') return;
-              const at = (yy: number) => g.rows[yy + dy]?.[x] ?? '.';
-              expect(at(y), `${HAIRS_2D[hair].name} ${face} ${e} : sourcil`).toBe('E');
-              // Le pixel du dessus ne doit pas être des cheveux, sauf s'il fait lui-même partie du sourcil.
-              const above = bald.rows[y - 1]?.[x] === 'E' ? '.' : at(y - 1);
-              expect('rhHDE'.includes(above) && above !== '.', `${HAIRS_2D[hair].name} ${face} ${e} : frange collée au sourcil`).toBe(false);
-              expect('nw'.includes(at(y + 1)) && at(y + 1) !== '.', `${HAIRS_2D[hair].name} ${face} ${e} : sourcil collé à l’œil`).toBe(false);
-            }),
-          );
-        }
-      }
-    }
-  });
-
-  it('de dos : aucun élément du visage ; les cheveux couvrent la plus grande partie de la tête (coupes avec volume)', () => {
-    for (let hair = 0; hair < HAIRS_2D.length; hair++) {
-      const rows = headGrid2D({ head: 0, hair }, 'up').rows;
-      expect(count(rows, 'nw'), HAIRS_2D[hair].name).toBe(0);
-      if (['chauve', 'rase', 'degrade', 'crete', 'tresses'].includes(HAIRS_2D[hair].name)) continue;
-      expect(count(rows, 'rhHDE') / count(rows, 'rhHDE1234'), HAIRS_2D[hair].name).toBeGreaterThan(0.55);
-    }
-  });
-
-  it('contour coloré autour de la tête, contour sombre autour du corps, rien entre la tête et le cou', () => {
+describe('rendu 2D : tête du système de pièces', () => {
+  it('contour doux autour de la tête (ton le plus profond de chaque matière), rien entre la tête et le cou', () => {
     const c = renderFigure2D(AILIER, idle[0].pose, 'down').canvas;
     const top = c.bounds()!.top;
-    let colored = 0;
-    for (let x = 0; x < c.width; x++) if (c.get(x, top) === 'E' || c.get(x, top) === 'D') colored++;
-    expect(colored).toBeGreaterThan(0);
-    c.forEach((x, y, slot) => {
-      if (slot !== 'o') return;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) expect('rhHD'.includes(c.get(x + dx, y + dy) ?? '.'), `${x},${y}`).toBe(false);
-    });
+    for (let x = 0; x < c.width; x++) if (c.get(x, top) !== null) expect(c.get(x, top)).toBe('E');
+    expect(count(c, ['o'])).toBe(0);
   });
 
   it('la tête suit le cou à chaque image de la course (même écart entre le haut des cheveux et le cou)', () => {
@@ -360,9 +217,87 @@ describe('têtes : visage', () => {
     }
   });
 
-  it('forme de tête, coiffure, visage et pilosité se voient dans l’image du joueur', () => {
-    const base = pixels(renderFigure2D(AILIER, idle[0].pose, 'down').canvas);
-    for (const look of [{ ...AILIER, head: 1 }, { ...AILIER, hair: 6 }, { ...AILIER, face: 2 }, { ...AILIER, facialHair: 2 }]) expect(pixels(renderFigure2D(look, idle[0].pose, 'down').canvas)).not.toEqual(base);
+  it('chaque catégorie de pièce se voit dans l’image du joueur', () => {
+    const base = characterOf(AILIER);
+    const ref = pixels(renderFigure2D(AILIER, idle[0].pose, 'down').canvas);
+    const looks = [
+      { ...base, headShape: 'longue' },
+      { ...base, eyes: 'vifs' },
+      { ...base, brows: 'epais' },
+      { ...base, nose: 'droit' },
+      { ...base, mouth: 'large' },
+      { ...base, hair: 'rase', ears: 'decollees' },
+      { ...base, facialHair: 'barbe' },
+      { ...base, hair: 'afro' },
+      { ...base, accessories: ['bandeau'] },
+    ];
+    for (const character of looks) expect(pixels(renderFigure2D({ ...AILIER, character }, idle[0].pose, 'down').canvas), JSON.stringify(character)).not.toEqual(ref);
+  });
+
+  it('apparences du match : le personnage est tiré de l’identifiant, avec le teint et les cheveux du portrait', () => {
+    const src = { id: 'j-42', heightCm: 198, weightKg: 95, number: 8, age: 30 };
+    const a = appearance2DFor(src);
+    expect(a.character).toEqual(appearance2DFor(src).character);
+    expect(a.character!.skin).toBe(SKIN_IDS[a.skin]);
+    expect(JSON.parse(JSON.stringify(a.character))).toEqual(a.character);
+  });
+
+  it('expression du jeu : joyeuse donne le visage « joie », concentrée reste neutre', () => {
+    const face = (expression: 'neutre' | 'concentree' | 'joyeuse') => pixels(renderFigure2D(AILIER, { ...idle[0].pose, expression }, 'down').canvas);
+    expect(face('concentree')).toEqual(face('neutre'));
+    expect(face('joyeuse')).not.toEqual(face('neutre'));
+  });
+
+  it('tête seule (portrait) : contour fermé, même tête que dans l’image du joueur', () => {
+    const head = headSprite(AILIER, 'down');
+    const b = head.bounds()!;
+    expect(b.left).toBe(0);
+    expect(b.top).toBe(0);
+    head.forEach((x, y, slot) => {
+      const n4 = [head.get(x + 1, y), head.get(x - 1, y), head.get(x, y + 1), head.get(x, y - 1)];
+      if (n4.includes(null)) expect(DEEP.has(slot), `${x},${y} ${slot}`).toBe(true);
+    });
+  });
+});
+
+describe('couleurs du style 5', () => {
+  const blue: [number, number, number] = [0x6080e0, 0x1d4ed8, 0x102060];
+  const gold: [number, number, number] = [0xffd070, 0xf59e0b, 0xa06000];
+  const withChar = (patch: Partial<PlayerAppearance['colors']>, extra: Partial<PlayerAppearance> = {}) => ({ ...AILIER, character: { ...characterOf(AILIER), ...extra, colors: { ...characterOf(AILIER).colors, ...patch } } });
+
+  it('rampes de 5 tons : du plus clair au plus sombre pour la peau, les cheveux, le maillot', () => {
+    const c = colorsPainted(AILIER, blue, gold);
+    const luma = (slot: Slot) => {
+      const v = slotColor(slot, c);
+      return 0.299 * ((v >> 16) & 255) + 0.587 * ((v >> 8) & 255) + 0.114 * (v & 255);
+    };
+    for (const ramp of [['1', '5', '2', '3', '4'], ['r', 'h', 'H', 'D', 'E'], ['a', 'p', 'P', 'q', 'Q'], ['v', 's', 'S', 't', 'T']] as Slot[][]) {
+      for (let i = 1; i < ramp.length; i++) expect(luma(ramp[i]), ramp.join('')).toBeLessThan(luma(ramp[i - 1]));
+    }
+  });
+
+  it('pilosité sur sa propre rampe : barbe grise sur cheveux bruns', () => {
+    const c = colorsPainted(withChar({ hair: 'brun', facialHair: 'gris' }, { facialHair: 'barbe' }), blue, gold);
+    expect(slotColor('b', c)).not.toBe(slotColor('h', c));
+    expect(slotColor('b', colorsPainted(withChar({ hair: 'brun', facialHair: 'brun' }), blue, gold))).not.toBe(slotColor('b', c));
+  });
+
+  it('couleur des yeux et de l’accessoire tirées du personnage ; « equipe » suit la couleur secondaire', () => {
+    const eyes = new Set(['brun-fonce', 'noisette', 'bleu', 'vert', 'gris'].map((e) => slotColor('i', colorsPainted(withChar({ eyes: e as PlayerAppearance['colors']['eyes'] }), blue, gold))));
+    expect(eyes.size).toBe(5);
+    const team = (secondary: [number, number, number]) => slotColor('C', colorsPainted(withChar({ accessory: 'equipe' }), blue, secondary));
+    expect(team(gold)).not.toBe(team(blue));
+    expect(slotColor('C', colorsPainted(withChar({ accessory: 'blanc' }), blue, gold))).not.toBe(team(gold));
+  });
+
+  it('barbe d’un ton qui se lit sur la peau, pour tous les teints et toutes les couleurs', () => {
+    const luma = (v: number) => (0.299 * ((v >> 16) & 255) + 0.587 * ((v >> 8) & 255) + 0.114 * (v & 255)) / 255;
+    for (const skin of SKIN_IDS) {
+      for (const facialHair of HAIR_COLOR_IDS) {
+        const c = colorsPainted({ ...AILIER, character: { ...characterOf(AILIER), skin, colors: { ...characterOf(AILIER).colors, facialHair } } }, blue, gold);
+        expect(Math.abs(luma(slotColor('b', c)) - luma(slotColor('5', c))), `${skin} ${facialHair}`).toBeGreaterThan(0.1);
+      }
+    }
   });
 });
 

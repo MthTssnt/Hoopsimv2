@@ -1,19 +1,24 @@
 /**
- * Rendu 2D des joueurs : une seule silhouette continue, peinte dans un seul calque à partir du
- * squelette (`skeleton2d.ts`), puis un seul contour sombre autour de tout le corps.
+ * Rendu 2D des joueurs, style 5 (« rétro peint ») : une seule silhouette continue, peinte dans un
+ * seul calque à partir du squelette (`skeleton2d.ts`), puis un contour doux autour de tout le corps.
  * - Formes : membres qui s'affinent (cuisse > genou > mollet > cheville, épaule > coude >
  *   avant-bras > poignet), torse en V avec cou et trapèzes, maillot et short posés par-dessus
  *   comme du tissu (emmanchures, short sous le genou), mains en moufle, chaussures un peu grandes.
- * - Ombrage à plat, lumière en haut à gauche, 3 tons par couleur : bord éclairé, aplat, bande
- *   d'ombre du côté opposé ; ombre portée sous ce qui passe devant ; les pièces du côté éloigné
- *   sont un ton plus sombres. À l'intérieur, aucune ligne de contour : seulement l'ombrage.
- * - Tête dessinée à la main (`heads2d.ts`), posée au cou ; numéro reposé à l'endroit.
+ * - Modelé peint, 5 tons par matière (reflet, clair, base, ombre, ombre profonde), lumière en haut
+ *   à gauche : le ton dépend de la distance au bord éclairé (gauche, haut) et au bord sombre
+ *   (droite, bas) de chaque pièce ; ombre portée (ton 3) sous ce qui passe devant ; les pièces du
+ *   côté éloigné sont un ton plus sombres. À l'intérieur, aucune ligne de contour.
+ * - Contour doux : le ton le plus profond de la matière voisine (peau, cheveux, maillot…).
+ * - Tête assemblée par le système de pièces (`src/assets/characters/`), posée au cou ; numéro
+ *   reposé à l'endroit.
  * Vers la gauche, l'image est retournée (comme dans un jeu 2D), puis le numéro est reposé.
  * Même cadre et même format que `composeFrame` (rig.ts), pour la feuille de `SheetBaker`.
  */
-import { headGrid2D, type FaceExpression, type Head2D, type HeadLook } from '../../../assets/sprites/heads2d';
+import type { Expression as CharacterExpression } from '../../../assets/characters/types';
+import { composeHead } from '../../../assets/characters/composeHead';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
-import type { Appearance } from './appearance';
+import type { Expression } from '../../../assets/sprites/heads';
+import { characterOf, type Appearance } from './appearance';
 import { SlotCanvas, slotOf, type Slot } from './canvas';
 import type { Facing, Kit } from './compose';
 import { FRAME, type Heading } from './rig';
@@ -22,15 +27,25 @@ import type { Vec3 } from './vec3';
 
 type Material = 'skin' | 'jersey' | 'trim' | 'sock' | 'shoe' | 'sole';
 
-/** Emplacements de couleur par matière : bord éclairé, aplat, ombre (3 tons). */
-const TONES: Record<Material, readonly [Slot, Slot, Slot]> = {
-  skin: ['1', '2', '3'],
-  jersey: ['p', 'P', 'q'],
-  trim: ['s', 'S', 't'],
-  sock: ['w', 'w', 'm'],
-  shoe: ['m', 'G', 'k'],
-  sole: ['w', 'w', 'm'],
+/** Emplacements de couleur par matière, du plus clair au plus sombre (5 tons, voir `paintedColors.ts`). */
+export const TONES: Record<Material, readonly [Slot, Slot, Slot, Slot, Slot]> = {
+  skin: ['1', '5', '2', '3', '4'],
+  jersey: ['a', 'p', 'P', 'q', 'Q'],
+  trim: ['v', 's', 'S', 't', 'T'],
+  sock: ['x', 'w', 'w', 'y', 'Y'],
+  shoe: ['z', 'Z', 'G', 'j', 'J'],
+  sole: ['x', 'w', 'w', 'y', 'Y'],
 };
+
+/** Ton le plus profond de chaque matière de la tête : il sert de contour doux. */
+const HEAD_DEEP: Partial<Record<Slot, Slot>> = Object.fromEntries([
+  ...['r', 'h', 'H', 'D', 'E', '0'].map((s) => [s, 'E']),
+  ...['f', 'b', 'B', 'F'].map((s) => [s, 'F']),
+  ...['c', 'C', 'd', 'K'].map((s) => [s, 'K']),
+]);
+
+/** Expressions du jeu → expressions des pièces du visage. */
+const CHARACTER_EXPRESSION: Record<Expression, CharacterExpression> = { neutre: 'neutre', concentree: 'neutre', joyeuse: 'joie' };
 
 /** Une pièce de la silhouette : sa forme à l'écran, sa matière, son groupe d'ombrage et sa profondeur. */
 interface Part {
@@ -110,33 +125,6 @@ function hull(points: { x: number; y: number }[]): Pick<Part, 'inside' | 'box'> 
   return { inside, box };
 }
 
-/**
- * Densité de dessin : tout le sprite (corps, tête, numéro) est dessiné à la même densité.
- * `DENSITY_1` est celle du match (cadre 56×64) ; un prototype peut dessiner plus fin (cadre et
- * géométrie ×k), avec sa propre tête et ses propres chiffres.
- */
-export interface Density2D {
-  k: number;
-  /** Cadre : sol à la rangée du contour sous la semelle (comme le rig actuel). */
-  frame: { readonly width: number; readonly height: number; readonly centerX: number; readonly groundY: number };
-  head: (look: HeadLook, heading: Heading, expression: FaceExpression) => Head2D;
-  digits: { height: number; width: (value: number) => number; draw: (value: number, x: number, y: number, plot: (x: number, y: number) => void) => void };
-}
-
-export const DENSITY_1: Density2D = {
-  k: 1,
-  frame: FRAME,
-  head: headGrid2D,
-  digits: { height: JERSEY_DIGIT_HEIGHT, width: jerseyNumberWidth, draw: drawJerseyNumber },
-};
-
-/** Articulations agrandies d'un facteur k (toutes les mesures du squelette sont en pixels). */
-function scaleDeep<T>(value: T, k: number): T {
-  if (Array.isArray(value)) return (typeof value[0] === 'number' ? value.map((v: number) => v * k) : value.map((v) => scaleDeep(v, k))) as T;
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, scaleDeep(v, k)])) as T;
-  return value;
-}
-
 export interface Figure2D {
   canvas: SlotCanvas;
   /** Coin haut-gauche du numéro, ou null (arbitre). */
@@ -149,17 +137,17 @@ export interface Figure2D {
  * Rend une image du joueur : squelette posé, pièces peintes de l'arrière vers l'avant dans un seul
  * calque, ombrage à plat, tête, contour unique, puis miroir et numéro.
  */
-export function renderFigure2D(look: Appearance, pose: Pose2D, heading: Heading, facing: Facing = 'right', kit: Kit = 'team', density: Density2D = DENSITY_1): Figure2D {
-  const painted = paintFigure(look, pose, heading, kit, density);
-  return finishFigure(painted, facing === 'left' ? painted.canvas.mirrored() : painted.canvas, look, facing, kit, density);
+export function renderFigure2D(look: Appearance, pose: Pose2D, heading: Heading, facing: Facing = 'right', kit: Kit = 'team'): Figure2D {
+  const painted = paintFigure(look, pose, heading, kit);
+  return finishFigure(painted, facing === 'left' ? painted.canvas.mirrored() : painted.canvas, look, facing, kit);
 }
 
 /** Les deux orientations d'une image, peintes une seule fois : vers la gauche, c'est le miroir (numéro reposé à l'endroit). */
-export function renderFigure2DBoth(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit = 'team', density: Density2D = DENSITY_1): Record<Facing, Figure2D> {
-  const painted = paintFigure(look, pose, heading, kit, density);
+export function renderFigure2DBoth(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit = 'team'): Record<Facing, Figure2D> {
+  const painted = paintFigure(look, pose, heading, kit);
   // Le miroir d'abord : l'image vers la droite reçoit ensuite son numéro sur place.
-  const left = finishFigure(painted, painted.canvas.mirrored(), look, 'left', kit, density);
-  return { right: finishFigure(painted, painted.canvas, look, 'right', kit, density), left };
+  const left = finishFigure(painted, painted.canvas.mirrored(), look, 'left', kit);
+  return { right: finishFigure(painted, painted.canvas, look, 'right', kit), left };
 }
 
 interface Painted {
@@ -170,17 +158,14 @@ interface Painted {
   palms: [Screen, Screen];
 }
 
-function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit, density: Density2D): Painted {
-  const { k, frame } = density;
-  const base = build2D(look.heightCm, look.heavy);
-  // À une autre densité, le squelette (posé en pixels de la densité 1) et les épaisseurs sont agrandis.
-  const b = k === 1 ? base : { ...base, r: scaleDeep(base.r, k) };
-  const J = k === 1 ? joints2D(base, pose, heading) : scaleDeep(joints2D(base, pose, heading), k);
+function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit): Painted {
+  const b = build2D(look.heightCm, look.heavy);
+  const J = joints2D(b, pose, heading);
   // Calage au sol à l'écran : la semelle la plus basse (le pied le plus proche) touche la rangée
   // du sol, comme le rig actuel ; `lift` la soulève.
-  const lift = (pose.lift ?? 0) * Math.cos(PITCH_2D) * k;
+  const lift = (pose.lift ?? 0) * Math.cos(PITCH_2D);
   const sole = Math.max(...J.shoes.flat().map((p) => project2D(p, 0, 0).y)) + lift;
-  const S = (p: Vec3): Screen => project2D(p, frame.centerX, frame.groundY - sole);
+  const S = (p: Vec3): Screen => project2D(p, FRAME.centerX, FRAME.groundY - sole);
   const disc = (p: Vec3, r: number): Disc => {
     const s = S(p);
     return { x: s.x, y: s.y, r };
@@ -196,7 +181,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
     const far = i === farSide;
     const legNear = nearOf(J.knees[i], J.ankles[i]);
     add({ group: `leg${i}`, far, near: legNear, material: 'skin', ...taper([disc(J.knees[i], b.r.knee), disc(J.calves[i], b.r.calf), disc(J.ankles[i], b.r.ankle)]) });
-    add({ group: `leg${i}`, far, near: legNear + 0.01, material: 'sock', ...taper([disc(J.sockTops[i], b.r.ankle + 0.35 * k), disc(J.ankles[i], b.r.ankle + 0.25 * k)]) });
+    add({ group: `leg${i}`, far, near: legNear + 0.01, material: 'sock', ...taper([disc(J.sockTops[i], b.r.ankle + 0.35), disc(J.ankles[i], b.r.ankle + 0.25)]) });
     add({ group: `foot${i}`, far, near: legNear + 0.02, material: 'shoe', ...hull(J.shoes[i].map(S)) });
     // Le short est une seule pièce de tissu avec la jambe proche ; la jambe éloignée s'en détache par l'ombre.
     add({ group: far ? 'shorts-far' : 'shorts', far, near: nearOf(J.hips[i], J.shortsHems[i]) + 0.03, material: 'jersey', shadow: 2, ...taper([disc(J.hips[i], b.r.shorts), disc(J.shortsHems[i], b.r.shortsHem)]) });
@@ -221,18 +206,18 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
   add({ group: 'shorts', far: false, near: pelvisNear, material: 'jersey', shadow: 2, ...hull(J.shorts.map(S)) });
   const torsoNear = nearOf(J.neckBase, J.chestFront, J.chestBack) + 0.05;
   // Ceinture du short par-dessus le bas du maillot (maillot rentré).
-  add({ group: 'shorts', far: false, near: torsoNear + 0.03, material: 'trim', ...taper(J.waistband.map((p) => disc(p, 0.55 * k))) });
+  add({ group: 'shorts', far: false, near: torsoNear + 0.03, material: 'trim', ...taper(J.waistband.map((p) => disc(p, 0.55))) });
   add({ group: 'torso', far: false, near: torsoNear, material: 'skin', shadow: 2, ...hull(J.torso.map(S)) });
-  add({ group: 'torso', far: false, near: torsoNear + 0.01, material: 'skin', ...taper([disc(J.neckBase, b.r.neck + 0.3 * k), disc(J.neckTop, b.r.neck)]) });
+  add({ group: 'torso', far: false, near: torsoNear + 0.01, material: 'skin', ...taper([disc(J.neckBase, b.r.neck + 0.3), disc(J.neckTop, b.r.neck)]) });
   add({ group: 'torso', far: false, near: torsoNear + 0.02, material: 'jersey', ...hull(J.jersey.map(S)) });
   // Encolure : la peau du cou, bordée du liseré.
   add({ group: 'torso', far: false, near: torsoNear + 0.03, material: 'skin', ...hull([...J.collar.map(S), S(J.neckBase)]) });
-  add({ group: 'torso', far: false, near: torsoNear + 0.04, material: 'trim', ...taper(J.collar.map((p) => disc(p, 0.5 * k))) });
+  add({ group: 'torso', far: false, near: torsoNear + 0.04, material: 'trim', ...taper(J.collar.map((p) => disc(p, 0.5))) });
 
   // Peinture de l'arrière vers l'avant, dans un seul calque ; on garde la boîte de la silhouette
   // pour ne parcourir qu'elle ensuite.
-  const W = frame.width;
-  const H = frame.height;
+  const W = FRAME.width;
+  const H = FRAME.height;
   const owner = new Int16Array(W * H).fill(-1);
   const order = parts.map((_, k) => k).sort((a, c) => parts[a].near - parts[c].near);
   const box: { x0: number; x1: number; y0: number; y1: number } = { x0: W, x1: -1, y0: H, y1: -1 };
@@ -251,7 +236,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
   }
   cleanSilhouette(owner, W, H, box);
 
-  // Ombrage à plat. Les groupes sont numérotés : un bord est un voisin d'un autre groupe (ou vide).
+  // Modelé peint. Les groupes sont numérotés : un bord est un voisin d'un autre groupe (ou vide).
   const groupIds = new Map<string, number>();
   const gid = parts.map((p) => groupIds.get(p.group) ?? groupIds.set(p.group, groupIds.size).get(p.group)!);
   const groups = new Int16Array(W * H).fill(-1);
@@ -266,14 +251,7 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
       if (k < 0) continue;
       const p = parts[k];
       const g = gid[k];
-      let tone = 1;
-      let shade = differs(x + 1, y, g) || differs(x + 1, y + 1, g) || differs(x, y + 1, g);
-      for (let d = 2; d <= p.shadow && !shade; d++) shade = differs(x + d, y, g);
-      if (shade) tone = 2;
-      else if (differs(x - 1, y, g) || differs(x, y - 1, g)) tone = 0;
-      // Ombre portée : la pièce juste au-dessus ou à gauche (ou en diagonale) est d'un autre groupe et plus proche.
-      if (tone < 2 && (castsOn(owner, W, x, y - 1, g, gid, parts, p.near) || castsOn(owner, W, x - 1, y, g, gid, parts, p.near) || castsOn(owner, W, x - 1, y - 1, g, gid, parts, p.near))) tone = 2;
-      if (p.far) tone = Math.min(2, tone + 1);
+      const tone = paintedTone(x, y, g, p, differs, castsOn(owner, W, x, y - 1, g, gid, parts, p.near) || castsOn(owner, W, x - 1, y, g, gid, parts, p.near) || castsOn(owner, W, x - 1, y - 1, g, gid, parts, p.near));
       // Semelle : la rangée du bas de la chaussure, en blanc.
       const m = p.material === 'shoe' && differs(x, y + 1, g) ? 'sole' : kit === 'referee' && (p.material === 'jersey' || p.material === 'trim') ? 'jersey' : p.material;
       slots[y * W + x] = TONES[m][tone];
@@ -281,15 +259,16 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
     }
   }
 
-  // Tête dessinée, posée au cou : devant le corps, sauf là où une pièce plus proche passe devant (bras levé).
-  const head = density.head(look, heading, pose.expression ?? 'neutre');
+  // Tête assemblée par le système de pièces, posée au cou : devant le corps, sauf là où une pièce
+  // plus proche passe devant (bras levé).
+  const head = composeHead(characterOf(look), heading, CHARACTER_EXPRESSION[pose.expression ?? 'neutre']);
   const neck = S(J.neckTop);
   const headNear = neck.near + 0.6;
-  const hx = Math.round(neck.x) - head.anchor.x;
-  const hy = Math.round(neck.y) - head.anchor.y;
+  const hx = Math.round(neck.x) - head.neck.x;
+  const hy = Math.round(neck.y) - head.neck.y;
   const headBottom: number[] = [];
-  // Pixels de la tête : cheveux ou peau (pour le contour coloré).
-  const headKind: ('hair' | 'skin')[] = [];
+  // Pixels de la tête : ton de contour de leur matière (cheveux, peau, pilosité, accessoire).
+  const headDeep: Slot[] = [];
   head.rows.forEach((row, gy) => {
     for (let gx = 0; gx < row.length; gx++) {
       const slot = slotOf(row[gx]);
@@ -301,20 +280,20 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
       if (k >= 0 && parts[k].near > headNear && parts[k].group.startsWith('arm')) continue;
       slots[y * W + x] = slot;
       material[y * W + x] = null;
-      headKind[y * W + x] = HAIR_SLOTS.has(slot) ? 'hair' : 'skin';
+      headDeep[y * W + x] = HEAD_DEEP[slot] ?? '4';
       headBottom[x] = Math.max(headBottom[x] ?? -1, y);
     }
   });
   // Ombre portée de la tête (sous le menton et la mâchoire) : le pixel du cou, des trapèzes ou du
-  // col juste dessous passe au ton d'ombre ; elle relie la tête au cou, sans contour entre les deux.
+  // col juste dessous passe à l'ombre profonde ; elle relie la tête au cou, sans contour entre les deux.
   headBottom.forEach((bottom, x) => {
     const i = (bottom + 1) * W + x;
     const m = material[i];
-    if (bottom + 1 < H && m && m !== 'sole' && slots[i]) slots[i] = TONES[m][2];
+    if (bottom + 1 < H && m && m !== 'sole' && slots[i]) slots[i] = TONES[m][4];
   });
 
-  // Un seul contour sombre autour de toute la silhouette ; avant, les trous d'un pixel entre la
-  // tête et les épaules sont bouchés (ton du pixel du dessus).
+  // Un seul contour autour de toute la silhouette ; avant, les trous d'un pixel entre la tête et
+  // les épaules sont bouchés (ton du pixel du dessus).
   const canvas = new SlotCanvas(W, H);
   slots.forEach((slot, i) => canvas.set(i % W, Math.floor(i / W), slot));
   const top = Math.max(1, Math.min(box.y0, hy));
@@ -322,17 +301,25 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit,
     for (let x = 1; x < W - 1; x++) {
       if (canvas.get(x, y) !== null) continue;
       const above = canvas.get(x, y - 1);
-      if (above && canvas.get(x - 1, y) && canvas.get(x + 1, y) && canvas.get(x, y + 1)) canvas.set(x, y, above);
+      if (above && canvas.get(x - 1, y) && canvas.get(x + 1, y) && canvas.get(x, y + 1)) {
+        canvas.set(x, y, above);
+        material[y * W + x] = material[(y - 1) * W + x];
+        headDeep[y * W + x] = headDeep[(y - 1) * W + x];
+      }
     }
   }
-  colorOutline(canvas, (x, y) => headKind[y * W + x] ?? null);
+  softOutline(canvas, (x, y) => {
+    const m = material[y * W + x];
+    return m ? TONES[m][4] : (headDeep[y * W + x] ?? '4');
+  });
   if (kit === 'referee') stripeReferee(canvas, material);
   return { canvas, chest: S(heading === 'down' ? J.chestFront : J.chestBack), palms: [S(J.palms[0]), S(J.palms[1])] };
 }
 
 /** Numéro posé sur l'image (déjà retournée vers la gauche), à l'endroit, seulement sur le maillot visible. */
-function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit, density: Density2D): Figure2D {
-  const { digits } = density;
+const digits = { height: JERSEY_DIGIT_HEIGHT, width: jerseyNumberWidth, draw: drawJerseyNumber };
+
+function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit): Figure2D {
   const W = canvas.width;
   const mirror = facing === 'left';
   let numberAt: Figure2D['numberAt'] = null;
@@ -342,9 +329,10 @@ function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appea
     const y = Math.round(chest.y - digits.height / 2);
     numberAt = { x, y };
     digits.draw(look.number, x, y, (px, py) => {
+      // Sur le maillot seulement : ombre profonde → ombre profonde de la couleur secondaire, sinon son clair.
       const under = canvas.get(px, py);
-      if (under === 'p' || under === 'P') canvas.set(px, py, 'S');
-      else if (under === 'q') canvas.set(px, py, 't');
+      if (under === 'a' || under === 'p' || under === 'P' || under === 'q') canvas.set(px, py, 's');
+      else if (under === 'Q') canvas.set(px, py, 'T');
     });
   }
   const flip = (p: Screen): Screen => (mirror ? { ...p, x: W - 1 - p.x } : p);
@@ -358,32 +346,54 @@ function castsOn(owner: Int16Array, W: number, x: number, y: number, g: number, 
   return j >= 0 && gid[j] !== g && parts[j].near > near;
 }
 
-const HAIR_SLOTS: ReadonlySet<Slot> = new Set<Slot>(['r', 'h', 'H', 'D', 'E']);
+/**
+ * Tête seule, entourée de son contour doux (portrait, planches) : la tête composée, avec une marge
+ * d'un pixel pour le contour.
+ */
+export function headSprite(look: Appearance, heading: Heading, expression: CharacterExpression = 'neutre'): SlotCanvas {
+  const head = composeHead(characterOf(look), heading, expression);
+  const c = new SlotCanvas(head.rows[0].length + 2, head.rows.length + 2);
+  head.rows.forEach((row, y) => [...row].forEach((ch, x) => c.set(x + 1, y + 1, slotOf(ch))));
+  softOutline(c, (x, y) => HEAD_DEEP[c.get(x, y)!] ?? '4');
+  return c;
+}
 
 /**
- * Contour d'un pixel autour de la silhouette (voisinage à 4). Le corps garde son contour sombre ;
- * la tête est entourée du ton le plus foncé de chaque matière (cheveux : E, peau : 4, brun-rouge),
- * un ton plus clair côté lumière (au-dessus et à gauche : D, 3). Là où la tête touche le cou ou les
- * épaules, il n'y a pas de vide, donc pas de contour entre les deux.
+ * Ton de modelé (0 reflet → 4 ombre profonde) d'un pixel de la pièce `p` du groupe `g` : distance
+ * au bord éclairé (gauche, haut) et au bord sombre (droite, bas) de son groupe. Bord sombre : ombre
+ * profonde ; près du bord sombre : ombre ; bord éclairé : clair, ou reflet s'il y a de l'épaisseur ;
+ * au milieu : base. Ombre portée : au moins l'ombre ; pièce éloignée : un ton plus sombre.
  */
-export function colorOutline(canvas: SlotCanvas, kindAt: (x: number, y: number) => 'hair' | 'skin' | null): void {
+function paintedTone(x: number, y: number, g: number, p: Part, differs: (x: number, y: number, g: number) => boolean, cast: boolean): number {
+  let dl = 0;
+  while (dl < 6 && !differs(x - dl - 1, y, g) && !differs(x, y - dl - 1, g)) dl++;
+  let dd = 0;
+  while (dd < 6 && !differs(x + dd + 1, y, g) && !differs(x, y + dd + 1, g)) dd++;
+  const f = dd / Math.max(1, dl + dd);
+  let t = dd === 0 ? 4 : f < 0.3 ? 3 : dl === 0 ? 1 : f > 0.7 ? 1 : 2;
+  if (dl === 0 && dd > 1) t = 0;
+  if (cast) t = Math.max(t, 3);
+  if (p.far) t = Math.min(4, t + 1);
+  return t;
+}
+
+/**
+ * Contour doux d'un pixel autour de la silhouette (voisinage à 4) : le ton le plus profond de la
+ * matière du pixel peint voisin (`deepAt`), pris dans l'ordre droite, bas, gauche, haut. Là où la
+ * tête touche le cou ou les épaules, il n'y a pas de vide, donc pas de contour entre les deux.
+ */
+export function softOutline(canvas: SlotCanvas, deepAt: (x: number, y: number) => Slot): void {
   const b = canvas.bounds();
   if (!b) return;
   const edges: [number, number, Slot][] = [];
   for (let y = Math.max(0, b.top - 1); y <= Math.min(canvas.height - 1, b.bottom + 1); y++) {
     for (let x = Math.max(0, b.left - 1); x <= Math.min(canvas.width - 1, b.right + 1); x++) {
       if (canvas.get(x, y) !== null) continue;
-      let slot: Slot | null = null;
       for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]] as const) {
         if (canvas.get(x + dx, y + dy) === null) continue;
-        const kind = kindAt(x + dx, y + dy);
-        // Côté lumière : le vide est à gauche ou au-dessus du pixel peint.
-        const light = dx === 1 || dy === 1;
-        const tone: Slot = kind === null ? 'o' : kind === 'hair' ? (light ? 'D' : 'E') : light ? '3' : '4';
-        // Le contour du corps l'emporte, puis le ton le plus foncé.
-        if (!slot || tone === 'o' || (slot !== 'o' && (tone === 'E' || tone === '4'))) slot = tone;
+        edges.push([x, y, deepAt(x + dx, y + dy)]);
+        break;
       }
-      if (slot) edges.push([x, y, slot]);
     }
   }
   for (const [x, y, slot] of edges) canvas.set(x, y, slot);

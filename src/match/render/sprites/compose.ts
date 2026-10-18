@@ -1,4 +1,4 @@
-import { EYE_COLORS, HAIR_COLORS, HAIR_HIGHLIGHTS, HAIR_RAMPS, mixColor, PALETTE, shadeColor, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
+import { HAIR_COLORS, HAIR_HIGHLIGHTS, PALETTE, SKIN_TONES, type TeamRamp } from '../../../assets/palette';
 import { SHOES_DOWN, SHOES_UP, SHORTS_DOWN, SHORTS_UP, TORSOS_DOWN, TORSOS_UP, stretch, widen } from '../../../assets/sprites/body';
 import { EAR, EXPRESSIONS, HAIRS, HEADS, type Expression } from '../../../assets/sprites/heads';
 import { drawJerseyNumber, JERSEY_DIGIT_HEIGHT, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
@@ -275,14 +275,11 @@ export interface SlotColors {
   hair: readonly [number, number, number];
   primary: TeamRamp;
   secondary: TeamRamp;
-  /** Rendu 2D : contour coloré de la peau (brun-rouge foncé), ombre profonde et contour des cheveux. */
-  skinEdge?: number;
-  hairDeep?: readonly [number, number];
-  /** Rendu 2D : iris, et barbe (clair, ombre) d'un ton nettement différent de la peau. */
-  iris?: number;
-  beard?: readonly [number, number];
-  /** Rendu 2D : reflet du crâne rasé ou chauve (emplacement « 0 »). */
-  skinGloss?: number;
+  /**
+   * Rendu 2D du style 5 (`colorsPainted`) : couleur de chaque emplacement, tirée des rampes de
+   * 5 tons ; elle passe avant les couleurs ci-dessus.
+   */
+  painted?: Partial<Record<Slot, number>>;
 }
 
 export function colorsFor(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
@@ -290,44 +287,9 @@ export function colorsFor(look: Appearance, primary: TeamRamp, secondary: TeamRa
   return { skin: SKIN_TONES[look.skin], hair: [HAIR_HIGHLIGHTS[look.hairColor], base, shadow], primary, secondary };
 }
 
-/**
- * Couleurs du rendu 2D (`figure2d.ts`) : mêmes teints et mêmes équipes, cheveux en 4 tons (reflet,
- * clair, base, ombre) pris dans `HAIR_RAMPS`, plus les contours colorés : le ton le plus foncé de
- * chaque matière (cheveux : dernier ton de la rampe ; peau : brun-rouge foncé tiré de son ombre).
- */
-export function colors2D(look: Appearance, primary: TeamRamp, secondary: TeamRamp): SlotColors {
-  const ramp = HAIR_RAMPS[look.hairColor];
-  const skin = SKIN_TONES[look.skin];
-  return {
-    skin,
-    hair: [ramp[0], ramp[1], ramp[2]],
-    hairDeep: [ramp[3], ramp[4]],
-    skinEdge: mixColor(shadeColor(skin[2], 0.55), 0x5a1410, 0.3),
-    iris: EYE_COLORS[(look.eyeColor ?? 0) % EYE_COLORS.length],
-    beard: beardTones(ramp, skin[1]),
-    skinGloss: mixColor(skin[0], 0xffffff, 0.35),
-    primary,
-    secondary,
-  };
-}
-
-/** Luminance perçue (0-1) d'une couleur 0xRRGGBB. */
-function luma(c: number): number {
-  return (0.299 * ((c >> 16) & 0xff) + 0.587 * ((c >> 8) & 0xff) + 0.114 * (c & 0xff)) / 255;
-}
-
-/**
- * Barbe : les tons des cheveux quand ils tranchent sur la peau ; sinon (barbe noire sur peau
- * foncée, barbe blonde sur peau claire) des tons plus clairs ou plus foncés, pour qu'elle se lise.
- */
-function beardTones(ramp: readonly number[], skin: number): readonly [number, number] {
-  const s = luma(skin);
-  for (const [a, b] of [[1, 2], [2, 3], [0, 1], [3, 4]] as const) if (Math.abs(luma(ramp[a]) - s) >= 0.2 && Math.abs(luma(ramp[b]) - s) >= 0.12) return [ramp[a], ramp[b]];
-  // Aucun ton ne tranche assez : barbe éclaircie (comme une barbe grisonnante).
-  return s < 0.5 ? [mixColor(ramp[0], 0xe8e4f0, 0.55), mixColor(ramp[1], 0xc8c4d4, 0.5)] : [ramp[3], ramp[4]];
-}
-
 export function slotColor(slot: Slot, colors: SlotColors): number {
+  const painted = colors.painted?.[slot];
+  if (painted !== undefined) return painted;
   switch (slot) {
     case 'o':
     case 'n':
@@ -360,30 +322,44 @@ export function slotColor(slot: Slot, colors: SlotColors): number {
       return colors.secondary[1];
     case 't':
       return colors.secondary[2];
-    // Tons en plus : contours colorés et ombre profonde du rendu 2D (`colors2D`) ; sinon ramenés aux 3 tons.
+    // Tons en plus (volumes, rendu 2D) : sans table peinte, ramenés aux 3 tons.
     case '0':
-      return colors.skinGloss ?? colors.skin[0];
+    case '5':
+      return colors.skin[0];
     case '4':
-      return colors.skinEdge ?? colors.skin[2];
+      return colors.skin[2];
     case 'D':
-      return colors.hairDeep?.[0] ?? colors.hair[2];
     case 'E':
-      return colors.hairDeep?.[1] ?? colors.hair[2];
+    case 'b':
+    case 'B':
+    case 'f':
+    case 'F':
+      return colors.hair[2];
     case 'a':
-      return colors.primary[0];
+    case 'v':
+    case 'c':
+      return slot === 'a' ? colors.primary[0] : colors.secondary[0];
     case 'Q':
       return colors.primary[2];
+    case 'C':
+      return colors.secondary[1];
     case 'T':
+    case 'd':
+    case 'K':
       return colors.secondary[2];
     case 'm':
+    case 'x':
+    case 'y':
+    case 'z':
       return PALETTE.mist;
     case 'G':
+    case 'Y':
+    case 'Z':
       return PALETTE.slate;
+    case 'j':
+      return PALETTE.ink;
+    case 'J':
     case 'i':
-      return colors.iris ?? PALETTE.outline;
-    case 'b':
-      return colors.beard?.[0] ?? colors.hair[1];
-    case 'B':
-      return colors.beard?.[1] ?? colors.hair[2];
+      return PALETTE.outline;
   }
 }
