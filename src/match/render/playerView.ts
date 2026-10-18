@@ -1,6 +1,7 @@
 import type { PlayKind } from '../world/MatchWorld';
 import type { Point } from './pixelDraw';
-import { sheetIndex, type Facing, type Heading } from './sprites/compose';
+import type { Facing, Heading } from './sprites/compose';
+import { RIG_LAYOUT, sheetIndexIn, type FixedPose, type SheetLayout } from './sprites/layout';
 import { FRAME, type AnimationName } from './sprites/rig';
 
 /** Valeurs provisoires, réglables à l'œil. */
@@ -24,13 +25,6 @@ export const PLAYER_VIEW_TUNING = {
   deadZone: 15,
 } as const;
 
-/**
- * Images fixes en l'air : ballon levé au-dessus de la tête (tir), bras tendu vers le cercle
- * (layup et montée du dunk), bras après le lâcher, accroché au cercle (après le smash), deux bras
- * levés (saut sans le ballon : contre, contestation, rebond).
- */
-export const AIR_FRAMES = { withBall: 13, layup: 16, empty: 14, dunkHang: 17, block: 18 } as const;
-
 /** Ce que le monde dit du joueur, réduit à ce qui choisit l'image. */
 export interface BodyView {
   airborne: boolean;
@@ -47,10 +41,10 @@ export interface BodyView {
   followThrough?: boolean;
 }
 
-/** Animation en boucle, ou image fixe de la feuille (indice dans un bloc, avant orientation). */
+/** Animation en boucle, ou image fixe nommée de la feuille (voir `SheetLayout`). */
 export type SpriteState =
   | { kind: 'anim'; name: AnimationName; facing: Facing; heading: Heading }
-  | { kind: 'frame'; frame: number; facing: Facing; heading: Heading };
+  | { kind: 'frame'; pose: FixedPose; facing: Facing; heading: Heading };
 
 /**
  * Position pour une direction au sol (vitesse, ou direction vers le panier, le receveur, le
@@ -85,10 +79,12 @@ export function spriteStateFor(body: BodyView): SpriteState {
   const facing: Facing = body.facing < 0 ? 'left' : 'right';
   const { heading } = body;
   if (body.airborne) {
-    let frame: number = body.followThrough ? AIR_FRAMES.empty : AIR_FRAMES.block;
-    if (body.holding) frame = body.shot === 'layup' || body.shot === 'dunk' ? AIR_FRAMES.layup : AIR_FRAMES.withBall;
-    else if (body.shot === 'dunk') frame = AIR_FRAMES.dunkHang;
-    return { kind: 'frame', frame, facing, heading };
+    // En l'air : ballon levé (tir), layup, montée du dunk ; sans le ballon, bras après le lâcher,
+    // accroche au cercle après le smash, ou deux bras levés (contre, contestation, rebond).
+    let pose: FixedPose = body.followThrough ? 'release' : 'block';
+    if (body.holding) pose = body.shot === 'dunk' ? 'dunkRise' : body.shot === 'layup' ? 'layup' : 'withBall';
+    else if (body.shot === 'dunk') pose = 'dunkHang';
+    return { kind: 'frame', pose, facing, heading };
   }
   const moving = body.speed > PLAYER_VIEW_TUNING.runSpeed;
   const name: AnimationName = body.holding ? (moving ? 'dribble' : 'dribbleIdle') : moving ? 'run' : 'idle';
@@ -112,9 +108,9 @@ export function dunkLift(handY: number, rimY: number, progress: number): number 
   return Math.round(Math.max(0, handY - rimY) * Math.min(1, Math.max(0, progress)));
 }
 
-/** Indice dans la feuille cuite d'une image fixe. */
-export function frameIndex(state: Extract<SpriteState, { kind: 'frame' }>): number {
-  return sheetIndex(state.frame, state.facing, state.heading);
+/** Indice dans la feuille cuite (de disposition `layout`) d'une image fixe. */
+export function frameIndex(state: Extract<SpriteState, { kind: 'frame' }>, layout: SheetLayout = RIG_LAYOUT): number {
+  return sheetIndexIn(layout, layout.fixed[state.pose], state.facing, state.heading);
 }
 
 /**

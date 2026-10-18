@@ -95,6 +95,7 @@ export function characterOf(look: Appearance): PlayerAppearance {
     hair: hairs[look.hair % hairs.length],
     colors: { hair, facialHair: hair, eyes: EYE_COLOR_IDS[0], accessory: 'equipe' },
     accessories: [],
+    dominantHand: 'droite',
   };
 }
 

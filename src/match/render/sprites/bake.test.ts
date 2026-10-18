@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { teamRamp } from '../../../assets/palette';
 import type { Appearance } from './appearance';
-import { BakeQueue, SHEET_SIZE, SheetBaker, sheetCell, type Clock, type Stepper } from './bake';
+import { BakeQueue, layoutFor, SheetBaker, sheetCell, sheetSize, type Clock, type Stepper } from './bake';
+import { sheetFrameCount } from './layout';
 import { SHEET_VIEWS } from './compose';
 import { FRAME, FRAMES } from './rig';
 
-/** Images d'une feuille : 19 par bloc, 4 blocs (2 diagonales, 2 orientations). */
+/** Images d'une feuille du rig : 19 par bloc, 4 blocs (2 diagonales, 2 orientations). */
 const SHEET = FRAMES.length * SHEET_VIEWS.length;
 
 const look: Appearance = { heightCm: 200, heavy: false, heightClass: 'moyen', skin: 2, head: 0, hair: 1, hairColor: 0, number: 23 };
@@ -18,18 +19,22 @@ function ticking(): Clock {
 }
 
 describe('feuille de sprites', () => {
-  it('tient dans une texture de 4 096 px de côté : une rangée par bloc, sans chevauchement', () => {
-    expect(SHEET_SIZE.width).toBeLessThanOrEqual(4096);
-    expect(SHEET_SIZE.height).toBeLessThanOrEqual(4096);
-    const cells = new Set<string>();
-    for (let i = 0; i < SHEET; i++) {
-      const { x, y } = sheetCell(i);
-      expect(x + FRAME.width).toBeLessThanOrEqual(SHEET_SIZE.width);
-      expect(y + FRAME.height).toBeLessThanOrEqual(SHEET_SIZE.height);
-      expect(y).toBeLessThan(SHEET_SIZE.height);
-      cells.add(`${x},${y}`);
+  it('tient dans une texture de 4 096 px de côté : une rangée par bloc, sans chevauchement (rig et rendu 2D)', () => {
+    for (const renderer of ['rig', '2d'] as const) {
+      const layout = layoutFor(renderer);
+      const size = sheetSize(layout);
+      expect(size.width).toBeLessThanOrEqual(4096);
+      expect(size.height).toBeLessThanOrEqual(4096);
+      const cells = new Set<string>();
+      for (let i = 0; i < sheetFrameCount(layout); i++) {
+        const { x, y } = sheetCell(i, layout);
+        expect(x + FRAME.width).toBeLessThanOrEqual(size.width);
+        expect(y + FRAME.height).toBeLessThanOrEqual(size.height);
+        cells.add(`${x},${y}`);
+      }
+      expect(cells.size).toBe(sheetFrameCount(layout));
     }
-    expect(cells.size).toBe(SHEET);
+    expect(sheetFrameCount(layoutFor('rig'))).toBe(SHEET);
   });
 });
 

@@ -155,6 +155,7 @@ const BASE: PlayerAppearance = {
   hair: 'ebouriffe',
   colors: { hair: 'brun', facialHair: 'brun', eyes: 'brun-fonce', accessory: 'equipe' },
   accessories: [],
+  dominantHand: 'droite',
 };
 const BODY: Appearance = { heightCm: 200, heavy: false, heightClass: 'moyen', skin: 1, head: 0, hair: 0, hairColor: 1, number: 23 };
 const look = (character: PlayerAppearance): Appearance => ({ ...BODY, character });

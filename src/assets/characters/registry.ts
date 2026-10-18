@@ -1,10 +1,16 @@
 /**
  * Registre des pièces : une ligne par pièce. Ajouter une pièce = ajouter son fichier dans
  * `parts/<catégorie>/` puis une ligne ici (voir README.md). L'ordre de chaque liste est celui
- * de l'éditeur ; `weights` règle la fréquence au tirage des joueurs générés (absent : 1).
+ * de l'éditeur ; `weight` règle la fréquence au tirage des joueurs générés (absent : 1).
+ *
+ * Pour l'instant, le tirage ne donne que les visages de la planche du style 5 (étape 1) : les
+ * autres pièces ont un poids 0. Elles restent disponibles (éditeur, apparences sauvegardées) et
+ * reviendront au tirage avec le travail sur les visages.
  */
 import type { AccessoryPart, EarsPart, FacialHairPart, HairPart, HeadShapePart, MouthPart, NosePart, PairPart } from './types';
 import { carree } from './parts/headShapes/carree';
+import { fine as headFine } from './parts/headShapes/fine';
+import { large as headLarge } from './parts/headShapes/large';
 import { longue } from './parts/headShapes/longue';
 import { normale } from './parts/headShapes/normale';
 import { ronde } from './parts/headShapes/ronde';
@@ -53,13 +59,13 @@ export interface Entry<T> {
 }
 
 export const REGISTRY = {
-  headShapes: [{ part: normale, weight: 3 }, { part: carree, weight: 2 }, { part: longue, weight: 2 }, { part: ronde, weight: 1.5 }] as Entry<HeadShapePart>[],
-  ears: [{ part: normales, weight: 4 }, { part: petites, weight: 2 }, { part: decollees, weight: 1 }] as Entry<EarsPart>[],
-  eyes: [{ part: points, weight: 3 }, { part: ronds, weight: 2 }, { part: vifs, weight: 2 }, { part: lourds, weight: 1.5 }] as Entry<PairPart>[],
-  brows: [{ part: doux, weight: 3 }, { part: epais, weight: 2 }, { part: arques, weight: 1.5 }, { part: courts, weight: 1.5 }] as Entry<PairPart>[],
-  noses: [{ part: bouton, weight: 3 }, { part: droit, weight: 2 }, { part: noseLarge, weight: 2 }, { part: aquilin, weight: 1 }] as Entry<NosePart>[],
-  mouths: [{ part: mouthFine, weight: 3 }, { part: pleine, weight: 2 }, { part: mouthLarge, weight: 1.5 }] as Entry<MouthPart>[],
-  facialHair: [{ part: barbe, weight: 3 }, { part: bouc, weight: 2 }, { part: moustache, weight: 1 }, { part: collier, weight: 1.5 }] as Entry<FacialHairPart>[],
+  headShapes: [{ part: normale, weight: 3 }, { part: carree, weight: 2 }, { part: headFine, weight: 2 }, { part: ronde, weight: 1.5 }, { part: headLarge, weight: 1.5 }, { part: longue, weight: 0 }] as Entry<HeadShapePart>[],
+  ears: [{ part: normales }, { part: petites, weight: 0 }, { part: decollees, weight: 0 }] as Entry<EarsPart>[],
+  eyes: [{ part: points }, { part: ronds, weight: 0 }, { part: vifs, weight: 0 }, { part: lourds, weight: 0 }] as Entry<PairPart>[],
+  brows: [{ part: doux }, { part: epais, weight: 0 }, { part: arques, weight: 0 }, { part: courts, weight: 0 }] as Entry<PairPart>[],
+  noses: [{ part: bouton }, { part: droit, weight: 0 }, { part: noseLarge, weight: 0 }, { part: aquilin, weight: 0 }] as Entry<NosePart>[],
+  mouths: [{ part: mouthFine }, { part: pleine, weight: 0 }, { part: mouthLarge, weight: 0 }] as Entry<MouthPart>[],
+  facialHair: [{ part: barbe, weight: 3 }, { part: bouc, weight: 2 }, { part: moustache, weight: 1 }, { part: collier, weight: 0 }] as Entry<FacialHairPart>[],
   hair: [
     { part: ebouriffe },
     { part: pics },
@@ -75,7 +81,7 @@ export const REGISTRY = {
     { part: chauve },
     { part: crete },
   ] as Entry<HairPart>[],
-  accessories: [{ part: bandeau, weight: 3 }, { part: bandeauFin, weight: 2 }, { part: bandeauNoue, weight: 1 }] as Entry<AccessoryPart>[],
+  accessories: [{ part: bandeau }, { part: bandeauFin, weight: 0 }, { part: bandeauNoue, weight: 0 }] as Entry<AccessoryPart>[],
 };
 
 export type Category = keyof typeof REGISTRY;
@@ -95,4 +101,9 @@ export function hasPart(category: Category, id: string): boolean {
 
 export function partIds(category: Category): string[] {
   return (REGISTRY[category] as Entry<{ id: string }>[]).map((e) => e.part.id);
+}
+
+/** Pièces que le tirage peut donner (poids non nul). */
+export function drawnIds(category: Category): string[] {
+  return (REGISTRY[category] as Entry<{ id: string }>[]).filter((e) => (e.weight ?? 1) > 0).map((e) => e.part.id);
 }

@@ -131,6 +131,10 @@ export interface Figure2D {
   numberAt: { x: number; y: number } | null;
   /** Paumes à l'écran [gauche du joueur, droite du joueur] (image retournée comprise) : point d'accroche du ballon. */
   palms: [Screen, Screen];
+  /** Bouts des doigts, de même (la main pose sur le ballon par-dessus). */
+  tips: [Screen, Screen];
+  /** Bassin à l'écran : sa proximité de la caméra (`near`) dit si une main est devant ou derrière le corps. */
+  pelvis: Screen;
 }
 
 /**
@@ -156,9 +160,12 @@ interface Painted {
   /** Point de la poitrine (ou du dos) où se centre le numéro. */
   chest: Screen;
   palms: [Screen, Screen];
+  tips: [Screen, Screen];
+  pelvis: Screen;
 }
 
-function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit): Painted {
+/** Squelette posé et sa projection dans le cadre (vers la droite), sans rien peindre. */
+function figureProjection(look: Appearance, pose: Pose2D, heading: Heading) {
   const b = build2D(look.heightCm, look.heavy);
   const J = joints2D(b, pose, heading);
   // Calage au sol à l'écran : la semelle la plus basse (le pied le plus proche) touche la rangée
@@ -166,6 +173,24 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
   const lift = (pose.lift ?? 0) * Math.cos(PITCH_2D);
   const sole = Math.max(...J.shoes.flat().map((p) => project2D(p, 0, 0).y)) + lift;
   const S = (p: Vec3): Screen => project2D(p, FRAME.centerX, FRAME.groundY - sole);
+  return { b, J, S };
+}
+
+/** Mains et bassin d'une pose à l'écran, joueur tourné vers la droite (calcul seul, sans peinture). */
+export interface Hands2D {
+  /** [gauche du joueur, droite du joueur]. */
+  palms: [Screen, Screen];
+  tips: [Screen, Screen];
+  pelvis: Screen;
+}
+
+export function hands2D(look: Appearance, pose: Pose2D, heading: Heading): Hands2D {
+  const { J, S } = figureProjection(look, pose, heading);
+  return { palms: [S(J.palms[0]), S(J.palms[1])], tips: [S(J.fingertips[0]), S(J.fingertips[1])], pelvis: S(J.pelvis) };
+}
+
+function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit): Painted {
+  const { b, J, S } = figureProjection(look, pose, heading);
   const disc = (p: Vec3, r: number): Disc => {
     const s = S(p);
     return { x: s.x, y: s.y, r };
@@ -313,13 +338,13 @@ function paintFigure(look: Appearance, pose: Pose2D, heading: Heading, kit: Kit)
     return m ? TONES[m][4] : (headDeep[y * W + x] ?? '4');
   });
   if (kit === 'referee') stripeReferee(canvas, material);
-  return { canvas, chest: S(heading === 'down' ? J.chestFront : J.chestBack), palms: [S(J.palms[0]), S(J.palms[1])] };
+  return { canvas, chest: S(heading === 'down' ? J.chestFront : J.chestBack), palms: [S(J.palms[0]), S(J.palms[1])], tips: [S(J.fingertips[0]), S(J.fingertips[1])], pelvis: S(J.pelvis) };
 }
 
 /** Numéro posé sur l'image (déjà retournée vers la gauche), à l'endroit, seulement sur le maillot visible. */
 const digits = { height: JERSEY_DIGIT_HEIGHT, width: jerseyNumberWidth, draw: drawJerseyNumber };
 
-function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit): Figure2D {
+function finishFigure({ chest, palms, tips, pelvis }: Painted, canvas: SlotCanvas, look: Appearance, facing: Facing, kit: Kit): Figure2D {
   const W = canvas.width;
   const mirror = facing === 'left';
   let numberAt: Figure2D['numberAt'] = null;
@@ -336,7 +361,7 @@ function finishFigure({ chest, palms }: Painted, canvas: SlotCanvas, look: Appea
     });
   }
   const flip = (p: Screen): Screen => (mirror ? { ...p, x: W - 1 - p.x } : p);
-  return { canvas, numberAt, palms: [flip(palms[0]), flip(palms[1])] };
+  return { canvas, numberAt, palms: [flip(palms[0]), flip(palms[1])], tips: [flip(tips[0]), flip(tips[1])], pelvis: flip(pelvis) };
 }
 
 /** Le pixel (x, y) appartient à une pièce d'un autre groupe, plus proche : elle porte son ombre (lumière en haut à gauche). */

@@ -13,6 +13,17 @@ composeHead.ts  compositeur : ordre de dessin fixe, masques, modelé
 parts/<catégorie>/<id>.ts   une pièce par fichier
 ```
 
+## Tirage (pour l'instant)
+
+Les joueurs générés ne reçoivent que **les visages de la planche du style 5** (étape 1) : yeux en
+points, sourcils doux, nez bouton, bouche fine, oreilles normales, les cinq formes de tête de la
+planche, barbe, bouc ou moustache, bandeau aux couleurs de l'équipe. Les autres pièces ont un
+poids 0 dans `registry.ts` : elles restent disponibles (éditeur, apparences sauvegardées) et
+reviendront au tirage avec le travail sur les visages.
+
+`PlayerAppearance.dominantHand` (droite ou gauche, ~12 % de gauchers) dit la main qui dribble et
+qui tire (rendu seulement, voir `src/match/render/sprites/sheet2d.ts`).
+
 ## Catégories
 
 | Catégorie | Dossier | Ancrage | Orientations |
