@@ -7,6 +7,7 @@ import type { SlotCanvas, Slot } from './canvas';
 import { slotColor } from './compose';
 import { headSprite, renderFigure2D, renderFigure2DBoth } from './figure2d';
 import { colorsPainted } from './paintedColors';
+import { RUN_CYCLE_MS } from './layout';
 import { poses2D } from './poses2d';
 import { FRAME, type Heading } from './rig';
 import { build2D, joints2D, project2D } from './skeleton2d';
@@ -56,15 +57,15 @@ describe('rendu 2D : proportions et cadre', () => {
     }
   });
 
-  it('pieds sur la rangée du sol (contour dessous) au sol, en l’air à l’envol ; tout tient dans le cadre', () => {
+  it('pieds sur la rangée du sol (contour dessous), à 1 px près à l’envol de la course ; tout tient dans le cadre', () => {
     for (const heading of HEADINGS) {
       for (const [k, f] of all.entries()) {
         const b = renderFigure2D(AILIER, f.pose, heading).canvas.bounds()!;
         expect(b.left, `${heading} ${k}`).toBeGreaterThan(0);
         expect(b.right).toBeLessThan(FRAME.width - 1);
         expect(b.top).toBeGreaterThan(0);
-        if (f.pose.lift) expect(b.bottom, `${heading} ${k}`).toBeLessThan(FRAME.groundY);
-        else expect(b.bottom, `${heading} ${k}`).toBe(FRAME.groundY);
+        expect(b.bottom, `${heading} ${k}`).toBeLessThanOrEqual(FRAME.groundY);
+        expect(b.bottom, `${heading} ${k}`).toBeGreaterThanOrEqual(FRAME.groundY - 1);
       }
     }
   });
@@ -316,9 +317,10 @@ describe('poses : arrêt et course', () => {
     expect(feet(c)).toEqual(feet(a));
   });
 
-  it('course : 8 images, un cycle de 360 ms, chaque jambe passe devant à son tour', () => {
+  it('course : 8 images, un cycle de 600 ms (décision de Matheo : plus posée), chaque jambe passe devant à son tour', () => {
     expect(run).toHaveLength(8);
-    expect(run.reduce((t, f) => t + f.ms, 0)).toBe(360);
+    expect(run.reduce((t, f) => t + f.ms, 0)).toBe(RUN_CYCLE_MS);
+    expect(RUN_CYCLE_MS).toBe(600);
     expect(run[0].pose.legs[1].hip).toBeGreaterThan(run[0].pose.legs[0].hip);
     expect(run[4].pose.legs[0].hip).toBeGreaterThan(run[4].pose.legs[1].hip);
   });
@@ -343,11 +345,15 @@ describe('poses : arrêt et course', () => {
     }
   });
 
-  it('rebond : le corps est plus bas à l’amorti qu’à l’envol, écrasé puis étiré', () => {
-    const top = (k: number) => renderFigure2D(AILIER, run[k].pose, 'down').canvas.bounds()!.top;
-    expect(top(1)).toBeGreaterThan(top(3) + 1);
-    expect(top(5)).toBeGreaterThan(top(7) + 1);
-    expect(run[1].pose.stretch!).toBeLessThan(0);
-    expect(run[3].pose.stretch!).toBeGreaterThan(0);
+  it('tête posée : elle bouge d’au plus 1 px d’une image à la suivante, et de 2 px au plus sur le cycle (pas de saccade)', () => {
+    for (const heightCm of [186, 200, 212]) {
+      for (const heading of HEADINGS) {
+        // Le cou (sous la tête) à l'écran : les bras qui balancent peuvent dépasser, pas la tête.
+        const b = build2D(heightCm, false);
+        const tops = run.map((f) => Math.round(project2D(joints2D(b, f.pose, heading).neckTop, 0, 0).y));
+        tops.forEach((t, k) => expect(Math.abs(t - tops[(k + 1) % tops.length]), `${heightCm} ${heading} ${k}`).toBeLessThanOrEqual(1));
+        expect(Math.max(...tops) - Math.min(...tops), `${heightCm} ${heading}`).toBeLessThanOrEqual(2);
+      }
+    }
   });
 });

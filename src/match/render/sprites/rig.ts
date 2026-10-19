@@ -256,8 +256,8 @@ export type AnimationName = 'idle' | 'run' | 'dribble' | 'dribbleIdle' | 'shoot'
 export const ANIMATIONS: Readonly<Record<AnimationName, { frames: number[]; durations: number[]; loop: boolean }>> = {
   idle: { frames: [0, 1], durations: [400, 400], loop: true },
   run: { frames: [2, 3, 4, 5], durations: [90, 90, 90, 90], loop: true },
-  dribble: { frames: [6, 7, 8, 9], durations: [125, 125, 125, 125], loop: true },
-  dribbleIdle: { frames: [10, 11], durations: [250, 250], loop: true },
+  dribble: { frames: [6, 7, 8, 9], durations: [150, 150, 150, 150], loop: true },
+  dribbleIdle: { frames: [10, 11], durations: [300, 300], loop: true },
   shoot: { frames: [12, 13, 14], durations: [80, 280, 320], loop: false },
   dunk: { frames: [15, 16, 17], durations: [120, 200, 300], loop: false },
 };

@@ -256,6 +256,31 @@ plus une variante d'identité : c'est un état.
 | Dunk | 3 | élan, bras tendu vers le cercle, accroché ~0,3 s au cercle (deux bras) | Visage concentré ; en match, sprite monté pour que les mains touchent le cercle |
 | Contre (image 18) | 1 | tout le saut sans le ballon | Deux bras tendus vers le haut, jambes du saut, visage concentré ; contre, contestation, rebond. Après son lâcher, le tireur garde l'image 14 (bras du lâcher) jusqu'au sol |
 
+Ce tableau décrit l'ancien rig (`&sprites=ancien`). **Rendu 2D du match (incrément 16 b)** : une
+feuille de 55 images par position, chaque geste avec ses propres images (aucune partagée), choisies
+selon l'état du monde (`spriteStateFor`) :
+
+| Animation / geste | Images | Rythme | Notes |
+| --- | --- | --- | --- |
+| Arrêt | 2 | 400 ms chacune | Respiration |
+| Course | 8 | 600 ms le cycle (×0,8 à ×1,15 selon la vitesse) | Tête stable (au plus 1 px par image) |
+| Dribble en course / à l'arrêt | 8 / 4 | 600 ms, la période du dribble du monde | Main forte, ballon sous la paume |
+| Tir en suspension | 5 | ramassage 80 ms, montée, point de déclenchement jusqu'au lâcher, lâcher 200 ms, retombée | Coude sous le ballon, main faible qui guide ; col de cygne |
+| Layup | 4 | deuxième appui, envol, extension, après le lâcher | Genou du côté de la main forte |
+| Dunk | 4 | ramassage, armé derrière la tête, smash au sommet, accroche | Sprite monté vers le cercle |
+| Contre (main forte / autre main) | 2 + 2 | impulsion en montant, puis verticalité | Une main au plus haut, en face de la main de tir adverse |
+| Rebond | 2 | deux mains hautes ; ballon sous le menton dès qu'il est pris | |
+| Entre-deux | 1 | tout le saut | Un bras tendu au maximum |
+| Passe / passe lobée (> 8 m) | 2 / 2 | armé 90 ms, puis bras tendus jusqu'à 250 ms | Pouces vers le bas / ballon au-dessus de la tête |
+| Réception d'une passe | 1 | 150 ms autour de la prise | Mains en cible |
+| Lancer franc | 4 | mise en place, visée, lâcher 150 ms, bras tenu jusqu'à 400 ms | Sur la pointe des pieds, sans saut |
+| Réception au sol | 1 | 120 ms après l'atterrissage (sans le ballon) | Genoux fléchis |
+| Vol / déséquilibre | 2 / 1 | geste de 250 ms / 0,3 s | |
+
+Pendant un geste vers le panier ou le receveur, les épaules se tournent vers le jeu (`square`) au
+lieu de rester tournées vers la caméra : un bras tendu ne passe plus devant le visage. Page
+`?anims` : chaque geste en boucle à son vrai rythme (4 positions, droitier et gaucher).
+
 Planches complètes (touche V de `?style`) :
 - vue « gros-plan » : les trois gabarits en diagonale bas, avec la règle des proportions, et les
   3 expressions de 3/4 en grand ;

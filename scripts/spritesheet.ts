@@ -3,10 +3,10 @@
  * uni : la feuille du match telle qu'elle est cuite (`LAYOUT_2D`), avec le ballon tenu posé à son
  * point d'accroche, devant ou derrière le joueur (`behind`).
  * - pour un droitier puis pour un gaucher : une rangée par animation (arrêt, course, dribble en
- *   course, dribble à l'arrêt, images fixes), dans les 4 positions ;
+ *   course, dribble à l'arrêt) et par geste (tir en suspension, layup, dunk…), dans les 4 positions ;
  * - affiche le temps de cuisson d'un joueur (toutes les images de la feuille).
  * Les têtes et les pièces ont leur propre planche (`scripts/characters-planche.ts`).
- *   npm run sprites -- [sortie.png] [agrandissement]
+ *   npm run sprites -- [sortie.png] [agrandissement] [positions, ex. down-right,up-left] [droitier|gaucher]
  */
 import { writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
@@ -15,7 +15,7 @@ import { BALL } from '../src/assets/sprites/arena';
 import { appearance2DFor, type Appearance } from '../src/match/render/sprites/appearance';
 import { SHEET_VIEWS, slotColor, type SlotColors } from '../src/match/render/sprites/compose';
 import { drawSmallText } from '../src/match/render/pixelFont';
-import { LAYOUT_2D } from '../src/match/render/sprites/layout';
+import { GESTURES, LAYOUT_2D, type Gesture } from '../src/match/render/sprites/layout';
 import { colorsPainted } from '../src/match/render/sprites/paintedColors';
 import { FRAME } from '../src/match/render/sprites/rig';
 import { composeFrame2D, type ComposedFrame2D } from '../src/match/render/sprites/sheet2d';
@@ -27,11 +27,33 @@ const TEXT = 0xf6f2ea;
 
 const base = appearance2DFor({ id: 'planche-animations', heightCm: 200, weightKg: 96, number: 23, age: 26 });
 const hand = (dominantHand: 'droite' | 'gauche'): Appearance => ({ ...base, character: { ...base.character!, hair: 'degrade', dominantHand } });
-const LOOKS: [string, Appearance][] = [
-  ['DROITIER', hand('droite')],
-  ['GAUCHER', hand('gauche')],
-];
+const onlyViews = process.argv[4]?.split(',');
+const onlyHand = process.argv[5]?.toUpperCase();
+const LOOKS: [string, Appearance][] = (
+  [
+    ['DROITIER', hand('droite')],
+    ['GAUCHER', hand('gauche')],
+  ] as [string, Appearance][]
+).filter(([name]) => !onlyHand || name === onlyHand);
+const VIEWS = SHEET_VIEWS.filter((v) => !onlyViews || onlyViews.includes(`${v.heading}-${v.facing}`));
 const COLORS = colorsPainted(base, teamRamp('#1d4ed8'), teamRamp('#f59e0b'));
+
+const GESTURE_LABEL: Record<Gesture, string> = {
+  jumpShot: 'TIR SUSPENSION',
+  layup: 'LAYUP',
+  dunk: 'DUNK',
+  block: 'CONTRE',
+  blockOff: 'CONTRE AUTRE MAIN',
+  rebound: 'REBOND',
+  tipoff: 'ENTRE-DEUX',
+  pass: 'PASSE',
+  lobPass: 'PASSE LOBEE',
+  catch: 'RECEPTION PASSE',
+  freeThrow: 'LANCER FRANC',
+  landing: 'RECEPTION SOL',
+  steal: 'VOL',
+  offBalance: 'DESEQUILIBRE',
+};
 
 /** Rangées d'une planche : un groupe d'images de la feuille, dans une position. */
 const GROUPS: [string, number[]][] = [
@@ -39,7 +61,7 @@ const GROUPS: [string, number[]][] = [
   ['COURSE', LAYOUT_2D.animations.run.frames.slice()],
   ['DRIBBLE COURSE', LAYOUT_2D.animations.dribble.frames.slice()],
   ['DRIBBLE ARRET', LAYOUT_2D.animations.dribbleIdle.frames.slice()],
-  ['TIR LAYUP DUNK CONTRE', [22, 23, 24, 25, 26, 27]],
+  ...GESTURES.map((g): [string, number[]] => [GESTURE_LABEL[g], LAYOUT_2D.gestures[g].slice()]),
 ];
 const VIEW_LABEL = { 'down-right': 'BAS DROITE', 'down-left': 'BAS GAUCHE', 'up-right': 'HAUT DROITE', 'up-left': 'HAUT GAUCHE' } as const;
 
@@ -68,7 +90,7 @@ function encodePng(width: number, height: number, rgba: Uint8Array): Buffer {
 const LABEL_W = 150;
 const CELL_W = FRAME.width * zoom;
 const CELL_H = FRAME.height * zoom;
-const rows = LOOKS.length * GROUPS.length * SHEET_VIEWS.length;
+const rows = LOOKS.length * GROUPS.length * VIEWS.length;
 const width = LABEL_W + 8 * CELL_W;
 const height = LOOKS.length * 40 + rows * (CELL_H + 4);
 const rgba = new Uint8Array(width * height * 4);
@@ -123,7 +145,7 @@ for (const [name, look] of LOOKS) {
     return sheet.get(`${key}|${facing}`)!;
   };
   for (const [label, frames] of GROUPS) {
-    for (const view of SHEET_VIEWS) {
+    for (const view of VIEWS) {
       text(label, 8, top + 20);
       text(VIEW_LABEL[`${view.heading}-${view.facing}`], 8, top + 40);
       frames.forEach((index, i) => drawFrame(LABEL_W + i * CELL_W, top, frameOf(index, view.heading, view.facing), COLORS));

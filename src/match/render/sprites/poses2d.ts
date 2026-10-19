@@ -32,20 +32,22 @@ function idle(): Frame2D[] {
 /**
  * Une foulée (4 phases) pour la jambe d'appui et la jambe libre : contact (talon devant), amorti
  * (genou qui absorbe, corps au plus bas), passage (genou libre qui monte), envol (poussée, genou
- * haut). L'autre foulée échange les jambes.
+ * haut). L'autre foulée échange les jambes. La tête reste posée (au plus 1 px par image) : la
+ * flexion des jambes la fait déjà monter de l'amorti à l'envol, un léger écrasement du torse
+ * compense ; le corps ne saute plus à chaque pas, ce qui saccadait.
  */
 const STRIDE: readonly { support: Leg2D; swing: Leg2D; bob: number; lift: number; stretch: number }[] = [
   // contact
-  { support: { hip: 0.62, knee: 0.22, foot: 0.12 }, swing: { hip: -0.5, knee: 1.35, foot: -0.55 }, bob: 0, lift: 0, stretch: 0 },
+  { support: { hip: 0.62, knee: 0.22, foot: 0.12 }, swing: { hip: -0.5, knee: 1.35, foot: -0.55 }, bob: 0, lift: 0, stretch: -0.2 },
   // amorti
-  { support: { hip: 0.3, knee: 0.85, foot: 0 }, swing: { hip: -0.15, knee: 2.0, foot: -0.75 }, bob: 1.2, lift: 0, stretch: -0.9 },
+  { support: { hip: 0.3, knee: 0.85, foot: 0 }, swing: { hip: -0.15, knee: 2.0, foot: -0.75 }, bob: 0, lift: 0, stretch: -0.4 },
   // passage
-  { support: { hip: -0.05, knee: 0.5, foot: -0.05 }, swing: { hip: 0.65, knee: 1.95, foot: -0.4 }, bob: 0.3, lift: 0, stretch: 0 },
+  { support: { hip: -0.05, knee: 0.5, foot: -0.05 }, swing: { hip: 0.65, knee: 1.95, foot: -0.4 }, bob: 0, lift: 0, stretch: -0.15 },
   // envol
-  { support: { hip: -0.55, knee: 0.3, foot: -0.85 }, swing: { hip: 1.0, knee: 1.45, foot: -0.1 }, bob: 0, lift: 1.6, stretch: 0.9 },
+  { support: { hip: -0.55, knee: 0.3, foot: -0.85 }, swing: { hip: 1.0, knee: 1.45, foot: -0.1 }, bob: 0, lift: 0, stretch: -0.3 },
 ];
 
-/** Course : 8 images (deux foulées), 45 ms chacune : le cycle de 360 ms des sprites actuels. */
+/** Course : 8 images (deux foulées), 75 ms chacune : un cycle de 600 ms (`RUN_CYCLE_MS`), ~3,3 pas par seconde. */
 function run(): Frame2D[] {
   const lean = 0.32;
   return Array.from({ length: 8 }, (_, f) => {
@@ -61,7 +63,7 @@ function run(): Frame2D[] {
     const arms: [Arm2D, Arm2D] = [arm(swing), arm(-swing)];
     return {
       pose: { legs, arms, lean, turn: -0.06 * swing, bob: s.bob, lift: s.lift, stretch: s.stretch },
-      ms: 45,
+      ms: 75,
     };
   });
 }
