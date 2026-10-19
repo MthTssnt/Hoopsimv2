@@ -247,6 +247,17 @@
     côté ; au départ, diagonale bas.
   - Le portrait du HUD est de 3/4 aussi.
   - Les poses du 16 seront dessinées dans les deux diagonales.
+- **Animations (incrément 16 b)** :
+  - la course se joue plus lentement, pas les joueurs : deux pas en 600 ms à la vitesse de
+    référence (~3,8 pas par seconde au plus, la cadence d'un sprint réel) ; la tête ne bouge que
+    d'1 px par pas (plus de saccade) ; les dribbles suivent (rebond toutes les 0,6 s) ;
+  - les gestes doivent être ceux du basket (tir en suspension avec point de déclenchement et col
+    de cygne, layup genou côté main forte, contre d'une main en verticalité, rebond deux mains
+    puis ballon au menton, passe à deux mains pouces vers le bas…) ;
+  - **une animation n'est jamais recyclée pour un autre mouvement** : chaque geste a ses propres
+    images ;
+  - le défenseur contre de la main en face de la main de tir adverse ; une passe de plus de 8 m
+    est lobée (pose seulement, la trajectoire ne change pas).
 
 ## 6. Modes et écrans
 - Match : Play (je joue), Live Sim (je regarde CPU contre CPU), Quick Sim (résultat en quelques

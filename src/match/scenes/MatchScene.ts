@@ -19,7 +19,8 @@ import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
-import { animTimeScale, blendBall, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type SpriteState } from '../render/playerView';
+import { animTimeScale, blendBall, blockGesture, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type BodyView, type JumpKind, type SpriteState } from '../render/playerView';
+import { characterOf } from '../render/sprites/appearance';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearance2DFor, appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, BakeQueue, bakePlayer, bakeShadow, SHADOWS, SheetBaker, type BakedPlayer, type Clock, type Renderer } from '../render/sprites/bake';
@@ -29,7 +30,8 @@ import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
-import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
+import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type PassFlight, type PlayKind, type ShotRecord, type WorldInput } from '../world/MatchWorld';
+import { STEAL_FLOW } from '../world/steal';
 import { attacksRight, formatClock, FULL_COURT, periodLabel } from '../world/fullCourt';
 import { defaultTarget } from '../world/halfCourt';
 import { HUD_KEYS, type HudBanner, type HudDebug } from './HudScene';
@@ -115,9 +117,33 @@ const FAR_LINE_ON_SCREEN = 55;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 /** Ton équipe dans le monde (l'autre est l'IA). */
 const USER_TEAM = 0;
-/** Pose de passe (bras du lâcher) tenue après une passe (ms), et après un lancer franc. */
-const PASS_POSE_MS = 150;
-const FREE_THROW_POSE_MS = 400;
+/** Distance (m) sous laquelle un saut sans ballon près d'un tireur en l'air est un contre. */
+const BLOCK_RANGE = 3;
+
+/**
+ * Ce que la scène suit pour chaque corps afin de choisir son geste (`spriteStateFor`), tiré du
+ * monde à chaque image : temps de vol, geste du saut, lâcher, atterrissage, passe, réception, lancer.
+ */
+interface BodyClocks {
+  airborne: boolean;
+  /** Temps de vol du saut en cours (s). */
+  air: number;
+  /** Geste du saut en cours (tir, layup, dunk), gardé jusqu'à l'atterrissage. */
+  play: PlayKind | null;
+  /** Saut sans ballon : contre, rebond ou entre-deux, décidé au décollage. */
+  jumpKind: JumpKind | null;
+  /** Temps depuis le lâcher pendant ce saut, l'atterrissage, la passe, la prise, le lâcher d'un lancer (s), ou null. */
+  release: number | null;
+  landing: number | null;
+  pass: number | null;
+  lob: boolean;
+  caught: number | null;
+  catching: boolean;
+  freeThrow: number | null;
+}
+
+const newClocks = (): BodyClocks => ({ airborne: false, air: 0, play: null, jumpKind: null, release: null, landing: null, pass: null, lob: false, caught: null, catching: false, freeThrow: null });
+const tick = (t: number | null, dt: number) => (t === null ? null : t + dt);
 /**
  * Messages des événements, au-dessus du joueur concerné : vols et passes coupées (au-dessus du
  * défenseur ; la faute de main reprend FAUTE), violations (au-dessus du fautif).
@@ -313,11 +339,12 @@ export class MatchScene extends Phaser.Scene {
   /** Joueur contrôlé à l'image précédente (carte, anneau qui clignote au changement). */
   private shownControlled = -1;
   private ringBlink = 0;
-  /** Pose de passe restante (ms) par joueur, et dernière passe déjà vue. */
-  private passPose: number[] = [];
+  /** Temps suivis par joueur pour choisir son geste (vol, lâcher, passe, réception…), et dernière passe déjà vue. */
+  private clocks: BodyClocks[] = [];
   private seenPass: object | null = null;
-  /** Pose du lâcher d'un lancer franc restante (ms) par joueur ; dernier lancer annoncé (série, numéro). */
-  private freeThrowPose: number[] = [];
+  /** Passe en vol à l'image précédente (réception). */
+  private flyingPass: PassFlight | null = null;
+  /** Dernier lancer annoncé (série, numéro). */
   private seenFreeThrow: { series: object; taken: number } | null = null;
   private accumulator = 0;
   private cam = { x: 0, y: 0, zoom: 1 };
@@ -415,9 +442,9 @@ export class MatchScene extends Phaser.Scene {
     this.pendingSteal = false;
     this.shownControlled = -1;
     this.ringBlink = 0;
-    this.passPose = [];
+    this.clocks = [];
     this.seenPass = null;
-    this.freeThrowPose = [];
+    this.flyingPass = null;
     this.seenFreeThrow = null;
     this.homeCast = [];
     this.awayCast = [];
@@ -535,8 +562,7 @@ export class MatchScene extends Phaser.Scene {
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
     this.ais = this.world.players.map((_, i) => new PlayerAi(i, new Rng(hashSeed(`ia-${this.seed}-${i}`))));
-    this.passPose = this.world.players.map(() => 0);
-    this.freeThrowPose = this.world.players.map(() => 0);
+    this.clocks = this.world.players.map(newClocks);
 
     const keyboard = this.input.keyboard!;
     this.controls = new KeyboardInput(keyboard, this.settings.bindings);
@@ -886,14 +912,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private renderWorld(deltaMs: number) {
-    // Pose de passe : le passeur garde un instant le bras du lâcher.
-    const pass = this.world.pass;
-    if (pass && pass !== this.seenPass) {
-      this.seenPass = pass;
-      this.passPose[pass.passer] = PASS_POSE_MS;
-    }
-    this.passPose = this.passPose.map((ms) => Math.max(0, ms - deltaMs));
-    this.freeThrowPose = this.freeThrowPose.map((ms) => Math.max(0, ms - deltaMs));
+    this.trackGestures(deltaMs / 1000);
     this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
@@ -938,6 +957,72 @@ export class MatchScene extends Phaser.Scene {
     this.updateDebug();
   }
 
+  /**
+   * Temps suivis pour les gestes de chaque corps (voir `BodyClocks`) : décollage (geste du saut,
+   * ou contre, rebond, entre-deux sans ballon), lâcher, atterrissage, passe (lobée si longue),
+   * réception d'une passe, lâcher d'un lancer franc.
+   */
+  private trackGestures(dt: number) {
+    const world = this.world;
+    while (this.clocks.length < world.players.length) this.clocks.push(newClocks());
+    // Passe : le passeur prend la pose ; elle est lobée au-delà de `lobDistance`.
+    const pass = world.pass;
+    if (pass && pass !== this.seenPass) {
+      this.seenPass = pass;
+      const from = world.players[pass.passer].pos;
+      const c = this.clocks[pass.passer];
+      c.pass = 0;
+      c.lob = Math.hypot(pass.target.x - from.x, pass.target.y - from.y) > PLAYER_VIEW_TUNING.lobDistance;
+    }
+    world.players.forEach((body, i) => {
+      const c = this.clocks[i];
+      c.pass = tick(c.pass, dt);
+      c.landing = tick(c.landing, dt);
+      c.caught = tick(c.caught, dt);
+      c.freeThrow = tick(c.freeThrow, dt);
+      if (c.freeThrow !== null && c.freeThrow * 1000 >= PLAYER_VIEW_TUNING.freeThrowHoldMs) c.freeThrow = null;
+      // Réception : la passe arrive bientôt dans ses mains, ou vient d'y arriver.
+      if (this.flyingPass && this.flyingPass.receiver === i && !pass && world.holder === i) c.caught = 0;
+      const arriving = pass !== null && pass.receiver === i && (pass.time - pass.elapsed) * 1000 < PLAYER_VIEW_TUNING.catchMs;
+      c.catching = !body.airborne && (arriving || (c.caught !== null && c.caught * 1000 < PLAYER_VIEW_TUNING.catchMs));
+      if (body.airborne && !c.airborne) {
+        // Décollage : tir, layup, dunk ; sinon entre-deux, contre près d'un tireur adverse en l'air, ou rebond.
+        c.air = 0;
+        c.release = null;
+        c.landing = null;
+        c.play = world.shot?.shooter === i ? world.shot.kind : null;
+        c.jumpKind = c.play ? null : this.jumpKindFor(i);
+      } else if (body.airborne) {
+        c.air += dt;
+        if (world.shot?.shooter === i) c.play = world.shot.kind;
+      }
+      if (body.airborne && (world.followThrough[i] ?? false)) c.release = c.release === null ? 0 : c.release + dt;
+      if (!body.airborne && c.airborne) {
+        c.landing = 0;
+        c.play = null;
+        c.jumpKind = null;
+        c.release = null;
+      }
+      c.airborne = body.airborne;
+    });
+    this.flyingPass = pass;
+  }
+
+  /** Saut sans ballon : entre-deux, contre (de la main en face de la main de tir adverse), ou rebond. */
+  private jumpKindFor(index: number): JumpKind {
+    const world = this.world;
+    if (world.full?.phase === 'entre-deux') return 'tipoff';
+    const me = world.players[index].pos;
+    for (let j = 0; j < world.players.length; j++) {
+      const other = world.players[j];
+      if (world.team[j] === world.team[index] || !other.airborne || !this.clocks[j]?.play) continue;
+      if (Math.hypot(other.pos.x - me.x, other.pos.y - me.y) > BLOCK_RANGE) continue;
+      const hand = (k: number) => characterOf(this.bodies[k].member.look).dominantHand;
+      return blockGesture(hand(j), hand(index));
+    }
+    return 'rebound';
+  }
+
   /** Sprite et ombre d'un corps ; vue et image selon son état. */
   private renderBody(index: number) {
     const body = this.world.players[index];
@@ -958,34 +1043,45 @@ export class MatchScene extends Phaser.Scene {
     // Le tireur fait face au panier, dans la vue du secteur de la direction du cercle.
     const towardRim = (rim: { x: number; y: number }) => ({ x: rim.x - pos.x, y: rim.y - pos.y });
     view.heading = nextHeading(view.heading, body.vel, body.airborne, shot ? towardRim(shot.hoop.rim) : null);
-    let state = spriteStateFor({
-      airborne: body.airborne,
-      speed,
-      holding: this.world.holder === index,
-      facing: body.facing,
-      heading: view.heading,
-      shot: shot?.kind ?? null,
-      followThrough: this.world.followThrough[index] ?? false,
-    });
-    // Lancer franc (poses provisoires) : ballon levé pendant la visée, puis le bras du lâcher.
+    const clock = this.clocks[index];
+    const holding = this.world.holder === index;
+    // Lancer franc : le tireur fait face au cercle (mise en place, visée, lâcher).
     const ft = this.world.full?.phase === 'lancers' ? this.world.full.freeThrows : null;
-    const facing = body.facing < 0 ? 'left' : 'right';
-    const aiming = ft && ft.shooter === index && ft.aim !== null && this.world.holder === index;
-    if (aiming || (this.freeThrowPose[index] > 0 && !body.airborne && this.world.holder !== index)) {
-      view.heading = headingFor(towardRim(this.world.hoopFor(index).rim), view.heading);
-      state = { kind: 'frame', pose: aiming ? 'withBall' : 'release', facing, heading: view.heading };
-    }
-    // Passe et geste de vol (poses provisoires) : le bras du lâcher, au sol, tourné vers le
-    // receveur ; le vol tend le bras vers le ballon.
-    const reaching = this.world.clock < (this.world.reachUntil[index] ?? 0);
-    if ((this.passPose[index] > 0 || reaching) && !body.airborne && this.world.holder !== index) {
+    let freeThrow: BodyView['freeThrow'] = null;
+    if (ft && ft.shooter === index && holding) freeThrow = { stage: ft.aim !== null ? 'aim' : 'setup' };
+    else if (clock.freeThrow !== null && !body.airborne && !holding) freeThrow = { stage: 'after', since: clock.freeThrow };
+    if (freeThrow) view.heading = headingFor(towardRim(this.world.hoopFor(index).rim), view.heading);
+    // Passe et vol : tourné vers le receveur ou vers le ballon.
+    const reachStart = (this.world.reachUntil[index] ?? 0) - STEAL_FLOW.gesture;
+    const sinceReach = this.world.clock >= reachStart && this.world.clock < reachStart + STEAL_FLOW.gesture ? this.world.clock - reachStart : null;
+    const passing = clock.pass !== null && clock.pass * 1000 < PLAYER_VIEW_TUNING.passMs;
+    let facingSign: number = body.facing;
+    if (!body.airborne && !holding && (passing || sinceReach !== null)) {
       const last = this.world.lastPass;
-      const target = reaching ? this.world.ball.pos : last && last.passer === index ? this.world.players[last.receiver].pos : null;
+      const target = sinceReach !== null ? this.world.ball.pos : last && last.passer === index ? this.world.players[last.receiver].pos : null;
       const toward = target ? { x: target.x - pos.x, y: target.y - pos.y } : { x: body.facing, y: 0 };
       view.heading = headingFor(toward, view.heading);
-      const side = Math.sign(toward.x) || body.facing;
-      state = { kind: 'frame', pose: 'release', facing: side < 0 ? 'left' : 'right', heading: view.heading };
+      facingSign = Math.sign(toward.x) || body.facing;
     }
+    const state = spriteStateFor({
+      airborne: body.airborne,
+      speed,
+      holding,
+      facing: facingSign,
+      heading: view.heading,
+      shot: shot?.kind ?? clock.play,
+      followThrough: this.world.followThrough[index] ?? false,
+      air: body.airborne ? { time: clock.air, rising: body.vel.z > 0, progress: pos.z / Math.max(0.1, shot?.dunk?.apex ?? body.jumpHeight) } : null,
+      sinceRelease: clock.release,
+      jumpKind: clock.jumpKind,
+      freeThrow,
+      sincePass: clock.pass,
+      lob: clock.lob,
+      catching: clock.catching,
+      sinceLanding: clock.landing,
+      sinceReach,
+      offBalance: (this.world.offBalance[index] ?? 0) > 0,
+    });
     this.applySprite(view.sprite, view.member.baked, state);
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
     view.sprite.anims.timeScale = animTimeScale(state, speed);
@@ -1054,7 +1150,7 @@ export class MatchScene extends Phaser.Scene {
     const last = this.world.lastShot;
     if (last && last !== this.seenShot) {
       this.seenShot = last;
-      if (last.kind === 'lancer') this.freeThrowPose[last.shooter] = FREE_THROW_POSE_MS;
+      if (last.kind === 'lancer' && this.clocks[last.shooter]) this.clocks[last.shooter].freeThrow = 0;
       if (!last.demo && last.grade && last.shooter === controlled) {
         this.tag.setTexture(`grade-${last.grade}`);
         this.tagOwner = controlled;

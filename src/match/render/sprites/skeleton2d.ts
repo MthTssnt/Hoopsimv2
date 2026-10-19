@@ -140,6 +140,12 @@ export interface Upper2D {
   turn?: number;
   /** Écrasement (< 0) ou étirement (> 0) du torse, en px. */
   stretch?: number;
+  /**
+   * Épaules tournées vers le jeu (rad, ≤ `TWIST_2D`) : elles annulent la contre-rotation vers la
+   * caméra, et le geste (tir, passe, vol) part vers le panier ou le receveur, de côté, au lieu de
+   * partir vers la caméra (où un bras tendu se raccourcit et passe devant le visage).
+   */
+  square?: number;
   /** Le haut du corps monte ou descend en plus du bassin (px) : respiration. */
   rise?: number;
   expression?: Expression;
@@ -243,10 +249,10 @@ export function joints2D(b: Build2D, pose: Pose2D, heading: Heading): Joints {
   // Haut du corps : penché et tourné autour du bassin, écrasé ou étiré au-dessus de la taille.
   const stretch = pose.stretch ?? 0;
   // Contre-rotation des épaules : vers la caméra en diagonale bas, dos vers la caméra en diagonale haut.
-  // `face` tourne le bassin du même côté, sans bouger les épaules.
+  // `face` tourne le bassin du même côté, sans bouger les épaules ; `square` ramène les épaules vers le jeu.
   const towardCamera = heading === 'down' ? -1 : 1;
   const face = pose.face ?? 0;
-  const turn = (pose.turn ?? 0) + towardCamera * (TWIST_2D - face);
+  const turn = (pose.turn ?? 0) + towardCamera * (TWIST_2D - face - (pose.square ?? 0));
   const lean = pose.lean ?? 0;
   const rise: Vec3 = [0, 0, pose.rise ?? 0];
   const k = 1 + stretch / (b.neckZ - b.waistZ);

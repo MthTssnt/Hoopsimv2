@@ -116,8 +116,8 @@ const SHOOT: readonly SampleFrame[] = [
   },
 ];
 
-/** Durée d'une image de course ou de dribble : 8 images en 0,5 s (une période de dribble, deux foulées). */
-export const CYCLE_MS = 62.5;
+/** Durée d'une image de course ou de dribble : 8 images en 0,6 s (une période de dribble, deux foulées). */
+export const CYCLE_MS = 75;
 
 export function sampleFrames(anim: SampleAnimation, heading: AthleteHeading = 'down'): SampleFrame[] {
   const eight = Array.from({ length: 8 }, (_, f) => f);

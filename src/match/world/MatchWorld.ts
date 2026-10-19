@@ -71,7 +71,7 @@ export const WORLD_TUNING = {
   /** Délai pendant lequel le tireur ne peut pas rattraper son propre tir (s). */
   pickupCooldown: 0.5,
   /** Dribble : durée d'un aller-retour main → sol → main (s), hauteur de la main (m). */
-  dribblePeriod: 0.5,
+  dribblePeriod: 0.6,
   dribbleHandHeight: 0.85,
   /**
    * Main qui tient le ballon : écart devant le joueur et vers le spectateur (m). Le ballon est
