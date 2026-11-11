@@ -14,7 +14,13 @@ npm run test       # tests du moteur (Vitest)
 npm run calibrate  # simule une saison complète et affiche les moyennes de la ligue
 ```
 
-Test du rendu Phaser (futur mode match jouable) : ouvrir l'URL avec `?court`.
+Les designs officiels sont utilisés automatiquement dans tous les matchs. Depuis l'accueil,
+« Tester un match jouable » lance un 5 contre 5 ; dans une partie GM, utiliser « Jouer ».
+`?court` ouvre directement le match, `?style` le catalogue des dix designs.
+
+Commandes : ZQSD pour se déplacer, Espace pour sauter/tirer (relâcher pour déclencher),
+E pour passer/changer de défenseur, A pour tenter une interception, P ou Échap pour la pause,
+F pour le plein écran. Les touches sont modifiables dans Paramètres.
 
 ## Ce que le jeu contient
 

@@ -1,290 +1,113 @@
 import type Phaser from 'phaser';
+import { PLAYER_SOURCES } from '../../../assets/players/sources';
+import { COURT_DESIGNS, playerScale } from '../../../assets/players/courtDesigns';
+import { ACTION_RECTS } from '../../../assets/players/actions';
+import { drawJerseyNumber, jerseyNumberWidth } from '../../../assets/sprites/jerseyDigits';
+import { OFFICIAL_LAYOUT, type SheetLayout } from './layout';
+import { FRAME, SHEET_VIEWS, type AnimationName, type Facing, type Heading } from './views';
 import type { Appearance } from './appearance';
-import { colorsFor, composeFrame, SHEET_VIEWS, slotColor, type Facing, type Heading, type Kit, type SlotColors } from './compose';
-import { colorsPainted } from './paintedColors';
-import { composeFrame2D, metrics2D, type ComposedFrame2D, type Metrics2D } from './sheet2d';
-import { LAYOUT_2D, RIG_LAYOUT, sheetFrameCount, type SheetLayout } from './layout';
-import { bodyDims, FRAME, framesFor, type AnimationName, type BodyDims } from './rig';
-import type { TeamRamp } from '../../../assets/palette';
-import type { SlotCanvas, Slot } from './canvas';
 
+export interface PortraitPixel { x: number; y: number; color: number }
 export interface BakedPlayer {
-  /**
-   * Clé de la texture (feuille de sprites) : 4 blocs de 19 images (diagonale bas droite, bas
-   * gauche, haut droite, haut gauche ; voir `sheetIndex`). Animations : voir `animationKey`.
-   */
   key: string;
-  /**
-   * Centre du ballon tenu pour chaque image de la feuille, ou null ; `behind` (rendu 2D) : la main
-   * qui le tient est plus loin de la caméra que le corps, le ballon passe derrière le porteur.
-   */
-  anchors: ({ x: number; y: number; behind?: boolean } | null)[];
-  dims: BodyDims;
-  /** Disposition de la feuille (images par bloc, animations, images fixes). */
   layout: SheetLayout;
-  /** Rendu 2D : haut de la tête à l'arrêt et haut des mains levées (sinon, tirés de `dims` par le rig). */
-  metrics?: Metrics2D;
+  anchors: ({ x: number; y: number; behind?: boolean } | null)[];
+  metrics: { headTop: number; raisedHandTop: number };
+  portrait: PortraitPixel[];
 }
-
-/** Rendu des joueurs : le rig en pièces (ancien) ou le rendu 2D en une silhouette (`figure2d.ts`). */
-export type Renderer = 'rig' | '2d';
-
-export interface BakeOptions {
-  primary: TeamRamp;
-  secondary: TeamRamp;
-  kit?: Kit;
-  /** Rejouer le tir et le dunk en boucle (scène `?style`). */
-  loopAll?: boolean;
-  /** Rendu des images (par défaut, le rig). */
-  renderer?: Renderer;
+const SOURCE_KEYS = PLAYER_SOURCES.map((_, i) => `official-players-${i}`);
+export function preloadPlayers(scene: Phaser.Scene): void {
+  PLAYER_SOURCES.forEach((url, i) => {
+    if (!scene.textures.exists(SOURCE_KEYS[i])) scene.load.image(SOURCE_KEYS[i], url);
+  });
 }
-
-/**
- * Clé d'animation d'un joueur cuit, selon son orientation et sa vue (jamais de retournement : le
- * numéro resterait en miroir) : `${key}:${nom}`, puis `:up` en diagonale haut, puis `:left` vers la gauche.
- */
 export function animationKey(key: string, name: AnimationName, facing: Facing, heading: Heading = 'down'): string {
   return `${key}:${name}${heading === 'up' ? ':up' : ''}${facing === 'left' ? ':left' : ''}`;
 }
 
-/** Disposition de la feuille d'un rendu. */
-export function layoutFor(renderer: Renderer = 'rig'): SheetLayout {
-  return renderer === '2d' ? LAYOUT_2D : RIG_LAYOUT;
-}
-
-/**
- * Position d'une image dans la texture : une rangée par bloc. En une seule bande, une feuille trop
- * longue dépasserait la taille maximale d'une texture (souvent 8 192, parfois 4 096 px) et
- * s'afficherait en noir.
- */
-export function sheetCell(index: number, layout: SheetLayout = RIG_LAYOUT): { x: number; y: number } {
-  return { x: (index % layout.framesPerBlock) * FRAME.width, y: Math.floor(index / layout.framesPerBlock) * FRAME.height };
-}
-
-/** Taille de la texture d'une feuille (px). */
-export function sheetSize(layout: SheetLayout = RIG_LAYOUT): { width: number; height: number } {
-  return { width: layout.framesPerBlock * FRAME.width, height: SHEET_VIEWS.length * FRAME.height };
-}
-
-/** Horloge en millisecondes (injectée dans les tests). */
-export type Clock = () => number;
-const now: Clock = () => performance.now();
-
-/**
- * Feuille d'un joueur en cours de cuisson. Les images sont composées une par une dans un tampon
- * de pixels RGBA (pur, sans Phaser) : `step` en compose dans un budget de temps, pour cuire le banc
- * en tâche de fond sans faire sauter d'image ; `finish` termine d'un trait, puis crée la texture
- * (une rangée par bloc, voir `sheetCell`) et les animations. Les couleurs (peau, cheveux, équipe) sont posées ici.
- */
-export class SheetBaker {
-  readonly key: string;
-  readonly look: Appearance;
-  readonly options: BakeOptions;
-  readonly dims: BodyDims;
-  readonly layout: SheetLayout;
-  readonly width: number;
-  readonly height: number;
-  readonly pixels: Uint8ClampedArray;
-  readonly anchors: BakedPlayer['anchors'] = [];
-  private readonly colors: SlotColors;
-  private next = 0;
-  /** Rendu 2D : l'image vers la gauche, peinte avec celle vers la droite (même indice dans le bloc). */
-  private readonly mirrored = new Map<string, ComposedFrame2D>();
-
-  constructor(key: string, look: Appearance, options: BakeOptions) {
-    this.key = key;
-    this.look = look;
-    this.options = options;
-    this.dims = bodyDims(look.heightCm, look.heavy);
-    this.layout = layoutFor(options.renderer);
-    ({ width: this.width, height: this.height } = sheetSize(this.layout));
-    this.colors = (options.renderer === '2d' ? colorsPainted : colorsFor)(look, options.primary, options.secondary);
-    this.pixels = new Uint8ClampedArray(this.width * this.height * 4);
-  }
-
-  get done(): boolean {
-    return this.next >= sheetFrameCount(this.layout);
-  }
-
-  /** Compose des images tant que le budget (ms) n'est pas épuisé, au moins une ; vrai quand la feuille est complète. */
-  step(budgetMs: number, clock: Clock = now): boolean {
-    const start = clock();
-    do this.composeNext();
-    while (!this.done && clock() - start < budgetMs);
-    return this.done;
-  }
-
-  private composeNext(): void {
-    if (this.done) return;
-    const index = this.next++;
-    const per = this.layout.framesPerBlock;
-    const view = SHEET_VIEWS[Math.floor(index / per)];
-    const { canvas, ball } = this.options.renderer === '2d' ? this.compose2D(index % per, view.facing, view.heading) : composeFrame(this.look, framesFor(view.heading)[index % per], this.dims, this.options.kit, view.facing, view.heading);
-    const cell = sheetCell(index, this.layout);
-    canvas.forEach((x, y, slot) => {
-      const color = slotColor(slot, this.colors);
-      const k = ((cell.y + y) * this.width + cell.x + x) * 4;
-      this.pixels[k] = (color >> 16) & 0xff;
-      this.pixels[k + 1] = (color >> 8) & 0xff;
-      this.pixels[k + 2] = color & 0xff;
-      this.pixels[k + 3] = 255;
-    });
-    this.anchors.push(ball);
-  }
-
-  /** Rendu 2D : les deux orientations d'une image sont composées ensemble ; celle vers la gauche est gardée pour son bloc. */
-  private compose2D(frame: number, facing: Facing, heading: Heading): ComposedFrame2D {
-    const key = `${heading}|${frame}`;
-    const kept = this.mirrored.get(key);
-    if (kept && facing === 'left') {
-      this.mirrored.delete(key);
-      return kept;
-    }
-    const both = composeFrame2D(this.look, frame, heading, this.options.kit);
-    this.mirrored.set(key, both.left);
-    return both[facing];
-  }
-
-  /** Termine la feuille d'un trait, puis crée la texture et les animations du joueur. */
-  finish(scene: Phaser.Scene): BakedPlayer {
-    while (!this.done) this.composeNext();
-    const { key } = this;
-    if (scene.textures.exists(key)) scene.textures.remove(key);
-    const texture = scene.textures.createCanvas(key, this.width, this.height)!;
-    const image = texture.context.createImageData(this.width, this.height);
-    image.data.set(this.pixels);
-    texture.putData(image, 0, 0);
-    texture.refresh();
-    const per = this.layout.framesPerBlock;
-    for (let i = 0; i < sheetFrameCount(this.layout); i++) {
-      const cell = sheetCell(i, this.layout);
-      texture.add(i, 0, cell.x, cell.y, FRAME.width, FRAME.height);
-    }
-
-    for (const [name, def] of Object.entries(this.layout.animations) as [AnimationName, SheetLayout['animations'][AnimationName]][]) {
-      SHEET_VIEWS.forEach(({ facing, heading }, v) => {
-        const animKey = animationKey(key, name, facing, heading);
-        if (scene.anims.exists(animKey)) scene.anims.remove(animKey);
-        // Durée de base = la plus courte ; les images plus longues ajoutent leur différence
-        // (dans Phaser, la durée d'une image s'ajoute à la durée de base).
-        const base = Math.min(...def.durations);
-        scene.anims.create({
-          key: animKey,
-          frames: def.frames.map((frame, j) => ({ key, frame: v * per + frame, duration: def.durations[j] - base })),
-          frameRate: 1000 / base,
-          repeat: def.loop || this.options.loopAll ? -1 : 0,
-          repeatDelay: def.loop ? 0 : 400,
-        });
+/** Feuille officielle, identique dans le GM et le match de test. Aucun ancien rendu de secours. */
+export function bakePlayer(scene: Phaser.Scene, key: string, look: Appearance, team: number): BakedPlayer {
+  const variant = look.variant;
+  const design = COURT_DESIGNS[team][variant];
+  const scale = playerScale(look.heightCm, look.heavy, design);
+  const sources = [team, team + 2].map((i) => {
+    if (!scene.textures.exists(SOURCE_KEYS[i])) throw new Error(`Planche de joueurs indisponible : ${SOURCE_KEYS[i]}`);
+    return scene.textures.get(SOURCE_KEYS[i]).getSourceImage() as HTMLImageElement;
+  });
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const texture = scene.textures.createCanvas(key, FRAME.width * 8, FRAME.height * 4)!;
+  const ctx = texture.context;
+  ctx.imageSmoothingEnabled = false;
+  const anchors: BakedPlayer['anchors'] = [];
+  let raisedHandTop: number = FRAME.groundY;
+  SHEET_VIEWS.forEach(({ facing, heading }, block) => {
+    for (let frame = 0; frame < 8; frame++) {
+      const pose = frame < 4 && heading === 'up' ? 1 : frame < 2 ? 0 : frame;
+      const rect = pose < 4 ? design.frames[pose] : ACTION_RECTS[team][variant][pose - 4];
+      const w = Math.round(rect.width * scale.x);
+      const h = Math.round(rect.height * scale.y);
+      const dx = Math.round(FRAME.centerX - w / 2);
+      const dy = FRAME.groundY - h;
+      const left = facing === 'left';
+      ctx.save();
+      ctx.translate(frame * FRAME.width, block * FRAME.height);
+      if (left) { ctx.translate(FRAME.width, 0); ctx.scale(-1, 1); }
+      ctx.drawImage(sources[pose < 4 ? 0 : 1], rect.x, rect.y, rect.width, rect.height, dx, dy, w, h);
+      ctx.restore();
+      if (frame === 7) raisedHandTop = Math.min(raisedHandTop, dy + 2);
+      // Le numéro se pose après le miroir, uniquement sur la surface du maillot.
+      const x = frame * FRAME.width + Math.round(FRAME.centerX - jerseyNumberWidth(look.number) / 2);
+      const y = block * FRAME.height + dy + Math.round(h * (pose >= 4 ? 0.52 : 0.48));
+      const pixels = ctx.getImageData(frame * FRAME.width, block * FRAME.height, FRAME.width, FRAME.height);
+      ctx.fillStyle = team === 0 ? '#fff5e5' : '#702437';
+      drawJerseyNumber(look.number, x, y, (px, py) => {
+        const localX = px - frame * FRAME.width;
+        const localY = py - block * FRAME.height;
+        const i = (localY * FRAME.width + localX) * 4;
+        const [r, g, b, alpha] = pixels.data.subarray(i, i + 4);
+        const jersey = team === 0 ? b > r * 1.15 && b > g * 1.05 : r > 180 && g > r * 0.85 && b > r * 0.75;
+        if (alpha > 220 && jersey) ctx.fillRect(px, py, 1, 1);
       });
+      // Tir armé et dunk : ballon au niveau de la main. Au dribble, conserver le rebond du monde.
+      const anchor = frame === 4 || frame === 7 ? { x: dx + Math.round(w * (frame === 7 ? 0.84 : 0.68)), y: dy + Math.round(h * 0.12) } : null;
+      anchors.push(anchor && left ? { ...anchor, x: FRAME.width - anchor.x } : anchor);
+      texture.add(block * 8 + frame, 0, frame * FRAME.width, block * FRAME.height, FRAME.width, FRAME.height);
     }
-    return { key, anchors: this.anchors, dims: this.dims, layout: this.layout, metrics: this.options.renderer === '2d' ? metrics2D(this.look) : undefined };
-  }
-}
-
-/** Cuit toutes les images d'un joueur d'un trait (feuille, puis animations). */
-export function bakePlayer(scene: Phaser.Scene, key: string, look: Appearance, options: BakeOptions): BakedPlayer {
-  return new SheetBaker(key, look, options).finish(scene);
-}
-
-/** Ce qu'une file de cuisson fait avancer (une `SheetBaker`, ou un double dans les tests). */
-export interface Stepper {
-  step(budgetMs: number, clock?: Clock): boolean;
-}
-
-/**
- * File de cuisson en tâche de fond : un joueur après l'autre, dans un budget par image. `take`
- * sort un joueur de la file (fini ou non) pour le terminer d'un trait quand il entre en jeu.
- */
-export class BakeQueue<T extends Stepper> {
-  private items: { id: string; baker: T }[] = [];
-
-  get size(): number {
-    return this.items.length;
-  }
-
-  has(id: string): boolean {
-    return this.items.some((item) => item.id === id);
-  }
-
-  add(id: string, baker: T): void {
-    if (!this.has(id)) this.items.push({ id, baker });
-  }
-
-  /** Retire `id` de la file et rend sa cuisson (à terminer d'un trait), ou null s'il n'y est pas. */
-  take(id: string): T | null {
-    const index = this.items.findIndex((item) => item.id === id);
-    return index < 0 ? null : this.items.splice(index, 1)[0].baker;
-  }
-
-  /** Fait avancer la file dans le budget (ms) ; rend les cuissons terminées, dans l'ordre. */
-  step(budgetMs: number, clock: Clock = now): { id: string; baker: T }[] {
-    const start = clock();
-    const finished: { id: string; baker: T }[] = [];
-    while (this.items.length > 0) {
-      const left = budgetMs - (clock() - start);
-      if (left <= 0) break;
-      const item = this.items[0];
-      if (!item.baker.step(left, clock)) break;
-      finished.push(this.items.shift()!);
+    for (const [name, def] of Object.entries(OFFICIAL_LAYOUT.animations) as [AnimationName, SheetLayout['animations'][AnimationName]][]) {
+      const animKey = animationKey(key, name, facing, heading);
+      if (scene.anims.exists(animKey)) scene.anims.remove(animKey);
+      const base = Math.min(...def.durations);
+      scene.anims.create({ key: animKey, frames: def.frames.map((f, i) => ({ key, frame: block * 8 + f, duration: def.durations[i] - base })), frameRate: 1000 / base, repeat: def.loop ? -1 : 0 });
     }
-    return finished;
+  });
+  texture.refresh();
+  // Même tête que le joueur sur le terrain : plus de portrait d'un ancien design.
+  const portraitCanvas = document.createElement('canvas');
+  portraitCanvas.width = portraitCanvas.height = 18;
+  const portraitContext = portraitCanvas.getContext('2d')!;
+  portraitContext.imageSmoothingEnabled = false;
+  const base = design.frames[0];
+  const headHeight = Math.round(base.height * 0.4);
+  const headWidth = Math.min(base.width, headHeight);
+  portraitContext.drawImage(sources[0], base.x + (base.width - headWidth) / 2, base.y, headWidth, headHeight, 0, 0, 18, 18);
+  const data = portraitContext.getImageData(0, 0, 18, 18).data;
+  const portrait: PortraitPixel[] = [];
+  for (let y = 0; y < 18; y++) for (let x = 0; x < 18; x++) {
+    const k = (y * 18 + x) * 4;
+    if (data[k + 3] >= 160) portrait.push({ x, y, color: (data[k] << 16) | (data[k + 1] << 8) | data[k + 2] });
   }
+  return { key, layout: OFFICIAL_LAYOUT, anchors, portrait, metrics: { headTop: FRAME.groundY - scale.height, raisedHandTop } };
 }
 
-/** Ombre au sol : noir léger (rig), ou violet profond et marqué (rendu 2D du style 5, qui n'a pas de contour sombre). */
-export const SHADOWS = { rig: { color: 0x000000, alpha: 0.32 }, painted: { color: 0x241640, alpha: 0.6 } } as const;
-
-/** Ombre ovale au sol, à la largeur du joueur. */
-export function bakeShadow(scene: Phaser.Scene, key: string, width: number, height = 6, shade: { color: number; alpha: number } = SHADOWS.rig): void {
+/** Ombre commune des nouveaux joueurs. */
+export function bakeShadow(scene: Phaser.Scene, key: string, width: number, height = 5): void {
   if (scene.textures.exists(key)) return;
   const g = scene.add.graphics();
-  g.fillStyle(shade.color, shade.alpha);
-  const rx = width / 2;
-  const ry = height / 2;
+  g.fillStyle(0x18203a, 0.35);
   for (let y = 0; y < height; y++) {
-    const dy = (y + 0.5 - ry) / ry;
-    const half = Math.round(rx * Math.sqrt(1 - dy * dy));
-    g.fillRect(Math.round(rx) - half, y, half * 2, 1);
+    const half = Math.round(width / 2 * Math.sqrt(1 - ((y + 0.5 - height / 2) / (height / 2)) ** 2));
+    g.fillRect(Math.round(width / 2) - half, y, half * 2, 1);
   }
   g.generateTexture(key, width, height);
   g.destroy();
-}
-
-/** Pixels RGBA d'une liste d'images rangées en grille (`columns` par rangée), et la case de chacune. */
-export function framesToPixels(
-  canvases: readonly SlotCanvas[],
-  colorOf: (slot: Slot) => number,
-  columns: number,
-): { width: number; height: number; pixels: Uint8ClampedArray; cells: { x: number; y: number }[] } {
-  const fw = canvases[0].width;
-  const fh = canvases[0].height;
-  const cols = Math.min(columns, canvases.length);
-  const width = cols * fw;
-  const height = Math.ceil(canvases.length / cols) * fh;
-  const pixels = new Uint8ClampedArray(width * height * 4);
-  const cells = canvases.map((_, i) => ({ x: (i % cols) * fw, y: Math.floor(i / cols) * fh }));
-  canvases.forEach((canvas, i) => {
-    const cell = cells[i];
-    canvas.forEach((x, y, slot) => {
-      const color = colorOf(slot);
-      const k = ((cell.y + y) * width + cell.x + x) * 4;
-      pixels[k] = (color >> 16) & 0xff;
-      pixels[k + 1] = (color >> 8) & 0xff;
-      pixels[k + 2] = color & 0xff;
-      pixels[k + 3] = 255;
-    });
-  });
-  return { width, height, pixels, cells };
-}
-
-/** Cuit une liste d'images (emplacements de couleur) en une texture en grille ; images nommées 0, 1, 2… */
-export function bakeFrames(scene: Phaser.Scene, key: string, canvases: readonly SlotCanvas[], colorOf: (slot: Slot) => number, columns = 32): void {
-  const { width, height, pixels, cells } = framesToPixels(canvases, colorOf, columns);
-  if (scene.textures.exists(key)) scene.textures.remove(key);
-  const texture = scene.textures.createCanvas(key, width, height)!;
-  const image = texture.context.createImageData(width, height);
-  image.data.set(pixels);
-  texture.putData(image, 0, 0);
-  texture.refresh();
-  cells.forEach((cell, i) => texture.add(i, 0, cell.x, cell.y, canvases[i].width, canvases[i].height));
 }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PALETTE } from '../../assets/palette';
+import { PALETTE, teamRamp } from '../../assets/palette';
 import { createNewGame, TEAM_SEEDS, type Player } from '../../engine';
 import { DUNK_TUNING, dunkScore, greenWindow, shotSkill, type ShotZone, type TimingGrade } from '../../engine/shot';
 import { hashSeed, randomSeed, Rng } from '../../engine/rng';
@@ -20,12 +20,11 @@ import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
 import { animTimeScale, blendBall, blockGesture, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type BodyView, type JumpKind, type SpriteState } from '../render/playerView';
-import { characterOf } from '../render/sprites/appearance';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
-import { appearance2DFor, appearanceFor, type Appearance } from '../render/sprites/appearance';
-import { animationKey, BakeQueue, bakePlayer, bakeShadow, SHADOWS, SheetBaker, type BakedPlayer, type Clock, type Renderer } from '../render/sprites/bake';
-import type { Heading } from '../render/sprites/compose';
-import { bodyLayout, FRAME, raisedHandTop, seenFromBehind } from '../render/sprites/rig';
+import { appearanceFor, type Appearance } from '../render/sprites/appearance';
+import { animationKey, bakePlayer, bakeShadow, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
+import type { Heading } from '../render/sprites/views';
+import { FRAME, seenFromBehind } from '../render/sprites/views';
 import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
@@ -208,14 +207,6 @@ function targetFromUrl(perTeam: number): number {
   return Number.isInteger(value) && value >= 1 ? value : defaultTarget(perTeam);
 }
 
-/**
- * Rendu des joueurs : le rendu 2D (une silhouette, grosse tête, `figure2d.ts`) par défaut ;
- * `&sprites=ancien` dans l'URL garde l'ancien rig, en attendant la validation en jeu.
- */
-export function rendererFromUrl(): Renderer {
-  return new URLSearchParams(window.location.search).get('sprites') === 'ancien' ? 'rig' : '2d';
-}
-
 const decimal = (value: number) => value.toFixed(2).replace('.', ',');
 const rounded = (p: Point): Point => ({ x: Math.round(p.x), y: Math.round(p.y) });
 
@@ -230,16 +221,6 @@ interface CastMember {
   height: number;
 }
 
-/** Remplaçant en file de cuisson (tâche de fond) : sa feuille en cours, et de quoi finir son habillage. */
-interface PendingCast {
-  sheet: SheetBaker;
-  player: Player;
-  team: TeamLook;
-  step(budgetMs: number, clock?: Clock): boolean;
-}
-
-/** Budget de cuisson du banc par image (ms) : la feuille d'un joueur (~110 ms) s'étale sur ~30 images. */
-const BENCH_BAKE_MS = 4;
 /** Fenêtre de la plus longue image affichée en debug (ms). */
 const FRAME_WINDOW_MS = 5000;
 
@@ -276,7 +257,7 @@ function createShotMarker(scene: Phaser.Scene, key: string): void {
  * Scène du match : 5 contre 5 sur terrain entier (entre-deux, quart-temps, shot clock, remises,
  * violations), ou demi-terrain sur le panier de droite du 1 contre 1 au 3 contre 3 (`&format=`),
  * ton équipe contre l'IA, dans la vue de 3/4 validée dans `?style`. Arène aux couleurs de ton
- * équipe, deux paniers, sprites cuits du rig (ton équipe en tenue à domicile, l'adversaire en
+ * équipe, deux paniers, sprites officiels (ton équipe en tenue à domicile, l'adversaire en
  * tenue extérieure), ballon tenu dessiné dans la main du porteur. Tu contrôles le porteur en
  * attaque, le défenseur le plus proche du ballon en défense ; les autres sont des IA. Caméra qui
  * suit ton joueur et garde le ballon visible ; HUD dans une scène à part ; réglages venus du
@@ -285,8 +266,7 @@ function createShotMarker(scene: Phaser.Scene, key: string): void {
 export class MatchScene extends Phaser.Scene {
   private settings!: MatchSettings;
   private seed = 0;
-  /** Rendu des joueurs (`&sprites=ancien` : ancien rig). */
-  private spriteRenderer: Renderer = rendererFromUrl();
+  private playerDesigns = [new Map<string, number>(), new Map<string, number>()];
   private rng!: Rng;
   private perTeam = 3;
   private target: number = defaultTarget(3);
@@ -309,11 +289,10 @@ export class MatchScene extends Phaser.Scene {
   private awayCast: CastMember[] = [];
   /**
    * Terrain entier : joueurs déjà cuits. Les dix du départ le sont à la création de la scène, le
-   * banc en tâche de fond (`benchQueue`) ; un remplaçant pas encore prêt est fini d'un trait à son
+   * banc chargé à la demande ; un remplaçant est préparé à son
    * entrée (`lastBakeMs`).
    */
   private castCache = new Map<string, CastMember>();
-  private benchQueue = new BakeQueue<PendingCast>();
   private lastBakeMs = 0;
   /** Mesures publiques (debug H et captures) : cuisson moyenne d'un titulaire et chargement des dix (ms). */
   bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0 };
@@ -393,6 +372,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   init() {
+    this.playerDesigns.forEach((designs) => designs.clear());
     const param = new URLSearchParams(window.location.search).get('seed');
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.rng = new Rng(this.seed);
@@ -449,7 +429,6 @@ export class MatchScene extends Phaser.Scene {
     this.homeCast = [];
     this.awayCast = [];
     this.castCache = new Map();
-    this.benchQueue = new BakeQueue<PendingCast>();
     this.lastBakeMs = 0;
     this.bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0 };
     this.frameTimes = [];
@@ -482,6 +461,10 @@ export class MatchScene extends Phaser.Scene {
     this.bannerKey = '';
   }
 
+  preload() {
+    preloadPlayers(this);
+  }
+
   create() {
     // Arène aux couleurs de ton équipe ; l'IA porte la tenue d'une équipe qui tranche avec elle.
     // Page de test : ton équipe chez elle, l'adversaire dans des couleurs qui tranchent. Match du GM :
@@ -492,6 +475,12 @@ export class MatchScene extends Phaser.Scene {
     const visitors = setup ? awayLook(setup.home, setup.away) : null;
     const home = !setup || this.homeSeed === setup.home ? teamLook(this.homeSeed) : visitors!;
     const away = !setup ? teamLook(this.awaySeed) : this.awaySeed === setup.home ? arena : visitors!;
+    {
+      home.primary = teamRamp('#203764');
+      home.secondary = teamRamp('#fff5e5');
+      away.primary = teamRamp('#fff5e5');
+      away.secondary = teamRamp('#702437');
+    }
     for (const level of LEVELS) {
       createArena(this, `arena-${level}`, MATCH_PROJECTION, makeCourt(level), arena, {
         size: { width: WORLD_WIDTH, height: WORLD_HEIGHT },
@@ -552,7 +541,6 @@ export class MatchScene extends Phaser.Scene {
     if (n === 5) {
       this.bakeStats.startersMs = performance.now() - bakeStart;
       this.bakeStats.starterMs = this.bakeStats.startersMs / onCourt.length;
-      this.queueBench();
     }
     this.bodies = onCourt.map((member) => this.createBodySprite(member));
     this.ballShadow = this.add.image(0, 0, BALL_SHADOW_TEXTURE).setDepth(1);
@@ -608,7 +596,6 @@ export class MatchScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number) {
     this.trackFrame(deltaMs);
-    this.bakeBench();
     // « Simuler la fin » : le monde avance à l'IA par tranches, sans entrées, jusqu'à la fin.
     if (this.finishing) {
       const start = performance.now();
@@ -680,19 +667,16 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private bakeCastMember(player: Player, key: string, team: TeamLook, sheet?: SheetBaker): CastMember {
-    const look = appearanceFor(player);
-    const baked = sheet ? sheet.finish(this) : bakePlayer(this, key, this.spriteLook(player), { primary: team.primary, secondary: team.secondary, renderer: this.spriteRenderer });
+  private bakeCastMember(player: Player, key: string, team: TeamLook): CastMember {
+    const side = key.startsWith('rival') ? 1 : 0;
+    const designs = this.playerDesigns[side];
+    if (!designs.has(player.id)) designs.set(player.id, designs.size % 5);
+    const look = appearanceFor(player, designs.get(player.id));
+    const baked = bakePlayer(this, key, look, side);
     const shadowWidth = look.heavy ? 26 : 20;
-    const painted = this.spriteRenderer === '2d';
-    const shadow = `player-shadow-${shadowWidth}${painted ? '-peint' : ''}`;
-    bakeShadow(this, shadow, shadowWidth, 5, painted ? SHADOWS.painted : SHADOWS.rig);
-    return { player, team, look, baked, shadow, height: FRAME.groundY - (baked.metrics?.headTop ?? bodyLayout(baked.dims).headTop) };
-  }
-
-  /** Apparence dessinée dans la feuille (rendu 2D : le personnage complet, en pièces). La carte du HUD garde `appearanceFor`. */
-  private spriteLook(player: Player): Appearance {
-    return this.spriteRenderer === '2d' ? appearance2DFor(player) : appearanceFor(player);
+    const shadow = `player-shadow-${shadowWidth}`;
+    bakeShadow(this, shadow, shadowWidth);
+    return { player, team, look, baked, shadow, height: FRAME.groundY - baked.metrics.headTop };
   }
 
   private createBodySprite(member: CastMember): BodySprite {
@@ -720,34 +704,12 @@ export class MatchScene extends Phaser.Scene {
     let member = this.castCache.get(key);
     if (!member) {
       const start = performance.now();
-      const pending = this.benchQueue.take(key);
-      member = this.bakeCastMember(player, key, team === USER_TEAM ? this.homeLook : this.awayLook, pending?.sheet);
+      member = this.bakeCastMember(player, key, team === USER_TEAM ? this.homeLook : this.awayLook);
       this.lastBakeMs = performance.now() - start;
       if (this.bodies.length > 0) this.bakeStats.syncEntries++;
       this.castCache.set(key, member);
     }
     return member;
-  }
-
-  /** Met le banc des deux équipes en file de cuisson (tâche de fond), dans l'ordre des rotations. */
-  private queueBench() {
-    for (const squad of this.world.squads ?? []) {
-      const look = squad.team === USER_TEAM ? this.homeLook : this.awayLook;
-      for (const { player } of squad.members) {
-        const key = this.castKey(squad.team, player);
-        if (this.castCache.has(key)) continue;
-        const sheet = new SheetBaker(key, this.spriteLook(player), { primary: look.primary, secondary: look.secondary, renderer: this.spriteRenderer });
-        this.benchQueue.add(key, { sheet, player, team: look, step: (budget, clock) => sheet.step(budget, clock) });
-      }
-    }
-  }
-
-  /** Avance la cuisson du banc dans le budget de l'image ; un joueur fini rejoint le cache. */
-  private bakeBench() {
-    if (this.benchQueue.size === 0) return;
-    for (const { id, baker } of this.benchQueue.step(BENCH_BAKE_MS)) {
-      this.castCache.set(id, this.bakeCastMember(baker.player, id, baker.team, baker.sheet));
-    }
   }
 
   /** Garde la durée des images des 5 dernières secondes (debug H, mesures). */
@@ -778,12 +740,12 @@ export class MatchScene extends Phaser.Scene {
    * 3 PD ») ; demi-terrain : taille réelle et hauteur de saut calculée par le monde.
    */
   private cardFor(index: number): PlayerCardData {
-    const { player, team, look } = this.bodies[index].member;
+    const { player, team } = this.bodies[index].member;
     const member = this.world.memberOf(index);
     const line = member?.line;
     const jump = this.world.players[index].jumpHeight;
     return {
-      look,
+      portrait: this.bodies[index].member.baked.portrait,
       team,
       name: `${player.firstName.charAt(0)}. ${player.lastName}`,
       position: POSITION_SHORT[player.pos] ?? player.pos,
@@ -1017,7 +979,7 @@ export class MatchScene extends Phaser.Scene {
       const other = world.players[j];
       if (world.team[j] === world.team[index] || !other.airborne || !this.clocks[j]?.play) continue;
       if (Math.hypot(other.pos.x - me.x, other.pos.y - me.y) > BLOCK_RANGE) continue;
-      const hand = (k: number) => characterOf(this.bodies[k].member.look).dominantHand;
+      const hand = (k: number) => this.bodies[k].member.look.dominantHand;
       return blockGesture(hand(j), hand(index));
     }
     return 'rebound';
@@ -1034,7 +996,7 @@ export class MatchScene extends Phaser.Scene {
     let lift = 0;
     if (shot?.dunk) {
       const { baked } = view.member;
-      const handY = lifted.y + 1 - FRAME.height + (baked.metrics?.raisedHandTop ?? raisedHandTop(baked.dims));
+      const handY = lifted.y + 1 - FRAME.height + baked.metrics.raisedHandTop;
       lift = dunkLift(handY, project(pos.x, pos.y, RIM_HEIGHT).y, pos.z / shot.dunk.apex);
     }
     view.feet = { x: lifted.x, y: lifted.y - lift };
@@ -1511,7 +1473,7 @@ export class MatchScene extends Phaser.Scene {
     const sync = this.bakeStats.syncEntries ? ` (dernière ${this.lastBakeMs.toFixed(0)} ms)` : '';
     return (
       `Cuisson : titulaire ${this.bakeStats.starterMs.toFixed(0)} ms (les dix ${this.bakeStats.startersMs.toFixed(0)} ms) · ` +
-      `banc en file ${this.benchQueue.size} · entrées cuites d'un trait ${this.bakeStats.syncEntries}${sync} · ` +
+      `entrées chargées ${this.bakeStats.syncEntries}${sync} · ` +
       `plus longue image ${this.worstFrameMs.toFixed(0)} ms`
     );
   }

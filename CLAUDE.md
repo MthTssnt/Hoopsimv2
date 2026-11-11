@@ -21,9 +21,11 @@ Aujourd'hui le jeu est un GM fonctionnel (voir README.md) ; il manque la partie 
 - Match jouable : **Phaser 4**, monté dans React via `src/match/PhaserGame.tsx` et chargé
   à la demande (chunk séparé). Menus/gestion : React.
 - **Avant d'écrire du code Phaser, lire le skill correspondant dans
-  `node_modules/phaser/skills/<sujet>/SKILL.md`** (scenes, sprites-and-images, animations,
-  physics-arcade, input-keyboard-mouse-touch, cameras, scale-and-responsive…).
-  Phaser 4 diffère de Phaser 3 : ne pas se fier aux exemples v3 (voir v3-to-v4-migration).
+  `node_modules/phaser/skills/<sujet>/SKILL.md`**. Phaser 4 diffère de Phaser 3.
+- Joueurs : seuls les dix designs officiels de `src/assets/players/` sont autorisés. Le rendu
+  commun est `src/match/render/sprites/bake.ts`, utilisé par défaut dans tous les matchs ;
+  `?style` et `?anims` présentent ces seuls designs. Ne pas réintroduire les anciens rigs,
+  visages modulaires ou rendus en volumes. Voir `docs/ART_DIRECTION.md`.
 - Je suis derrière un VPN en Chine : git/npm peuvent échouer (ENOTFOUND). Registry npm
   configuré côté machine (registry.npmmirror.com), PAS dans le repo. Minimiser les
   dépendances ; toute nouvelle dépendance doit être justifiée.
@@ -44,7 +46,7 @@ src/match/    rendu + contrôle du match (Phaser)
   config.ts       résolution interne 640×360, 30 px/m, projection 3/4 (valeurs de render/artConfig.ts)
   PhaserGame.tsx  pont React ⇄ Phaser
   scenes/         MatchScene, HudScene, StyleScene (`?style`, planche de la DA)
-  render/         arène, panier, sprites cuits du rig, HUD, projection, caméra
+  render/         arène, panier, sprites officiels, HUD, projection, caméra
   input/          clavier + Gamepad API, mapping configurable
   ai/             IA des joueurs non contrôlés
   physics/        trajectoire du ballon, cercle, planche
@@ -70,7 +72,7 @@ Test du rendu en local ou sur Vercel : ajouter `?court` à l'URL (match) ou `?st
 - Vue plongeante de 3/4 (profondeur et hauteur écrasées ~2/3), toute la profondeur du terrain
   à l'écran, joueurs à grosse tête : cadrage repris de la capture de référence de Matheo,
   avec nos propres dessins, couleurs, polices et HUD.
-- Assets originaux dessinés en code (grilles de `src/assets/sprites/`), aux tailles de frames définitives.
+- Décors originaux dessinés en code ; joueurs officiels dans `src/assets/players/`, provenance dans CREDITS.md.
 - Tout asset externe : licence notée dans `src/assets/CREDITS.md`.
 
 ## Qualité

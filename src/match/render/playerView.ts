@@ -1,8 +1,8 @@
 import type { PlayKind } from '../world/MatchWorld';
 import type { Point } from './pixelDraw';
-import type { Facing, Heading } from './sprites/compose';
-import { gestureFrame, RIG_LAYOUT, sheetIndexIn, type Gesture, type SheetLayout } from './sprites/layout';
-import { FRAME, type AnimationName } from './sprites/rig';
+import type { Facing, Heading } from './sprites/views';
+import { gestureFrame, OFFICIAL_LAYOUT, sheetIndexIn, type Gesture, type SheetLayout } from './sprites/layout';
+import { FRAME, type AnimationName } from './sprites/views';
 
 /** Valeurs provisoires, réglables à l'œil. */
 export const PLAYER_VIEW_TUNING = {
@@ -217,7 +217,7 @@ export function dunkLift(handY: number, rimY: number, progress: number): number 
 }
 
 /** Indice dans la feuille cuite (de disposition `layout`) de l'image d'un geste. */
-export function frameIndex(state: Extract<SpriteState, { kind: 'frame' }>, layout: SheetLayout = RIG_LAYOUT): number {
+export function frameIndex(state: Extract<SpriteState, { kind: 'frame' }>, layout: SheetLayout = OFFICIAL_LAYOUT): number {
   return sheetIndexIn(layout, gestureFrame(layout, state.gesture, state.step), state.facing, state.heading);
 }
 

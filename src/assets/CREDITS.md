@@ -1,8 +1,7 @@
 # Crédits des assets
 
-Tout asset externe doit être listé ici avec sa source et sa licence.
-Aucun asset issu de Hoop Land ou d'un autre jeu commercial.
-
-| Fichier(s) | Source | Auteur | Licence |
+| Fichiers | Source | Auteur | Usage |
 | --- | --- | --- | --- |
-| `src/assets/palette.ts`, `src/assets/sprites/*`, `src/match/render/*` (police, sprites, terrain, HUD) | Assets originaux dessinés en code | Équipe HoopSim | Propres au projet |
+| `src/assets/players/team-navy.png`, `team-ivory.png` | Déclinaisons des références fournies et validées par l'utilisateur | OpenAI image generation pour HoopSim | Designs officiels (10 joueurs) |
+| `src/assets/players/actions-navy.png`, `actions-ivory.png` | Gestes des mêmes designs validés | OpenAI image generation pour HoopSim | Poses officielles de basket |
+| `src/assets/palette.ts`, `src/assets/sprites/arena.ts`, `jerseyDigits.ts`, `src/match/render/arena/`, polices et HUD | Assets originaux dessinés en code | Équipe HoopSim | Propres au projet |

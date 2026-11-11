@@ -2,8 +2,7 @@ import type Phaser from 'phaser';
 import { PALETTE } from '../../../assets/palette';
 import type { TeamLook } from '../arena/draw';
 import { drawSmallText, drawText, GLYPH_H, SMALL_H, smallTextWidth, textWidth } from '../pixelFont';
-import type { Appearance } from '../sprites/appearance';
-import { colorsFor, headLayer, slotColor } from '../sprites/compose';
+import type { PortraitPixel } from '../sprites/bake';
 
 /** Postes en abrégé, en français. */
 export const POSITION_SHORT: Record<string, string> = { PG: 'MEN', SG: 'ARR', SF: 'AIL', PF: 'AF', C: 'PIV' };
@@ -68,15 +67,13 @@ export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: num
 /** Portrait : la tête de 16×16 et son contour (18×18). */
 export const PORTRAIT_SIZE = 18;
 
-/** Portrait (tête, cheveux, expression neutre) dessiné à partir de l'apparence du joueur. */
-export function drawPortrait(g: Phaser.GameObjects.Graphics, look: Appearance, team: TeamLook, x: number, y: number): void {
-  const c = headLayer(look, 'neutre', 1, 1, PORTRAIT_SIZE, PORTRAIT_SIZE);
-  const colors = colorsFor(look, team.primary, team.secondary);
-  c.forEach((px, py, slot) => g.fillStyle(slotColor(slot, colors)).fillRect(x + px, y + py, 1, 1));
+/** Portrait issu de la même planche officielle que le joueur du terrain. */
+export function drawPortrait(g: Phaser.GameObjects.Graphics, portrait: readonly PortraitPixel[], x: number, y: number): void {
+  for (const pixel of portrait) g.fillStyle(pixel.color).fillRect(x + pixel.x, y + pixel.y, 1, 1);
 }
 
 export interface PlayerCardData {
-  look: Appearance;
+  portrait: readonly PortraitPixel[];
   team: TeamLook;
   name: string;
   position: string;
@@ -90,7 +87,7 @@ export function drawPlayerCard(g: Phaser.GameObjects.Graphics, x: number, y: num
   panel(g, x, y, w, 28);
   g.fillStyle(d.team.primary[1]).fillRect(x + 3, y + 3, PORTRAIT_SIZE + 2, 22);
   g.fillStyle(d.team.primary[2]).fillRect(x + 3, y + 19, PORTRAIT_SIZE + 2, 6);
-  drawPortrait(g, d.look, d.team, x + 4, y + 4);
+  drawPortrait(g, d.portrait, x + 4, y + 4);
   const tx = x + PORTRAIT_SIZE + 9;
   g.fillStyle(PALETTE.chalk);
   drawText(g, d.name, tx, y + 4);

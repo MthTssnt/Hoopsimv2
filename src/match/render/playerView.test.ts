@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { WORLD_TUNING } from '../world/MatchWorld';
 import { animTimeScale, blockGesture, dunkLift, blendBall, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor } from './playerView';
 import { animationKey } from './sprites/bake';
-import type { Heading } from './sprites/rig';
-import { GESTURE_STEPS, GESTURES, LAYOUT_2D, RIG_LAYOUT, RUN_CYCLE_MS } from './sprites/layout';
-import { ANIMATIONS, FRAME, FRAMES } from './sprites/rig';
+import type { Heading } from './sprites/views';
+import { GESTURE_STEPS, GESTURES, OFFICIAL_LAYOUT, RUN_CYCLE_MS } from './sprites/layout';
+import { FRAME } from './sprites/views';
 
 const ground = { airborne: false, speed: 0, holding: false, facing: 1, heading: 'down' as const };
 
@@ -18,52 +18,37 @@ describe('image du joueur selon l’état du monde', () => {
     expect(spriteStateFor({ ...ground, speed: PLAYER_VIEW_TUNING.runSpeed })).toMatchObject({ kind: 'anim', name: 'idle' });
   });
 
-  it('dispositions : le rig garde ses indices ; le rendu 2D a 55 images par bloc, chaque geste ses propres images', () => {
-    expect(RIG_LAYOUT.framesPerBlock).toBe(19);
-    expect(RIG_LAYOUT.animations).toBe(ANIMATIONS);
-    expect(LAYOUT_2D.framesPerBlock).toBe(55);
-    for (const g of GESTURES) expect(LAYOUT_2D.gestures[g], g).toHaveLength(GESTURE_STEPS[g]);
-    // Aucune image n'appartient à deux gestes ni à un geste et une animation en boucle (pas de recyclage).
-    const loops = (['idle', 'run', 'dribble', 'dribbleIdle'] as const).flatMap((a) => LAYOUT_2D.animations[a].frames);
-    const gestures = GESTURES.flatMap((g) => LAYOUT_2D.gestures[g]);
-    const all = [...loops, ...gestures];
-    expect(new Set(all).size).toBe(all.length);
-    expect(all.length).toBe(LAYOUT_2D.framesPerBlock);
-    for (const f of all) expect(f).toBeLessThan(55);
-    // `shoot` et `dunk` (planche ?style) rejouent les images de leur geste.
-    expect(LAYOUT_2D.animations.shoot.frames).toEqual(LAYOUT_2D.gestures.jumpShot);
-    expect(LAYOUT_2D.animations.dunk.frames).toEqual(LAYOUT_2D.gestures.dunk);
-    const blockTop = (facing: number, heading: Heading) => frameIndex(spriteStateFor({ ...ground, airborne: true, jumpKind: 'block', facing, heading }) as never, LAYOUT_2D);
-    expect(blockTop(1, 'down')).toBe(LAYOUT_2D.gestures.block[1]);
-    expect(blockTop(-1, 'up')).toBe(3 * 55 + LAYOUT_2D.gestures.block[1]);
+  it('la feuille officielle couvre chaque geste sélectionné par le monde', () => {
+    expect(OFFICIAL_LAYOUT.framesPerBlock).toBe(8);
+    for (const g of GESTURES) {
+      expect(OFFICIAL_LAYOUT.gestures[g], g).toHaveLength(GESTURE_STEPS[g]);
+      for (const frame of OFFICIAL_LAYOUT.gestures[g]) expect(frame).toBeLessThan(OFFICIAL_LAYOUT.framesPerBlock);
+    }
+    expect(OFFICIAL_LAYOUT.gestures.jumpShot[2]).not.toBe(OFFICIAL_LAYOUT.gestures.jumpShot[3]);
+    expect(OFFICIAL_LAYOUT.gestures.pass[1]).not.toBe(OFFICIAL_LAYOUT.animations.idle.frames[0]);
   });
 
   it('quatre positions : blocs dédiés de la feuille (bas et haut, droite et gauche), jamais de retournement', () => {
     expect(spriteStateFor({ ...ground, facing: -1, speed: 3 })).toEqual({ kind: 'anim', name: 'run', facing: 'left', heading: 'down' });
     expect(spriteStateFor({ ...ground, heading: 'up', speed: 3 })).toMatchObject({ name: 'run', heading: 'up' });
     const air = (facing: number, heading: Heading) => frameIndex(spriteStateFor({ ...ground, airborne: true, jumpKind: 'block', facing, heading }) as never);
-    const n = FRAMES.length;
-    expect(n).toBe(19);
+    const n = OFFICIAL_LAYOUT.framesPerBlock;
+    expect(n).toBe(8);
     // Blocs : diagonale bas droite, bas gauche, haut droite, haut gauche (le rig : deux bras levés, image 18).
-    expect(air(1, 'down')).toBe(18);
-    expect(air(-1, 'down')).toBe(n + 18);
-    expect(air(1, 'up')).toBe(2 * n + 18);
-    expect(air(-1, 'up')).toBe(3 * n + 18);
+    expect(air(1, 'down')).toBe(7);
+    expect(air(-1, 'down')).toBe(n + 7);
+    expect(air(1, 'up')).toBe(2 * n + 7);
+    expect(air(-1, 'up')).toBe(3 * n + 7);
     const keys = (['down', 'up'] as const).flatMap((h) => [animationKey('p', 'run', 'right', h), animationKey('p', 'run', 'left', h)]);
     expect(new Set(keys).size).toBe(4);
     expect(animationKey('p', 'run', 'right', 'down')).toBe('p:run');
   });
 
-  it('course et dribbles en 600 ms (décision de Matheo), au rythme du dribble du monde, dans les deux rendus', () => {
+  it('course et dribbles restent au rythme du rebond physique de 600 ms', () => {
     expect(WORLD_TUNING.dribblePeriod).toBe(0.6);
-    for (const layout of [RIG_LAYOUT, LAYOUT_2D]) {
-      const total = (name: 'dribble' | 'dribbleIdle' | 'run') => layout.animations[name].durations.reduce((a, b) => a + b, 0);
-      expect(total('dribble')).toBe(WORLD_TUNING.dribblePeriod * 1000);
-      expect(total('dribbleIdle')).toBe(WORLD_TUNING.dribblePeriod * 1000);
+    for (const name of ['run', 'dribble', 'dribbleIdle'] as const) {
+      expect(OFFICIAL_LAYOUT.animations[name].durations.reduce((a, b) => a + b, 0)).toBe(RUN_CYCLE_MS);
     }
-    expect(LAYOUT_2D.animations.run.durations.reduce((a, b) => a + b, 0)).toBe(RUN_CYCLE_MS);
-    expect(LAYOUT_2D.animations.run.frames).toHaveLength(8);
-    expect(LAYOUT_2D.animations.dribble.frames).toHaveLength(8);
   });
 });
 

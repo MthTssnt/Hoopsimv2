@@ -2,6 +2,18 @@
 
 Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu jouable et déployable.
 
+## Rendu officiel des joueurs ✅
+
+- ✅ Matheo valide les dix designs et demande leur publication sur `main`.
+- ✅ Nouveau rendu par défaut dans le GM et `?court`, portraits du HUD correspondants.
+- ✅ Anciennes pièces de visages, corps, rigs, volumes, feuilles et scènes de comparaison retirés.
+- ✅ Poses du nouveau style pour l'armé, le lâcher, la passe et le saut (dunk/contre/rebond).
+- ✅ Test direct depuis l'accueil ; `?style`/`?anims` présentent les seuls designs officiels.
+- ⬜ Enrichir les transitions, les cycles de dribble et la course de dos ; recoloration par club.
+
+Les étapes ci-dessous conservent l'historique des travaux et décisions. Leurs anciens assets
+ont été retirés ; la direction actuelle est celle de `ART_DIRECTION.md` et `src/assets/players/`.
+
 ## Phase 0 — Environnement ✅
 - ✅ Phaser 4 ajouté, monté dans React, chargé à la demande (`?court` pour tester)
 - ✅ CLAUDE.md, permissions Claude Code, .gitignore, docs de cadrage
