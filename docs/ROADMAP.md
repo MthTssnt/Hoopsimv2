@@ -78,3 +78,17 @@ ont été retirés ; la direction actuelle est celle de `ART_DIRECTION.md` et `s
 
 ## Phase 6 — Ligues et sauvegarde ⬜
 - ⬜ Format de ligue texte éditable, éditeur, export/import, IndexedDB
+
+## Version validée — fidélité aux prototypes (11 novembre 2026)
+
+- ❌ Première révision animée à partir de pièces séparées : refusée par Matheo (corps différents,
+  perte des détails et impression de déplacement/coupure de l'image).
+- ✅ Nouvelle révision : 1 680 images de personnages complets, dix designs approuvés, face/dos,
+  4 à 8 images par animation. Découpes sur silhouettes réelles, origine fixe et marges élargies.
+- ✅ Détail natif doublé (sortie 1280×720, vue logique 640×360), portraits et ballon compris ;
+  taille à l'écran, cadrage et unités physiques conservés. Atlas rognés pour limiter la mémoire.
+- ✅ Dribble : même phase pour les appuis et les poses, contact sous les doigts dessinés,
+  phase libre du ballon jusqu'au parquet puis reprise dans la paume.
+- ✅ Atelier commun au match avec ralenti, image par image et référence approuvée à côté.
+- Vérification : 6 720 rendus aux tailles/corpulences extrêmes, puis vrai match jouable et GM.
+- ✅ Validation de l’ensemble par Matheo et demande de publication sur `main` pour test jouable.

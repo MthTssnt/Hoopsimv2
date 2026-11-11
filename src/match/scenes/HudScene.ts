@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PALETTE } from '../../assets/palette';
-import { VIEW_HEIGHT, VIEW_WIDTH } from '../config';
+import { RENDER_SCALE, VIEW_HEIGHT, VIEW_WIDTH } from '../config';
 import { drawBanner, drawPlayerCard, drawScoreboard, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import { drawSmallText, SMALL_H, smallTextWidth } from '../render/pixelFont';
 
@@ -55,6 +55,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   create() {
+    this.cameras.main.setZoom(RENDER_SCALE).centerOn(VIEW_WIDTH / 2, VIEW_HEIGHT / 2);
     this.board = this.add.graphics();
     this.card = this.add.graphics();
     this.banner = this.add.graphics();

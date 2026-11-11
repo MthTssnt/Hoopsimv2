@@ -7,11 +7,12 @@ import { matchRotation } from '../../engine/rotation';
 import type { TeamSeed } from '../../engine/teamsData';
 import { runToEnd } from '../ai/finish';
 import { PlayerAi } from '../ai/playerAi';
-import { ARENA_APRON, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
+import { ARENA_APRON, RENDER_SCALE, VIEW_HEIGHT, VIEW_WIDTH, WORLD_HEIGHT, WORLD_WIDTH } from '../config';
 import { controlledInput, ShotButton } from '../input/control';
 import { KeyboardInput, NO_INPUT } from '../input/keyboard';
 import { BALL_RADIUS, makeCourt, RIM_HEIGHT, type CourtLevel } from '../physics/court';
 import { createArena } from '../render/arena/arena';
+import { preloadCourtStyle } from '../render/arena/style';
 import { BALL_SHADOW_TEXTURE, BALL_TEXTURE, createBallTextures } from '../render/arena/ball';
 import { awayLook, contrastingTeam, drawGrid, teamLook, type TeamLook } from '../render/arena/draw';
 import { drawHoopArt } from '../render/arena/hoopArt';
@@ -24,7 +25,8 @@ import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { animationKey, bakePlayer, bakeShadow, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/views';
-import { FRAME, seenFromBehind } from '../render/sprites/views';
+import { sheetIndexIn } from '../render/sprites/layout';
+import { FRAME, SPRITE_DETAIL, seenFromBehind } from '../render/sprites/views';
 import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
@@ -208,7 +210,7 @@ function targetFromUrl(perTeam: number): number {
 }
 
 const decimal = (value: number) => value.toFixed(2).replace('.', ',');
-const rounded = (p: Point): Point => ({ x: Math.round(p.x), y: Math.round(p.y) });
+const rounded = (p: Point): Point => ({ x: Math.round(p.x * RENDER_SCALE) / RENDER_SCALE, y: Math.round(p.y * RENDER_SCALE) / RENDER_SCALE });
 
 /** Un joueur cuit : sprites aux couleurs de son camp, ombre (pas de nom sur le terrain). */
 interface CastMember {
@@ -237,6 +239,7 @@ interface BodySprite {
   member: CastMember;
   sprite: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Image;
+  hand: Phaser.GameObjects.Image;
   /** Position : diagonale haut quand il monte, bas quand il descend ; gardée à l'horizontale et à l'arrêt. */
   heading: Heading;
   /** Pieds dessinés (relevés pendant l'accroche d'un dunk) et point au sol. */
@@ -463,6 +466,7 @@ export class MatchScene extends Phaser.Scene {
 
   preload() {
     preloadPlayers(this);
+    preloadCourtStyle(this);
   }
 
   create() {
@@ -544,7 +548,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.bodies = onCourt.map((member) => this.createBodySprite(member));
     this.ballShadow = this.add.image(0, 0, BALL_SHADOW_TEXTURE).setDepth(1);
-    this.ballImage = this.add.image(0, 0, BALL_TEXTURE);
+    this.ballImage = this.add.image(0, 0, BALL_TEXTURE).setScale(1 / RENDER_SCALE);
     this.gauge = this.add.graphics().setDepth(950);
     this.tag = this.add.image(0, 0, 'grade-perfect').setOrigin(0.5, 1).setDepth(960).setVisible(false);
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
@@ -557,7 +561,7 @@ export class MatchScene extends Phaser.Scene {
     keyboard.on('keydown', (event: KeyboardEvent) => this.onDebugKey(event));
 
     const camera = this.cameras.main;
-    camera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    camera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT).setZoom(RENDER_SCALE);
     const start = this.world.players[this.world.controlled].pos;
     this.anchorY = project(0, 0).y - FAR_LINE_ON_SCREEN + VIEW_HEIGHT / 2;
     this.cam = { x: project(start.x, start.y).x, y: this.anchorY, zoom: 1 };
@@ -684,7 +688,8 @@ export class MatchScene extends Phaser.Scene {
       member,
       shadow: this.add.image(0, 0, member.shadow).setDepth(1),
       // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
-      sprite: this.add.sprite(0, 0, member.baked.key, 0).setOrigin(0.5, 1),
+      sprite: this.add.sprite(0, 0, member.baked.key, 0).setScale(1 / SPRITE_DETAIL).setOrigin(FRAME.centerX / FRAME.width, (FRAME.groundY + 1) / FRAME.height),
+      hand: this.add.image(0, 0, member.baked.handKey, 0).setScale(1 / SPRITE_DETAIL).setVisible(false),
       heading: 'down',
       feet: { x: 0, y: 0 },
       ground: { x: 0, y: 0 },
@@ -864,6 +869,14 @@ export class MatchScene extends Phaser.Scene {
 
   /** Anime le sprite selon l'état choisi, sans relancer une animation déjà en cours. */
   private applySprite(sprite: Phaser.GameObjects.Sprite, baked: BakedPlayer, state: SpriteState) {
+    if (state.kind === 'anim' && (state.name === 'dribble' || state.name === 'dribbleIdle')) {
+      if (sprite.anims.isPlaying) sprite.anims.stop();
+      const frames = baked.layout.animations[state.name].frames;
+      const phase = this.world.dribblePhase;
+      const frame = frames[Math.min(frames.length - 1, Math.floor(phase * frames.length))];
+      sprite.setTexture(baked.key, sheetIndexIn(baked.layout, frame, state.facing, state.heading));
+      return;
+    }
     if (state.kind === 'anim') {
       sprite.play(animationKey(baked.key, state.name, state.facing, state.heading), true);
       return;
@@ -899,14 +912,13 @@ export class MatchScene extends Phaser.Scene {
       if (this.blendClock >= PLAYER_VIEW_TUNING.ballBlendMs) this.blendFrom = null;
     }
     this.ballDrawn = drawn;
-    // Ballon tenu devant ou derrière le porteur : le rendu 2D le dit pour chaque image (main forte
-    // proche ou éloignée de la caméra) ; le rig le passe derrière de dos (ballon levé derrière la tête).
+    // Le ballon passe derrière le buste vu de dos ; la main de contact reste au premier plan.
     let depth = depthOf(ball.y);
     if (owner !== null && holder) {
       const behind = anchor?.behind ?? seenFromBehind(holder.heading);
       depth = depthOf(this.world.players[owner].pos.y) + (behind ? -0.05 : 0.05);
     }
-    this.ballImage.setPosition(Math.round(drawn.x), Math.round(drawn.y)).setDepth(depth);
+    this.ballImage.setFrame(owner === null ? Math.floor(this.world.clock * 12) % 6 : Math.floor(this.world.dribblePhase * 6)).setPosition(Math.round(drawn.x * RENDER_SCALE) / RENDER_SCALE, Math.round(drawn.y * RENDER_SCALE) / RENDER_SCALE).setDepth(depth);
     // Ballon tenu : son ombre suit le ballon dessiné (dans la main de l'image, quelle que soit la
     // vue), au sol du porteur ; ballon libre : sous sa position physique.
     const shadow = holder ? { x: Math.round(drawn.x), y: holder.ground.y } : rounded(project(ball.x, ball.y));
@@ -1040,6 +1052,8 @@ export class MatchScene extends Phaser.Scene {
       sincePass: clock.pass,
       lob: clock.lob,
       catching: clock.catching,
+      sinceCatch: clock.caught,
+      motionPhase: (this.world.clock * 1.5) % 1,
       sinceLanding: clock.landing,
       sinceReach,
       offBalance: (this.world.offBalance[index] ?? 0) > 0,
@@ -1048,6 +1062,13 @@ export class MatchScene extends Phaser.Scene {
     // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
     view.sprite.anims.timeScale = animTimeScale(state, speed);
     view.sprite.setPosition(view.feet.x, view.feet.y + 1).setDepth(depthOf(pos.y));
+    const image = Number(view.sprite.frame.name);
+    const center = view.member.baked.handCenters[image];
+    view.hand.setVisible(holding && !!center);
+    if (holding && center) {
+      const point = heldBallPoint(view.feet, center);
+      view.hand.setTexture(view.member.baked.handKey, image).setPosition(point.x, point.y).setDepth(depthOf(pos.y) + 0.08);
+    }
     view.shadow.setPosition(view.ground.x, view.ground.y - 1).setAlpha(Math.max(0.4, 1 - pos.z));
   }
 
@@ -1334,7 +1355,7 @@ export class MatchScene extends Phaser.Scene {
     const flip = Math.floor(this.time.now / 33) % 2 === 0 ? 1 : -1;
     const shake = this.shakeMs > 0 ? SHAKE.px * flip : 0;
     const camera = this.cameras.main;
-    camera.setZoom(this.cam.zoom);
+    camera.setZoom(this.cam.zoom * RENDER_SCALE);
     camera.centerOn(Math.round(this.cam.x) + shake, Math.round(this.cam.y) - shake / 2);
   }
 

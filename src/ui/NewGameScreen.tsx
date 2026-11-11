@@ -32,7 +32,7 @@ export function NewGameScreen({ onLoad, hasSave }: { onLoad: () => void; hasSave
           match, suivez les statistiques de vos joueurs et visez le titre.
         </p>
 
-        <p><a className="btn" href="?court">Tester un match jouable</a> <a className="btn" href="?style">Voir les designs des joueurs</a></p>
+        <p><a className="btn" href="?court">Tester un match jouable</a> <a className="btn" href="?style">Voir les designs des joueurs</a> <a className="btn" href="?anims">Animations</a></p>
 
         <div className="toolbar" style={{ marginTop: 18 }}>
           <button className="btn" onClick={() => setSeed(randomSeed())}>

@@ -63,13 +63,13 @@ export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: num
   drawText(g, shot, x + w - 4 - textWidth(shot), y + 15);
 }
 
-/** Taille du portrait (px) : la tête 14×14, contour compris, avec une marge. */
+/** Taille du portrait (px) : 18 unités logiques, dessin conservé à double résolution. */
 /** Portrait : la tête de 16×16 et son contour (18×18). */
 export const PORTRAIT_SIZE = 18;
 
 /** Portrait issu de la même planche officielle que le joueur du terrain. */
 export function drawPortrait(g: Phaser.GameObjects.Graphics, portrait: readonly PortraitPixel[], x: number, y: number): void {
-  for (const pixel of portrait) g.fillStyle(pixel.color).fillRect(x + pixel.x, y + pixel.y, 1, 1);
+  for (const pixel of portrait) g.fillStyle(pixel.color).fillRect(x + pixel.x, y + pixel.y, pixel.size ?? 1, pixel.size ?? 1);
 }
 
 export interface PlayerCardData {

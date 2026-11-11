@@ -3,7 +3,7 @@ import { WORLD_TUNING } from '../world/MatchWorld';
 import { animTimeScale, blockGesture, dunkLift, blendBall, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor } from './playerView';
 import { animationKey } from './sprites/bake';
 import type { Heading } from './sprites/views';
-import { GESTURE_STEPS, GESTURES, OFFICIAL_LAYOUT, RUN_CYCLE_MS } from './sprites/layout';
+import { GESTURE_STEPS, GESTURES, OFFICIAL_LAYOUT, RUN_CYCLE_MS, MOTION_INDICES } from './sprites/layout';
 import { FRAME } from './sprites/views';
 
 const ground = { airborne: false, speed: 0, holding: false, facing: 1, heading: 'down' as const };
@@ -19,7 +19,7 @@ describe('image du joueur selon l’état du monde', () => {
   });
 
   it('la feuille officielle couvre chaque geste sélectionné par le monde', () => {
-    expect(OFFICIAL_LAYOUT.framesPerBlock).toBe(8);
+    expect(OFFICIAL_LAYOUT.framesPerBlock).toBe(84);
     for (const g of GESTURES) {
       expect(OFFICIAL_LAYOUT.gestures[g], g).toHaveLength(GESTURE_STEPS[g]);
       for (const frame of OFFICIAL_LAYOUT.gestures[g]) expect(frame).toBeLessThan(OFFICIAL_LAYOUT.framesPerBlock);
@@ -33,12 +33,12 @@ describe('image du joueur selon l’état du monde', () => {
     expect(spriteStateFor({ ...ground, heading: 'up', speed: 3 })).toMatchObject({ name: 'run', heading: 'up' });
     const air = (facing: number, heading: Heading) => frameIndex(spriteStateFor({ ...ground, airborne: true, jumpKind: 'block', facing, heading }) as never);
     const n = OFFICIAL_LAYOUT.framesPerBlock;
-    expect(n).toBe(8);
+    expect(n).toBe(84);
     // Blocs : diagonale bas droite, bas gauche, haut droite, haut gauche (le rig : deux bras levés, image 18).
-    expect(air(1, 'down')).toBe(7);
-    expect(air(-1, 'down')).toBe(n + 7);
-    expect(air(1, 'up')).toBe(2 * n + 7);
-    expect(air(-1, 'up')).toBe(3 * n + 7);
+    expect(air(1, 'down')).toBe(MOTION_INDICES.block[3]);
+    expect(air(-1, 'down')).toBe(n + MOTION_INDICES.block[3]);
+    expect(air(1, 'up')).toBe(2 * n + MOTION_INDICES.block[3]);
+    expect(air(-1, 'up')).toBe(3 * n + MOTION_INDICES.block[3]);
     const keys = (['down', 'up'] as const).flatMap((h) => [animationKey('p', 'run', 'right', h), animationKey('p', 'run', 'left', h)]);
     expect(new Set(keys).size).toBe(4);
     expect(animationKey('p', 'run', 'right', 'down')).toBe('p:run');
@@ -68,7 +68,7 @@ describe('gestes : l’image suit la phase du saut et le temps écoulé', () => 
     expect(pick({ ...shot, air: air(0.6, false, 0.95) })).toBe('jumpShot:2');
     const after = { ...flying, shot: 'jump' as const, followThrough: true };
     expect(pick({ ...after, air: air(0.65, false, 0.95), sinceRelease: 0.05 })).toBe('jumpShot:3');
-    expect(pick({ ...after, air: air(0.9, false, 0.5), sinceRelease: 0.3 })).toBe('jumpShot:4');
+    expect(pick({ ...after, air: air(0.9, false, 0.5), sinceRelease: 0.3 })).toBe('jumpShot:3');
   });
 
   it('layup : deuxième appui, envol, extension, après le lâcher', () => {
@@ -88,14 +88,14 @@ describe('gestes : l’image suit la phase du saut et le temps écoulé', () => 
   });
 
   it('sans le ballon : contre (impulsion puis verticalité), rebond (ballon sous le menton une fois pris), entre-deux', () => {
-    expect(pick({ ...flying, jumpKind: 'block', air: air(0.1, true, 0.3) })).toBe('block:0');
-    expect(pick({ ...flying, jumpKind: 'block', air: air(0.3, true, 0.8) })).toBe('block:1');
-    expect(pick({ ...flying, jumpKind: 'blockOff', air: air(0.3, false, 0.8) })).toBe('blockOff:1');
-    expect(pick({ ...flying, jumpKind: 'rebound', air: air(0.3, true, 0.8) })).toBe('rebound:0');
-    expect(pick({ ...flying, jumpKind: 'rebound', holding: true, air: air(0.4, false, 0.8) })).toBe('rebound:1');
-    expect(pick({ ...flying, jumpKind: 'tipoff', air: air(0.3, true, 0.8) })).toBe('tipoff:0');
+    expect(pick({ ...flying, jumpKind: 'block', air: air(0.03, true, 0.3) })).toBe('block:0');
+    expect(pick({ ...flying, jumpKind: 'block', air: air(0.3, true, 0.8) })).toBe('block:2');
+    expect(pick({ ...flying, jumpKind: 'blockOff', air: air(0.3, false, 0.8) })).toBe('blockOff:3');
+    expect(pick({ ...flying, jumpKind: 'rebound', air: air(0.3, true, 0.8) })).toBe('rebound:2');
+    expect(pick({ ...flying, jumpKind: 'rebound', holding: true, air: air(0.4, false, 0.8) })).toBe('rebound:3');
+    expect(pick({ ...flying, jumpKind: 'tipoff', air: air(0.3, true, 0.8) })).toBe('tipoff:2');
     // Saut sans contexte : deux mains hautes.
-    expect(pick({ ...flying, air: air(0.3, true, 0.8) })).toBe('rebound:0');
+    expect(pick({ ...flying, air: air(0.3, true, 0.8) })).toBe('rebound:2');
   });
 
   it('contre de la main en face de la main de tir adverse', () => {
@@ -112,14 +112,14 @@ describe('gestes : l’image suit la phase du saut et le temps écoulé', () => 
     expect(pick({ ...ground, freeThrow: { stage: 'after', since: 0.3 } })).toBe('freeThrow:3');
     expect(pick({ ...ground, freeThrow: { stage: 'after', since: 0.5 } })).toBe('idle');
     expect(pick({ ...ground, sinceReach: 0.05 })).toBe('steal:0');
-    expect(pick({ ...ground, sinceReach: 0.2 })).toBe('steal:1');
+    expect(pick({ ...ground, sinceReach: 0.2 })).toBe('steal:3');
     expect(pick({ ...ground, offBalance: true })).toBe('offBalance:0');
     expect(pick({ ...ground, sincePass: 0.03 })).toBe('pass:0');
-    expect(pick({ ...ground, sincePass: 0.2 })).toBe('pass:1');
-    expect(pick({ ...ground, sincePass: 0.2, lob: true })).toBe('lobPass:1');
+    expect(pick({ ...ground, sincePass: 0.2 })).toBe('pass:3');
+    expect(pick({ ...ground, sincePass: 0.2, lob: true })).toBe('lobPass:3');
     expect(pick({ ...ground, sincePass: 0.3 })).toBe('idle');
     expect(pick({ ...ground, catching: true })).toBe('catch:0');
-    expect(pick({ ...ground, sinceLanding: 0.05 })).toBe('landing:0');
+    expect(pick({ ...ground, sinceLanding: 0.05 })).toBe('landing:1');
     expect(pick({ ...ground, sinceLanding: 0.05, holding: true })).toBe('dribbleIdle');
     expect(pick({ ...ground, sinceLanding: 0.2, speed: 4 })).toBe('run');
   });

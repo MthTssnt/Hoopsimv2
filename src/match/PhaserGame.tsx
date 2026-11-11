@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import type { PlayedGame } from '../engine/simSeason';
 import type { BoxView } from './boxView';
-import { VIEW_HEIGHT, VIEW_WIDTH } from './config';
+import { RENDER_SCALE, VIEW_HEIGHT, VIEW_WIDTH } from './config';
 import type { MatchSetup } from './gameResult';
 import { HudScene } from './scenes/HudScene';
 import { MatchScene, WATCH_SPEEDS } from './scenes/MatchScene';
@@ -49,14 +49,14 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     const game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: parentRef.current,
-      width: VIEW_WIDTH,
-      height: VIEW_HEIGHT,
+      width: VIEW_WIDTH * RENDER_SCALE,
+      height: VIEW_HEIGHT * RENDER_SCALE,
       pixelArt: true,
       backgroundColor: '#000000',
       scale: {
         mode: Phaser.Scale.NONE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        zoom: integerZoom(window.innerWidth, window.innerHeight, VIEW_WIDTH, VIEW_HEIGHT),
+        zoom: integerZoom(window.innerWidth, window.innerHeight, VIEW_WIDTH, VIEW_HEIGHT) / RENDER_SCALE,
         // Le conteneur englobe aussi le panneau des réglages, utilisable en plein écran.
         fullscreenTarget: rootRef.current,
       },
@@ -86,7 +86,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     // F : plein écran, sauf panneau ouvert ou touche déjà liée à une action du joueur.
     const detach = attachIntegerScaling(
       game,
-      { width: VIEW_WIDTH, height: VIEW_HEIGHT },
+      { width: VIEW_WIDTH, height: VIEW_HEIGHT, resolution: RENDER_SCALE },
       (event) => !panelOpenRef.current && !Object.values(settingsRef.current.bindings).some((b) => b.code === event.keyCode),
     );
     gameRef.current = game;

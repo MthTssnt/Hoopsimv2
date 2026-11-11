@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { COURT_STYLE } from './style';
 import { PALETTE } from '../../../assets/palette';
 import { TEAM_SEEDS } from '../../../engine';
 import { ARENA_APRON, WORLD_HEIGHT, WORLD_WIDTH } from '../../config';
@@ -59,10 +60,10 @@ describe('arène', () => {
     const a = arenaLayout(MATCH_PROJECTION, court, ARENA_APRON);
     const P = (x: number, y: number) => MATCH_PROJECTION.project(x, y);
     // Lignes de touche, de fond et médiane à la craie.
-    expect(buffer.at(P(3, 0).x, a.farLine)).toBe(PALETTE.chalk);
-    expect(buffer.at(P(3, court.width).x, a.nearLine)).toBe(PALETTE.chalk);
-    expect(buffer.at(a.leftBaseline, P(0, 4).y)).toBe(PALETTE.chalk);
-    expect(buffer.at(a.rightBaseline, P(0, 4).y)).toBe(PALETTE.chalk);
+    expect(buffer.at(P(3, 0).x, a.farLine)).toBe(COURT_STYLE.line);
+    expect(buffer.at(P(3, court.width).x, a.nearLine)).toBe(COURT_STYLE.line);
+    expect(buffer.at(a.leftBaseline, P(0, 4).y)).toBe(COURT_STYLE.line);
+    expect(buffer.at(a.rightBaseline, P(0, 4).y)).toBe(COURT_STYLE.line);
     // Les deux raquettes ont la même couleur, symétriques.
     const rimY = court.hoops.left.rim.y;
     const leftPaint = buffer.at(P(3, rimY + 1).x, P(3, rimY + 1).y);
@@ -70,10 +71,10 @@ describe('arène', () => {
     expect(leftPaint).toBe(rightPaint);
     expect([PALETTE.wood, PALETTE.woodLight]).not.toContain(leftPaint);
     // Bandes aux couleurs de l'équipe : au fond, devant, derrière les deux lignes de fond.
-    expect(buffer.at(P(5, -0.3).x, P(5, -0.3).y)).toBe(home.primary[1]);
-    expect(buffer.at(P(5, court.width + 1).x, P(5, court.width + 1).y)).toBe(home.primary[1]);
-    expect(buffer.at(P(-0.8, 6).x, P(-0.8, 6).y)).toBe(home.primary[1]);
-    expect(buffer.at(P(court.length + 0.8, 6).x, P(court.length + 0.8, 6).y)).toBe(home.primary[1]);
+    expect(buffer.at(P(5, -0.3).x, P(5, -0.3).y)).toBe(COURT_STYLE.apron);
+    expect(buffer.at(P(5, court.width + 1).x, P(5, court.width + 1).y)).toBe(COURT_STYLE.apron);
+    expect(buffer.at(P(-0.8, 6).x, P(-0.8, 6).y)).toBe(COURT_STYLE.apron);
+    expect(buffer.at(P(court.length + 0.8, 6).x, P(court.length + 0.8, 6).y)).toBe(COURT_STYLE.apron);
     // Du public (autre chose que le fond) derrière chaque ligne de fond.
     const crowd = (x0: number, x1: number) => {
       let n = 0;
@@ -96,7 +97,7 @@ describe('arène', () => {
       return (['left', 'right'] as const).map((side) => {
         const { rim, toCourt } = court.hoops[side];
         const p = MATCH_PROJECTION.project(rim.x + toCourt * arc, rim.y);
-        return [-1, 0, 1].some((dx) => buffer.at(p.x + dx, p.y) === PALETTE.chalk);
+        return [-1, 0, 1].some((dx) => buffer.at(p.x + dx, p.y) === COURT_STYLE.line);
       });
     };
     expect(arcAt('pro', pro.threeArc)).toEqual([true, true]);

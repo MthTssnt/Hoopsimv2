@@ -75,7 +75,7 @@ export const WORLD_TUNING = {
   dribbleHandHeight: 0.85,
   /**
    * Main qui tient le ballon : écart devant le joueur et vers le spectateur (m). Le ballon est
-   * dribblé devant le corps, un peu en avant : l'écart suit le dessin (voir le rig).
+   * dribblé devant le corps, un peu en avant : l'écart suit le dessin officiel.
    */
   handForward: 0.22,
   handDepth: 0.12,
@@ -472,6 +472,9 @@ export class MatchWorld {
     this.shotSettings = { ...settings };
     for (const body of this.players) setJumpTiming(body, gaugeTime(settings.speed));
   }
+
+  /** Phase publique en lecture seule : le rendu du poignet et des appuis suit le même rebond. */
+  get dribblePhase(): number { return (this.dribbleTime / WORLD_TUNING.dribblePeriod) % 1; }
 
   /** Position du ballon tenu : dribble au sol, levé au-dessus de la tête en l'air. */
   handPosition(body: PlayerBody): Vec3 {

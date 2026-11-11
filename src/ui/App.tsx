@@ -26,6 +26,7 @@ import { UiContext } from './uiContext';
 
 // Le match jouable (Phaser), chargé à part : seulement quand tu joues ou regardes un match.
 const PhaserGame = lazy(() => import('../match/PhaserGame'));
+const AnimationLab = lazy(() => import('./AnimationLab'));
 
 const TABS = [
   { id: 'accueil', label: 'Accueil' },
@@ -35,6 +36,7 @@ const TABS = [
   { id: 'stats', label: 'Statistiques' },
   { id: 'playoffs', label: 'Playoffs' },
   { id: 'ligue', label: 'Ligue' },
+  { id: 'animations', label: 'Animations' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -88,6 +90,7 @@ export default function App() {
           {tab === 'stats' && <StatsTab league={league} />}
           {tab === 'playoffs' && <PlayoffsTab league={league} />}
           {tab === 'ligue' && <HistoryTab league={league} />}
+          {tab === 'animations' && <Suspense fallback={<p>Chargement de l’atelier…</p>}><AnimationLab embedded /></Suspense>}
         </main>
 
         {state.watched && <GameViewer league={league} watched={state.watched} onClose={() => store.clearWatched()} />}

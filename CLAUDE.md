@@ -66,7 +66,7 @@ Test du rendu en local ou sur Vercel : ajouter `?court` à l'URL (match) ou `?st
 - Wiki Hoop Land (Fandom) — modes et progression.
 
 ## Direction artistique
-- Pixel-art, résolution interne 640×360 à 30 px/m, `pixelArt: true`, mise à l'échelle entière
+- Pixel-art, vue logique 640×360 à 30 px/m, sortie 1280×720 pour préserver le détail des personnages, `pixelArt: true`, mise à l'échelle entière
   (F : plein écran ; ×3 en 1080p, ×2 dans une fenêtre).
 - Sprites, décor et HUD selon `docs/ART_DIRECTION.md` (règles chiffrées des sprites : font foi).
 - Vue plongeante de 3/4 (profondeur et hauteur écrasées ~2/3), toute la profondeur du terrain

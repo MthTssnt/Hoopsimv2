@@ -4,6 +4,8 @@ import { ART_DEPTH_SCALE, ART_HEIGHT_SCALE, ART_PPM, ART_VIEW } from './render/a
 // Résolution interne du rendu pixel-art, mise à l'échelle entière (×3 en 1080p plein écran).
 export const VIEW_WIDTH = ART_VIEW.width;
 export const VIEW_HEIGHT = ART_VIEW.height;
+/** Deux pixels de dessin par unité du terrain, sans agrandir les joueurs ni changer le cadrage. */
+export const RENDER_SCALE = 2;
 
 /**
  * Projection du monde 3D (mètres) vers l'écran (pixels du monde) : vue plongeante de 3/4,

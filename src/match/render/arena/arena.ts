@@ -7,7 +7,8 @@ import { fillEllipse, fillPolygon, pixelLine, pixelPolyline, type Point } from '
 import { drawText, GLYPH_H, textWidth } from '../pixelFont';
 import { artPx } from '../artConfig';
 import type { ArtProjection } from './artProjection';
-import { colorDistance, drawGrid, type PaintTarget, type TeamLook } from './draw';
+import { drawGrid, type PaintTarget, type TeamLook } from './draw';
+import { COURT_STYLE, FLOOR_SOURCE } from './style';
 
 /** Bandes visibles autour des lignes (m) : au fond, devant, derrière chaque ligne de fond. */
 export interface Apron {
@@ -25,6 +26,8 @@ export interface ArenaOptions {
   apron: Apron;
   /** Abscisse (px) où commence le nom de l'équipe sur la bande du fond ; par défaut, après la ligne de fond de gauche. */
   bannerFrom?: number;
+  /** Peinture du bois dans un tampon Canvas, sans modifier la géométrie des lignes. */
+  paintFloor?: (x: number, y: number, width: number, height: number) => void;
 }
 
 /** Repères de l'arène en pixels (arrondis), dans l'espace de la texture. */
@@ -117,12 +120,12 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
   g.fillStyle(home.primary[2]).fillRect(a.leftApron - 1, a.farApronTop - 1, a.rightApron - a.leftApron + 2, 1);
 
   // Bandes aux couleurs de l'équipe à domicile : au fond, derrière les lignes de fond, devant.
-  g.fillStyle(home.primary[1]).fillRect(a.leftApron, a.farApronTop, a.rightApron - a.leftApron, a.farLine - a.farApronTop);
+  g.fillStyle(COURT_STYLE.apron).fillRect(a.leftApron, a.farApronTop, a.rightApron - a.leftApron, a.farLine - a.farApronTop);
   g.fillRect(a.rightBaseline, a.farApronTop, a.rightApron - a.rightBaseline, apronBottom - a.farApronTop);
   g.fillRect(a.leftApron, a.farApronTop, a.leftBaseline - a.leftApron, apronBottom - a.farApronTop);
   g.fillRect(a.leftApron, a.nearLine, a.rightApron - a.leftApron, apronBottom - a.nearLine);
   const banner = `${home.city} ${home.name}`;
-  g.fillStyle(home.secondary[0]);
+  g.fillStyle(COURT_STYLE.gold);
   const bannerY = Math.round((a.farApronTop + a.farLine - GLYPH_H * 2) / 2);
   // Le nom se répète tant qu'il y a de la place sur la bande du fond.
   const bannerFrom = options.bannerFrom ?? a.leftBaseline + artPx(12);
@@ -132,16 +135,18 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
   const floorLeft = Math.max(0, a.leftBaseline);
   const floorRight = Math.min(SW, a.rightBaseline);
   const floorBottom = Math.min(SH, a.nearLine);
-  const plank = artPx(5);
+  const plank = artPx(3);
   for (let y = a.farLine, row = 0; y < floorBottom; y += plank, row++) {
     const h = Math.min(plank, floorBottom - y);
-    g.fillStyle(row % 2 ? PALETTE.wood : PALETTE.woodLight).fillRect(floorLeft, y, floorRight - floorLeft, h);
-    g.fillStyle(PALETTE.woodDark);
+    g.fillStyle(row % 2 ? COURT_STYLE.wood : COURT_STYLE.woodLight).fillRect(floorLeft, y, floorRight - floorLeft, h);
+    g.fillStyle(COURT_STYLE.woodDark);
     for (let x = floorLeft + rng.int(0, artPx(40)); x < floorRight; x += rng.int(artPx(26), artPx(60))) g.fillRect(x, y, 1, h);
   }
 
-  // Raquettes et rond central aux couleurs de l'équipe (ton sombre si trop proche du bois).
-  const paint = colorDistance(home.primary[1], PALETTE.wood) < 90 ? home.primary[2] : home.primary[1];
+  options.paintFloor?.(floorLeft, a.farLine, floorRight - floorLeft, floorBottom - a.farLine);
+
+  // Raquettes bleu profond et liserés chauds, accordés aux nouveaux sprites.
+  const paint = COURT_STYLE.paint;
   const box = (x0: number, y0: number, x1: number, y1: number): Point[] => [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)];
   const hoops = [court.hoops.right, court.hoops.left];
   g.fillStyle(paint);
@@ -155,13 +160,13 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
     fillEllipse(g, center.x, center.y, r * proj.ppm, r * proj.depthPx);
   };
   disc(CIRCLE_RADIUS, paint);
-  disc(CIRCLE_RADIUS * 0.8, home.secondary[1]);
-  disc(CIRCLE_RADIUS * 0.7, paint);
-  g.fillStyle(home.secondary[0]);
+  disc(CIRCLE_RADIUS * 0.92, COURT_STYLE.gold);
+  disc(CIRCLE_RADIUS * 0.87, paint);
+  g.fillStyle(COURT_STYLE.line);
   drawText(g, home.abbr, Math.round(center.x - textWidth(home.abbr, 2) / 2), Math.round(center.y - GLYPH_H), 2);
 
   // Lignes.
-  g.fillStyle(PALETTE.chalk);
+  g.fillStyle(COURT_STYLE.line);
   pixelLine(g, P(0, 0), P(L, 0));
   pixelLine(g, P(0, W), P(L, W));
   pixelLine(g, P(L, 0), P(L, W));
@@ -198,8 +203,23 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
 /** Dessine l'arène une fois, puis la convertit en texture. */
 export function createArena(scene: Phaser.Scene, key: string, proj: ArtProjection, court: Court, home: TeamLook, options: ArenaOptions): void {
   if (scene.textures.exists(key)) scene.textures.remove(key);
-  const g = scene.add.graphics();
-  drawArena(g, proj, court, home, options);
-  g.generateTexture(key, options.size.width, options.size.height);
-  g.destroy();
+  const texture = scene.textures.createCanvas(key, options.size.width, options.size.height)!;
+  const ctx = texture.context;
+  ctx.imageSmoothingEnabled = false;
+  const target: PaintTarget = {
+    fillStyle(color, alpha = 1) { ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`; ctx.globalAlpha = alpha; return target; },
+    fillRect(x, y, width, height) { ctx.fillRect(Math.round(x), Math.round(y), Math.round(width), Math.round(height)); return target; },
+  };
+  const tile = document.createElement('canvas');
+  tile.width = tile.height = 128;
+  const tileContext = tile.getContext('2d')!;
+  tileContext.imageSmoothingEnabled = false;
+  if (scene.textures.exists(FLOOR_SOURCE)) tileContext.drawImage(scene.textures.get(FLOOR_SOURCE).getSourceImage() as HTMLImageElement, 0, 0, 128, 128);
+  const pattern = ctx.createPattern(tile, 'repeat');
+  drawArena(target, proj, court, home, { ...options, paintFloor: pattern ? (x, y, w, h) => {
+    ctx.globalAlpha = 1; ctx.fillStyle = pattern; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#efcd92'; ctx.globalAlpha = 0.30; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#0d1423'; ctx.globalAlpha = 0.15; ctx.fillRect(x, y, w, 2); ctx.fillRect(x, y, 2, h); ctx.globalAlpha = 1;
+  } : undefined });
+  texture.refresh();
 }

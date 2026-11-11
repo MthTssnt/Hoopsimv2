@@ -1,49 +1,54 @@
-# Direction artistique officielle — HoopSim
+# Direction artistique — HoopSim
 
-## Joueurs
+## Designs validés
 
-Matheo a validé les dix designs des deux planches bleu/blanc et ivoire/bordeaux, puis demandé
-leur utilisation officielle et le retrait de tous les anciens designs. Le rendu officiel est
-chargé automatiquement dans le match du GM et sur `?court`. `?style` et `?anims` affichent le
-catalogue de ces seuls joueurs.
+Les dix personnages des planches bleu/blanc et ivoire/bordeaux restent les références officielles.
+Leurs visages, coiffures, teints, tenues, accessoires et gabarits font foi. Les quatre planches
+`team-*` et `actions-*` sont conservées comme références originales.
 
-La cible est le pixel-art de ses références : contour sombre net, grands yeux avec iris,
-cheveux en mèches structurées, peau en tons chauds, corps athlétiques compacts, tenues à liserés
-contrastés. La variété combine teints, coiffures, bandeaux, manches, poignets et genouillères,
-silhouettes fines, élancées, trapues et larges. Aucun ancien rig ni ancien visage n'est conservé.
+La première révision animée, composée de membres tournés séparément et réduite dans une image
+de 640×360, a été refusée : silhouettes différentes des prototypes et détails illisibles.
+Cette technique et ses pièces ne sont plus utilisées.
 
-Les quatre planches officielles et leurs découpes sont dans `src/assets/players/`. Les sources
-restent détaillées ; elles sont réduites sans lissage pour le match. Les joueurs font environ
-39 à 51 pixels de haut selon leur taille réelle, dans un cadre de 64×80 qui laisse la place aux
-bras levés. La largeur tient compte de la corpulence. Le numéro réel est reposé à l'endroit
-après le miroir. Le ballon est toujours simulé et dessiné séparément. Le portrait du HUD est
-issu de la tête du même joueur, pas d'un générateur de visages distinct.
+## Animations validées
 
-## Poses et animations
+Les nouvelles poses sont des **personnages entiers dessinés**, dans le style des références,
+stockés dans `src/assets/players/painted/`. Aucune articulation ou tête n'est reconstruite en
+code. Chaque design possède 84 images de face et 84 de dos : 4 pour l'arrêt et chacun des
+14 gestes, 8 pour la course et chacun des deux dribbles. Les vues gauche sont des miroirs du
+personnage entier ; le vrai numéro est reposé ensuite à l'endroit.
 
-Chaque design dispose de huit poses : arrêt face, arrêt dos, deux images de course, tir armé,
-lâcher avec poignet cassé, passe à deux mains et saut bras levé. Elles sont assemblées dans
-quatre blocs (diagonale bas/haut, droite/gauche). Les gestes suivent les phases et événements du
-monde. Plusieurs gestes partagent encore des poses ; les transitions, le dribble et la course
-de dos restent à enrichir dans ce style. Cette simplification visuelle ne change ni les
-commandes, ni la jauge, ni la physique, ni les résultats du match.
+Les découpes suivent les silhouettes opaques réelles. Elles ne supposent pas des rangées de
+hauteur constante dans les planches générées. Le torse sert de repère horizontal et les pieds
+de repère vertical : une main tendue ne déplace pas tout le joueur dans sa case. Les textures
+rognées gardent le même cadre logique de 96×96, pied à la ligne 84, et de larges marges. La
+cuisson refuse une silhouette qui touche le bord, y compris pour les grands gabarits.
 
-Course et dribble restent sur un cycle de 600 ms, avec cadence bornée selon la vitesse. La main
-forte du joueur est déterministe. Les tenues officielles sont pour l'instant fixes : bleu et
-blanc pour l'équipe contrôlée, ivoire et bordeaux pour l'adversaire.
+Le dessin conserve deux pixels natifs par unité logique jusqu'au rendu du match : sortie
+1280×720 pour une vue logique de 640×360. La taille à l'écran, les distances et le cadrage
+restent identiques. Les joueurs mesurent 39 à 51 unités logiques, soit 78 à 102 pixels natifs.
+Le portrait conserve également ce détail. Ne pas réduire à nouveau les personnages à 40 pixels
+puis les agrandir : les détails des yeux, des doigts et des vêtements seraient perdus.
 
-## Terrain, caméra et HUD
+## Ballon et phases du monde
 
-Le terrain et l'arène gardent la direction existante : résolution interne 640×360, 30 px/m,
-profondeur comprimée à 0,66 et hauteur à 0,68. Le jeu reste en 3/4 avec mise à l'échelle entière,
-pixels nets et plein écran par F. Deux paniers, parquet aux couleurs du club recevant, public
-sur le pourtour, ombres au sol, anneau du joueur contrôlé, jauge de tir et annonces du match.
+Le ballon reste séparé du personnage. Les emplacements de contact viennent des repères peints
+avec chaque pose. Pendant le dribble, une seule phase de 600 ms commande la foulée, le bras
+et le ballon. Entre le lâcher descendant et la reprise dans la paume, une trajectoire libre
+atteint le parquet. Le calque de doigts provient du personnage complet, à sa position réelle,
+et reste devant le ballon. Les autres gestes suivent les phases du saut, du lâcher, de la
+passe et de la réception du monde ; la physique et les résultats ne dépendent pas du dessin.
 
-Le HUD affiche les scores et chronomètres, puis le portrait, le nom et les statistiques du
-joueur contrôlé. Les noms restent dans les menus et le HUD, hors du terrain. Le menu pause
-conserve le box score et l'option de simulation de la fin.
+Ballon orange chaud, coutures sombres, reflet et six rotations en 20×20 natifs pour un diamètre
+logique de 10. Parquet d'érable peint, raquettes et bandes bleu nuit, lignes ivoire et accents
+or. Ombres, anneau de contrôle, jauge et annonces restent indépendants des sprites.
 
-## Assets
+## Atelier
 
-`src/assets/CREDITS.md` précise la provenance des planches. Les anciens designs et leurs scènes
-de comparaison sont retirés du dépôt courant ; leur historique Git reste consultable.
+L'onglet **Animations** du GM et `?anims` utilisent les mêmes images et repères que le match.
+Choix des 18 animations, des 10 designs, de quatre orientations, de la taille et de la
+corpulence ; lecture ×0,25 à ×2, pause et avance image par image. La référence validée est
+visible à côté de la pose. `?style` ouvre le catalogue des dix joueurs.
+
+Matheo a validé les captures réelles et les animations le 11 novembre 2026, puis demandé
+leur publication sur `main`. Provenance : `src/assets/CREDITS.md`.

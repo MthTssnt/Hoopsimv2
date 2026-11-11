@@ -81,6 +81,8 @@ export interface BodyView {
   lob?: boolean;
   /** Une passe arrive dans ses mains (ou vient d'y arriver). */
   catching?: boolean;
+  sinceCatch?: number | null;
+  motionPhase?: number;
   /** Temps depuis son atterrissage (s). */
   sinceLanding?: number | null;
   /** Temps depuis le début de son geste de vol (s). */
@@ -127,7 +129,7 @@ function airGesture(body: BodyView): Pick {
   const air = body.air ?? { time: 1, rising: false, progress: 1 };
   const gathering = air.time * 1000 < t.gatherMs;
   const released = body.followThrough ?? false;
-  const sinceRelease = (body.sinceRelease ?? 1) * 1000;
+  const airStep = gathering ? 0 : air.rising ? (air.progress < 0.65 ? 1 : 2) : 3;
   switch (body.shot) {
     case 'dunk':
       // Ramassage, armé derrière la tête en montant, smash au sommet, puis l'accroche au cercle.
@@ -139,20 +141,20 @@ function airGesture(body: BodyView): Pick {
       break;
     case 'jump':
       if (body.holding) return ['jumpShot', gathering ? 0 : air.rising && air.progress < 0.6 ? 1 : 2];
-      if (released) return ['jumpShot', sinceRelease < t.releaseMs || air.rising ? 3 : 4];
+      if (released) return ['jumpShot', 3];
       break;
   }
   // Ballon pris en l'air (rebond) : serré sous le menton.
-  if (body.holding) return ['rebound', 1];
-  if (released) return ['jumpShot', 4];
+  if (body.holding) return ['rebound', 3];
+  if (released) return ['jumpShot', 3];
   switch (body.jumpKind) {
     case 'block':
     case 'blockOff':
-      return [body.jumpKind, air.rising && air.progress < 0.5 ? 0 : 1];
+      return [body.jumpKind, airStep];
     case 'tipoff':
-      return ['tipoff', 0];
+      return ['tipoff', airStep];
     default:
-      return ['rebound', 0];
+      return ['rebound', airStep];
   }
 }
 
@@ -165,11 +167,11 @@ function groundGesture(body: BodyView): Pick | null {
     if (ft.stage === 'aim') return ['freeThrow', 1];
     if (ft.stage === 'after' && ft.since * 1000 < t.freeThrowHoldMs) return ['freeThrow', ft.since * 1000 < t.freeThrowReleaseMs ? 2 : 3];
   }
-  if (body.sinceReach != null && body.sinceReach * 1000 < t.stealMs) return ['steal', body.sinceReach * 1000 < t.stealMs / 2 ? 0 : 1];
-  if (body.offBalance) return ['offBalance', 0];
-  if (body.sincePass != null && body.sincePass * 1000 < t.passMs) return [body.lob ? 'lobPass' : 'pass', body.sincePass * 1000 < t.passCockMs ? 0 : 1];
-  if (body.catching) return ['catch', 0];
-  if (!body.holding && body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', 0];
+  if (body.sinceReach != null && body.sinceReach * 1000 < t.stealMs) return ['steal', Math.min(3, Math.floor(body.sinceReach * 1000 / t.stealMs * 4))];
+  if (body.offBalance) return ['offBalance', Math.min(3, Math.floor((body.motionPhase ?? 0) * 4))];
+  if (body.sincePass != null && body.sincePass * 1000 < t.passMs) return [body.lob ? 'lobPass' : 'pass', Math.min(3, Math.floor(body.sincePass * 1000 / t.passMs * 4))];
+  if (body.catching) return ['catch', body.sinceCatch == null ? 0 : Math.min(3, 1 + Math.floor(body.sinceCatch * 1000 / t.catchMs * 3))];
+  if (!body.holding && body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', Math.min(3, Math.floor(body.sinceLanding * 1000 / t.landingMs * 4))];
   return null;
 }
 
@@ -226,7 +228,7 @@ export function frameIndex(state: Extract<SpriteState, { kind: 'frame' }>, layou
  * posé pieds sur `feet` : origine en bas au centre, une ligne sous la rangée des semelles.
  */
 export function heldBallPoint(feet: Point, anchor: Point): Point {
-  return { x: feet.x - FRAME.width / 2 + anchor.x, y: feet.y + 1 - FRAME.height + anchor.y };
+  return { x: feet.x - FRAME.centerX + anchor.x, y: feet.y - FRAME.groundY + anchor.y };
 }
 
 /** Raccord linéaire de `from` vers `to` ; au-delà de la durée, `to` exactement. */

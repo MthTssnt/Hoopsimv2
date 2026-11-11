@@ -112,6 +112,19 @@ describe('joueur contrôlé', () => {
     expect(world.player.pos.y).toBe(START.y);
   });
 
+  it('expose la phase physique du dribble et la remet à zéro au saut', () => {
+    const world = newWorld();
+    expect(world.dribblePhase).toBe(0);
+    run(world, 0.15, IDLE);
+    const phase = world.dribblePhase;
+    expect(phase).toBeGreaterThan(0);
+    expect(phase).toBeLessThan(1);
+    expect(world.ball.pos.z).toBeCloseTo(BALL_RADIUS + (WORLD_TUNING.dribbleHandHeight - BALL_RADIUS) * Math.abs(Math.cos(Math.PI * phase)), 8);
+    world.step(WORLD_DT, { x: 0, y: 0, jump: true });
+    world.step(WORLD_DT, IDLE);
+    expect(world.dribblePhase).toBe(0);
+  });
+
   it('dribble avec le ballon, puis le lève au-dessus de la tête en l’air', () => {
     const world = newWorld();
     expect(world.holder).toBe(0);

@@ -1,22 +1,28 @@
 import type Phaser from 'phaser';
-import { PALETTE } from '../../../assets/palette';
-import { BALL } from '../../../assets/sprites/arena';
-import { drawGrid } from './draw';
+import { BALL_SOURCE } from './style';
+import { RENDER_SCALE as D } from '../../config';
 
 export const BALL_TEXTURE = 'ball';
 export const BALL_SHADOW_TEXTURE = 'ball-shadow';
 
-/**
- * Ballon 8×8 cerné (10×10 avec le contour) : deux coutures `ink`, un reflet en haut à gauche,
- * l'ombre en bas à droite ; et son ombre au sol. Partagés par le match et `?style`.
- */
+/** Six rotations peintes à double résolution, dans un diamètre logique de 10 px. */
 export function createBallTextures(scene: Phaser.Scene): void {
   if (!scene.textures.exists(BALL_TEXTURE)) {
-    const g = scene.add.graphics();
-    const colors: Record<string, number> = { b: PALETTE.orange, B: PALETTE.orangeDark, n: PALETTE.ink, l: PALETTE.woodLight };
-    drawGrid(g, BALL, 1, 1, (c) => colors[c] ?? null);
-    g.generateTexture(BALL_TEXTURE, BALL[0].length + 2, BALL.length + 2);
-    g.destroy();
+    const texture = scene.textures.createCanvas(BALL_TEXTURE, 60 * D, 10 * D)!;
+    const ctx = texture.context;
+    ctx.imageSmoothingEnabled = false;
+    const source = scene.textures.get(BALL_SOURCE).getSourceImage() as HTMLImageElement;
+    for (let frame = 0; frame < 6; frame++) {
+      const cx = source.width * [0.1875, 0.5, 0.8125][frame % 3];
+      const cy = source.height * (frame < 3 ? 0.275 : 0.75);
+      const r = source.width * 0.1;
+      ctx.save();
+      ctx.beginPath(); ctx.arc((frame * 10 + 5) * D, 5 * D, 5 * D, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(source, cx - r, cy - r, r * 2, r * 2, frame * 10 * D, 0, 10 * D, 10 * D);
+      ctx.restore();
+      texture.add(frame, 0, frame * 10 * D, 0, 10 * D, 10 * D);
+    }
+    texture.refresh();
   }
   if (!scene.textures.exists(BALL_SHADOW_TEXTURE)) {
     const g = scene.add.graphics();

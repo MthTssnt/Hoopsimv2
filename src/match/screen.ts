@@ -11,8 +11,8 @@ export function integerZoom(windowWidth: number, windowHeight: number, viewWidth
  * demande doit partir de l'appui lui-même), sauf si `allowFullscreenKey` le refuse.
  * Renvoie la fonction qui retire les écouteurs.
  */
-export function attachIntegerScaling(game: Phaser.Game, view: { width: number; height: number }, allowFullscreenKey: (event: KeyboardEvent) => boolean = () => true): () => void {
-  const onResize = () => game.scale.setZoom(integerZoom(window.innerWidth, window.innerHeight, view.width, view.height));
+export function attachIntegerScaling(game: Phaser.Game, view: { width: number; height: number; resolution?: number }, allowFullscreenKey: (event: KeyboardEvent) => boolean = () => true): () => void {
+  const onResize = () => game.scale.setZoom(integerZoom(window.innerWidth, window.innerHeight, view.width, view.height) / (view.resolution ?? 1));
   const onKey = (event: KeyboardEvent) => {
     if ((event.key === 'f' || event.key === 'F') && !event.repeat && allowFullscreenKey(event)) game.scale.toggleFullscreen();
   };

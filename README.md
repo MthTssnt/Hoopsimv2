@@ -16,7 +16,9 @@ npm run calibrate  # simule une saison complète et affiche les moyennes de la l
 
 Les designs officiels sont utilisés automatiquement dans tous les matchs. Depuis l'accueil,
 « Tester un match jouable » lance un 5 contre 5 ; dans une partie GM, utiliser « Jouer ».
-`?court` ouvre directement le match, `?style` le catalogue des dix designs.
+`?court` ouvre directement le match, `?style` le catalogue des dix designs. L’onglet
+« Animations » (ou `?anims`) permet de visualiser les 18 animations, au ralenti ou image par
+image, avec les références validées. Chaque geste contient 4 à 8 images.
 
 Commandes : ZQSD pour se déplacer, Espace pour sauter/tirer (relâcher pour déclencher),
 E pour passer/changer de défenseur, A pour tenter une interception, P ou Échap pour la pause,
