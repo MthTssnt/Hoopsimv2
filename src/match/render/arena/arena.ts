@@ -135,15 +135,25 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
   const floorLeft = Math.max(0, a.leftBaseline);
   const floorRight = Math.min(SW, a.rightBaseline);
   const floorBottom = Math.min(SH, a.nearLine);
-  const plank = artPx(3);
+  const plank = artPx(5);
   for (let y = a.farLine, row = 0; y < floorBottom; y += plank, row++) {
     const h = Math.min(plank, floorBottom - y);
     g.fillStyle(row % 2 ? COURT_STYLE.wood : COURT_STYLE.woodLight).fillRect(floorLeft, y, floorRight - floorLeft, h);
     g.fillStyle(COURT_STYLE.woodDark);
-    for (let x = floorLeft + rng.int(0, artPx(40)); x < floorRight; x += rng.int(artPx(26), artPx(60))) g.fillRect(x, y, 1, h);
+    for (let x = floorLeft + (row % 3) * artPx(31); x < floorRight; x += rng.int(artPx(75), artPx(110))) g.fillRect(x, y, 1, h);
   }
 
   options.paintFloor?.(floorLeft, a.farLine, floorRight - floorLeft, floorBottom - a.farLine);
+
+  // Double bordure hors des lignes : la surface de jeu conserve ses dimensions physiques.
+  g.fillStyle(COURT_STYLE.edge);
+  g.fillRect(a.leftBaseline - 5, a.farLine - 5, a.rightBaseline - a.leftBaseline + 10, 3);
+  g.fillRect(a.leftBaseline - 5, a.nearLine + 2, a.rightBaseline - a.leftBaseline + 10, 3);
+  g.fillRect(a.leftBaseline - 5, a.farLine - 2, 3, a.nearLine - a.farLine + 4);
+  g.fillRect(a.rightBaseline + 2, a.farLine - 2, 3, a.nearLine - a.farLine + 4);
+  g.fillStyle(COURT_STYLE.gold);
+  pixelLine(g, P(-0.10, -0.10), P(L + 0.10, -0.10));
+  pixelLine(g, P(-0.10, W + 0.10), P(L + 0.10, W + 0.10));
 
   // Raquettes bleu profond et liserés chauds, accordés aux nouveaux sprites.
   const paint = COURT_STYLE.paint;
@@ -153,12 +163,19 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
   for (const hoop of hoops) {
     const b = paintBox(court, hoop);
     fillPolygon(g, box(b.x0, b.y0, b.x1, b.y1));
+    g.fillStyle(COURT_STYLE.paintLight);
+    fillPolygon(g, box(b.x0, b.y0, b.x1, b.y0 + 0.18));
+    g.fillStyle(paint);
+
   }
   const center = P(L / 2, W / 2);
   const disc = (r: number, color: number) => {
     g.fillStyle(color);
     fillEllipse(g, center.x, center.y, r * proj.ppm, r * proj.depthPx);
   };
+  // Incrustation géométrique : peu de contraste autour des dix silhouettes.
+  g.fillStyle(COURT_STYLE.woodDark);
+  fillPolygon(g, [P(L / 2 - 2.7, W / 2), P(L / 2, W / 2 - 2.7), P(L / 2 + 2.7, W / 2), P(L / 2, W / 2 + 2.7)]);
   disc(CIRCLE_RADIUS, paint);
   disc(CIRCLE_RADIUS * 0.92, COURT_STYLE.gold);
   disc(CIRCLE_RADIUS * 0.87, paint);
@@ -182,7 +199,23 @@ export function drawArena(g: PaintTarget, proj: ArtProjection, court: Court, hom
     const b = paintBox(court, hoop);
     const corners = box(b.x0, b.y0, b.x1, b.y1);
     pixelPolyline(g, [...corners, corners[0]]);
-    circle(b.ft, hoop.rim.y, CIRCLE_RADIUS);
+    // Demi-cercle extérieur continu ; demi-cercle intérieur pointillé.
+    const toward = hoop.toCourt;
+    const arc = (cx: number, cy: number, r: number, start: number, end: number) => {
+      const pts = Array.from({ length: 33 }, (_, i) => {
+        const a = start + (end - start) * i / 32;
+        return P(cx + toward * Math.cos(a) * r, cy + Math.sin(a) * r);
+      });
+      pixelPolyline(g, pts);
+    };
+    arc(b.ft, hoop.rim.y, CIRCLE_RADIUS, -Math.PI / 2, Math.PI / 2);
+    for (let i = 0; i < 8; i++) arc(b.ft, hoop.rim.y, CIRCLE_RADIUS, Math.PI / 2 + i * Math.PI / 8, Math.PI / 2 + (i + 0.48) * Math.PI / 8);
+    // Zone de non-charge, centrée sur le véritable cercle.
+    arc(hoop.rim.x, hoop.rim.y, 1.22, -Math.PI / 2, Math.PI / 2);
+    for (const d of [1.1, 1.9, 2.7, 3.5]) for (const side of [-1, 1]) {
+      const x = hoop.baselineX + toward * d, y = hoop.rim.y + side * court.paintWidth / 2;
+      pixelLine(g, P(x, y), P(x, y + side * 0.22));
+    }
     pixelPolyline(g, threePointLine(court, hoop).map((p) => P(p.x, p.y)));
   }
 
@@ -217,8 +250,8 @@ export function createArena(scene: Phaser.Scene, key: string, proj: ArtProjectio
   if (scene.textures.exists(FLOOR_SOURCE)) tileContext.drawImage(scene.textures.get(FLOOR_SOURCE).getSourceImage() as HTMLImageElement, 0, 0, 128, 128);
   const pattern = ctx.createPattern(tile, 'repeat');
   drawArena(target, proj, court, home, { ...options, paintFloor: pattern ? (x, y, w, h) => {
-    ctx.globalAlpha = 1; ctx.fillStyle = pattern; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#efcd92'; ctx.globalAlpha = 0.30; ctx.fillRect(x, y, w, h);
+    ctx.globalAlpha = 0.10; ctx.fillStyle = pattern; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#efcd92'; ctx.globalAlpha = 0.10; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = '#0d1423'; ctx.globalAlpha = 0.15; ctx.fillRect(x, y, w, 2); ctx.fillRect(x, y, 2, h); ctx.globalAlpha = 1;
   } : undefined });
   texture.refresh();

@@ -67,7 +67,7 @@ describe('gestes : l’image suit la phase du saut et le temps écoulé', () => 
     expect(pick({ ...shot, air: air(0.4, true, 0.8) })).toBe('jumpShot:2');
     expect(pick({ ...shot, air: air(0.6, false, 0.95) })).toBe('jumpShot:2');
     const after = { ...flying, shot: 'jump' as const, followThrough: true };
-    expect(pick({ ...after, air: air(0.65, false, 0.95), sinceRelease: 0.05 })).toBe('jumpShot:3');
+    expect(pick({ ...after, air: air(0.65, false, 0.95), sinceRelease: 0.05 })).toBe('jumpShot:2');
     expect(pick({ ...after, air: air(0.9, false, 0.5), sinceRelease: 0.3 })).toBe('jumpShot:3');
   });
 
@@ -114,7 +114,7 @@ describe('gestes : l’image suit la phase du saut et le temps écoulé', () => 
     expect(pick({ ...ground, sinceReach: 0.05 })).toBe('steal:0');
     expect(pick({ ...ground, sinceReach: 0.2 })).toBe('steal:3');
     expect(pick({ ...ground, offBalance: true })).toBe('offBalance:0');
-    expect(pick({ ...ground, sincePass: 0.03 })).toBe('pass:0');
+    expect(pick({ ...ground, sincePass: 0.03 })).toBe('pass:2');
     expect(pick({ ...ground, sincePass: 0.2 })).toBe('pass:3');
     expect(pick({ ...ground, sincePass: 0.2, lob: true })).toBe('lobPass:3');
     expect(pick({ ...ground, sincePass: 0.3 })).toBe('idle');

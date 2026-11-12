@@ -24,11 +24,24 @@ export interface MotionPose { height: number; ball: Point | null; palm: Point | 
 
 /** Phase libre du rebond, entre le dernier contact descendant et la reprise dans la paume. */
 export function dribbleFlightY(frame: number, releaseY: number, catchY: number, floorY: number): number | null {
-  if (frame < 2 || frame > 5) return null;
+  if (frame <= 1 || frame >= 6) return null;
   if (frame <= 4) {
     const t = (frame - 1) / 3;
     return releaseY + (floorY - releaseY) * t * t;
   }
   const t = (frame - 4) / 2;
   return floorY - (floorY - catchY) * (2 * t - t * t);
+}
+
+/** Même trajectoire à l'atelier et en match ; interpoler la balle sans interpoler les pixels du corps. */
+export function dribbleBallAt(phase: number, anchors: readonly (Point | null)[], floorY: number): Point | null {
+  const frame = ((phase % 1 + 1) % 1) * 8, index = Math.floor(frame), t = frame - index;
+  const a = anchors[index], b = anchors[(index + 1) % 8];
+  if (!a || !b) return a ?? b ?? null;
+  const release = anchors[1], caught = anchors[6];
+  const flight = release && caught ? dribbleFlightY(frame, release.y, caught.y, floorY) : null;
+  // Pendant le vol, x rejoint la paume au lieu de suivre les marqueurs supprimés du ballon.
+  const k = Math.max(0, Math.min(1, (frame - 1) / 5));
+  return { x: flight !== null && release && caught ? release.x + (caught.x - release.x) * k : a.x + (b.x - a.x) * t,
+    y: flight ?? a.y + (b.y - a.y) * t };
 }

@@ -432,7 +432,8 @@ Le rendu prend quelques libertés pour la lisibilité. Elles ne changent ni les 
 - **Cercle** : dessiné 1,35× plus grand que le cercle physique. La physique garde le vrai rayon :
   un ballon qui passe dans le cercle physique passe aussi dans le dessin.
 - **Ballon tenu** : dessiné au point d'accroche de l'image courante du sprite (main du dribble,
-  ballon levé en l'air). Au lâcher et au ramassage, le dessin rejoint la position physique en
-  ~80 ms. Le ramassage, l'ombre du ballon et le départ des tirs utilisent la position physique.
+  ballon levé en l'air). Au lâcher, un décalage du point de départ décroît en ~80 ms de temps de jeu,
+  tout en conservant le mouvement du vol. Les grands écarts (>36 px logiques) et les dunks
+  ne sont pas fondus à travers le corps. Au ramassage, le ballon rejoint directement la paume. Le ramassage, l'ombre du ballon et le départ des tirs utilisent la position physique.
 - **Taille des joueurs** : la hauteur affichée suit le gabarit du sprite (meneur, ailier, pivot ;
   voir `docs/ART_DIRECTION.md`). La physique garde les vraies tailles (portée, saut, contre).

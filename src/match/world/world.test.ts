@@ -26,6 +26,24 @@ const RIGHT: MoveInput = { x: 1, y: 0, jump: false };
 const IDLE: MoveInput = { x: 0, y: 0, jump: false };
 
 describe('joueur contrôlé', () => {
+  it('garde la foulée continue au freinage et au demi-tour, sans pédaler en l’air', () => {
+    const w = newWorld();
+    const start = w.player.pos.x;
+    run(w, 0.25, RIGHT);
+    expect(w.player.strideDistance).toBeCloseTo(w.player.pos.x - start, 5);
+    const beforeTurn = w.player.strideDistance;
+    run(w, 0.3, { x: -1, y: 0, jump: false });
+    expect(w.player.strideDistance).toBeGreaterThan(beforeTurn);
+    run(w, 0.2, IDLE);
+    const stopped = w.player.strideDistance;
+    run(w, 0.2, IDLE);
+    expect(w.player.strideDistance).toBe(stopped);
+    w.step(WORLD_DT, { ...RIGHT, jump: true });
+    const airborne = w.player.strideDistance;
+    run(w, 0.15, RIGHT);
+    expect(w.player.strideDistance).toBe(airborne);
+  });
+
   it('atteint sa vitesse de course, et un meneur va plus vite qu’un pivot lourd', () => {
     const fast = newWorld(guard);
     const slow = newWorld(heavyCenter);
@@ -258,6 +276,8 @@ describe('tir avec jauge', () => {
       run(world, 3, IDLE);
       expect(shot.live).toBe(shot.wanted);
       expect(world.points[0]).toBe(shot.wanted ? 2 : 0);
+      if (shot.wanted) expect(world.netPassages.some((event) => !event.dunk && event.side === shot.hoop)).toBe(true);
+      else expect(world.netPassages).toEqual([]);
       // Retombé devant le cercle, côté terrain.
       expect(world.player.pos.x).toBeLessThan(rim.x);
       expect(world.player.pos.x).toBeGreaterThan(rim.x - 1.6);
@@ -353,6 +373,8 @@ describe('dunk', () => {
       run(world, 3, IDLE);
       expect(shot.live).toBe(shot.wanted);
       expect(world.points[0]).toBe(shot.wanted ? 2 : 0);
+      if (shot.wanted) expect(world.netPassages.some((event) => event.dunk && event.side === shot.hoop)).toBe(true);
+      else expect(world.netPassages).toEqual([]);
       outcomes.add(shot.wanted);
     }
     expect([...outcomes].sort()).toEqual([false, true]);

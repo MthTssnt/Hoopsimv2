@@ -1,3 +1,4 @@
+import { PLAYER_TUNING } from '../world/player';
 import type { PlayKind } from '../world/MatchWorld';
 import type { Point } from './pixelDraw';
 import type { Facing, Heading } from './sprites/views';
@@ -7,7 +8,9 @@ import { FRAME, type AnimationName } from './sprites/views';
 /** Valeurs provisoires, réglables à l'œil. */
 export const PLAYER_VIEW_TUNING = {
   /** Vitesse au sol (m/s) au-delà de laquelle le joueur court. */
-  runSpeed: 0.5,
+  runSpeed: PLAYER_TUNING.movingThreshold,
+  /** Distance d’un cycle de deux pas, indépendante des changements de vue. */
+  strideMeters: PLAYER_TUNING.strideMeters,
   /** Durée du raccord du ballon entre la main dessinée et sa position physique (ms). */
   ballBlendMs: 80,
   /**
@@ -116,7 +119,7 @@ export function headingFor(direction: { x: number; y: number }, previous: Headin
  */
 export function nextHeading(previous: Heading, vel: { x: number; y: number }, airborne: boolean, faceToward: { x: number; y: number } | null = null): Heading {
   if (faceToward) return headingFor(faceToward, previous);
-  if (airborne || Math.hypot(vel.x, vel.y) <= PLAYER_VIEW_TUNING.runSpeed) return previous;
+  if (airborne || Math.hypot(vel.x, vel.y) <= Math.max(0.5, PLAYER_VIEW_TUNING.runSpeed)) return previous;
   return headingFor(vel, previous);
 }
 
@@ -137,11 +140,11 @@ function airGesture(body: BodyView): Pick {
       return ['dunk', gathering ? 0 : air.rising && air.progress < 0.7 ? 1 : 2];
     case 'layup':
       if (body.holding) return ['layup', gathering ? 0 : air.rising && air.progress < 0.5 ? 1 : 2];
-      if (released) return ['layup', 3];
+      if (released) return ['layup', (body.sinceRelease ?? 1) < 0.065 ? 2 : 3];
       break;
     case 'jump':
       if (body.holding) return ['jumpShot', gathering ? 0 : air.rising && air.progress < 0.6 ? 1 : 2];
-      if (released) return ['jumpShot', 3];
+      if (released) return ['jumpShot', (body.sinceRelease ?? 1) < 0.065 ? 2 : 3];
       break;
   }
   // Ballon pris en l'air (rebond) : serré sous le menton.
@@ -169,9 +172,9 @@ function groundGesture(body: BodyView): Pick | null {
   }
   if (body.sinceReach != null && body.sinceReach * 1000 < t.stealMs) return ['steal', Math.min(3, Math.floor(body.sinceReach * 1000 / t.stealMs * 4))];
   if (body.offBalance) return ['offBalance', Math.min(3, Math.floor((body.motionPhase ?? 0) * 4))];
-  if (body.sincePass != null && body.sincePass * 1000 < t.passMs) return [body.lob ? 'lobPass' : 'pass', Math.min(3, Math.floor(body.sincePass * 1000 / t.passMs * 4))];
+  if (body.sincePass != null && body.sincePass * 1000 < t.passMs) return [body.lob ? 'lobPass' : 'pass', body.sincePass < 0.08 ? 2 : 3];
   if (body.catching) return ['catch', body.sinceCatch == null ? 0 : Math.min(3, 1 + Math.floor(body.sinceCatch * 1000 / t.catchMs * 3))];
-  if (!body.holding && body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', Math.min(3, Math.floor(body.sinceLanding * 1000 / t.landingMs * 4))];
+  if (!body.holding && body.speed < 1.2 && body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', Math.min(3, Math.floor(body.sinceLanding * 1000 / t.landingMs * 4))];
   return null;
 }
 

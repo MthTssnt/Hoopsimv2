@@ -7,8 +7,8 @@ export const BALL_ART = balls;
 export const FLOOR_SOURCE = 'court-maple-source';
 export const BALL_SOURCE = 'court-ball-source';
 export const COURT_STYLE = {
-  apron: 0x17243b, edge: 0x0d1423, paint: 0x293e62, paintLight: 0x344d75,
-  gold: 0xe8bc76, line: 0xfff1d6, wood: 0xe7bd77, woodLight: 0xf0ce93, woodDark: 0xc99b59,
+  apron: 0x182537, edge: 0x0d1725, paint: 0x253b51, paintLight: 0x304961,
+  gold: 0xdca65f, line: 0xffefd2, wood: 0xd7ab70, woodLight: 0xddb47c, woodDark: 0xc59a62,
 } as const;
 
 export function preloadCourtStyle(scene: Phaser.Scene): void {

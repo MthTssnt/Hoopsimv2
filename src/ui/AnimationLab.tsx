@@ -4,7 +4,7 @@ import { COURT_DESIGNS } from '../assets/players/courtDesigns';
 import { BALL_ART, MAPLE_ART } from '../match/render/arena/style';
 import { appearanceFor, type Appearance } from '../match/render/sprites/appearance';
 import { paintMotion } from '../match/render/sprites/motionArt';
-import { MOTIONS, type MotionId } from '../match/render/sprites/motion';
+import { MOTIONS, dribbleBallAt, type MotionId } from '../match/render/sprites/motion';
 import { FRAME, SPRITE_DETAIL, type Facing, type Heading } from '../match/render/sprites/views';
 import './animationLab.css';
 
@@ -54,7 +54,7 @@ export default function AnimationLab({ embedded = false }: { embedded?: boolean 
               <label>Orientation<select aria-label="Orientation" value={direction} onChange={(e) => setDirection(e.target.value)}><option value="down:right">Face · droite</option><option value="down:left">Face · gauche</option><option value="up:right">Dos · droite</option><option value="up:left">Dos · gauche</option></select></label>
             </div>
             <div className="lab-stage">
-              <MotionCanvas images={images} look={look} team={team} motion={motion} frame={index} heading={heading} facing={facing} zoom={4} marks={marks} />
+              <MotionCanvas images={images} look={look} team={team} motion={motion} frame={index} heading={heading} facing={facing} zoom={4} marks={marks} phase={(time % def.ms) / def.ms} />
               <div className="lab-stage-info"><span className="lab-eyebrow">{def.loop ? 'CYCLE' : 'GESTE'}</span><h2>{def.label}</h2><p>{def.count} images · {(def.ms / 1000).toFixed(2).replace('.', ',')} s</p><p className="lab-frame-counter" aria-live="off">{String(index + 1).padStart(2, '0')}<span> / {String(def.count).padStart(2, '0')}</span></p><label className="lab-check"><input type="checkbox" checked={marks} onChange={(e) => setMarks(e.target.checked)} /> Points de contact & cadre</label><p className="lab-explanation">Lecture à vitesse réelle ou ralentie, puis image par image.</p><figure className="lab-reference"><figcaption>Référence validée</figcaption><ReferenceCanvas images={images} look={look} team={team} /></figure></div>
             </div>
             <div className="lab-playback"><button onClick={() => setPlaying((p) => !p)}>{playing ? 'Pause' : 'Lire'}</button><button onClick={() => selectFrame((index + def.count - 1) % def.count)} aria-label="Image précédente">←</button><button onClick={() => selectFrame((index + 1) % def.count)} aria-label="Image suivante">→</button><label>Vitesse<select aria-label="Vitesse" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}><option value={0.25}>×0,25</option><option value={0.5}>×0,5</option><option value={1}>×1</option><option value={2}>×2</option></select></label><input aria-label="Image de l’animation" type="range" min={1} max={def.count} value={index + 1} onChange={(e) => selectFrame(Number(e.target.value) - 1)} /></div>
@@ -73,22 +73,33 @@ export function paintBall(ctx: CanvasRenderingContext2D, source: HTMLImageElemen
   const cx = source.width * [0.1875, 0.5, 0.8125][spin % 3], cy = source.height * (spin < 3 ? 0.275 : 0.75), r = source.width * 0.1;
   ctx.save(); ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(source, cx - r, cy - r, r * 2, r * 2, Math.round(x - 5), Math.round(y - 5), 10, 10); ctx.restore();
 }
-function MotionCanvas({ images, look, team, motion, frame, heading, facing, zoom, marks }: { images: HTMLImageElement[]; look: Appearance; team: number; motion: MotionId; frame: number; heading: Heading; facing: Facing; zoom: number; marks: boolean }) {
+function MotionCanvas({ images, look, team, motion, frame, heading, facing, zoom, marks, phase }: { images: HTMLImageElement[]; look: Appearance; team: number; motion: MotionId; frame: number; heading: Heading; facing: Facing; zoom: number; marks: boolean; phase?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const ctx = ref.current?.getContext('2d'); if (!ctx) return;
     ctx.imageSmoothingEnabled = false; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, FRAME.width * SPRITE_DETAIL, FRAME.height * SPRITE_DETAIL);
     const art = paintMotion(images, look, team, motion, frame, heading, facing); ctx.drawImage(art.canvas, 0, 0); ctx.scale(SPRITE_DETAIL, SPRITE_DETAIL);
     let ball = art.pose.ball;
-    if (!ball && frame >= 2 && ['jumpShot', 'layup', 'freeThrow', 'pass', 'lobPass'].includes(motion)) ball = paintMotion(images, look, team, motion, 1, heading, facing).pose.ball;
-    if (ball && ['jumpShot', 'layup', 'freeThrow', 'pass', 'lobPass'].includes(motion) && frame >= 2) ball = { x: clamp(ball.x + (facing === 'left' ? -1 : 1) * (frame - 1) * 7, 5, FRAME.width - 5), y: clamp(ball.y - (frame - 1) * 7, 5, FRAME.height - 5) };
-    if (ball) { paintBall(ctx, images[PLAYER_SOURCES.length], ball.x, ball.y, frame % 6); ctx.drawImage(art.hand, 0, 0, FRAME.width, FRAME.height); }
+    if (motion === 'dribble' || motion === 'dribbleIdle') {
+      const anchors = Array.from({ length: 8 }, (_, f) => paintMotion(images, look, team, motion, f, heading, facing).pose.ball);
+      ball = dribbleBallAt(phase ?? frame / 8, anchors, FRAME.groundY - 5);
+    }
+    if (!ball && frame === 3 && ['jumpShot', 'layup', 'freeThrow', 'pass', 'lobPass'].includes(motion)) {
+      const release = paintMotion(images, look, team, motion, 2, heading, facing).pose.ball
+        ?? paintMotion(images, look, team, motion, 1, heading, facing).pose.ball;
+      if (release) ball = { x: clamp(release.x + (facing === 'left' ? -9 : 9), 5, FRAME.width - 5), y: clamp(release.y - 10, 5, FRAME.height - 5) };
+    }
+    if (ball) {
+      if (heading === 'up') { ctx.clearRect(0, 0, FRAME.width, FRAME.height); paintBall(ctx, images[PLAYER_SOURCES.length], ball.x, ball.y, frame % 6); ctx.drawImage(art.canvas, 0, 0, FRAME.width, FRAME.height); }
+      else paintBall(ctx, images[PLAYER_SOURCES.length], ball.x, ball.y, frame % 6);
+      ctx.drawImage(art.hand, 0, 0, FRAME.width, FRAME.height);
+    }
     if (marks) {
       const b = Object.fromEntries(Object.entries(art.bounds).map(([key, value]) => [key, value / SPRITE_DETAIL])) as typeof art.bounds; ctx.strokeStyle = '#7ed8bf'; ctx.lineWidth = 0.5; ctx.strokeRect(b.left - 1, b.top - 1, b.right - b.left + 2, b.bottom - b.top + 2);
       ctx.fillStyle = '#e8bc76'; ctx.fillRect(0, FRAME.groundY, FRAME.width, 0.5);
       if (art.pose.palm) { ctx.fillStyle = '#5ce6e6'; ctx.fillRect(Math.round(art.pose.palm.x) - 1, Math.round(art.pose.palm.y) - 1, 2, 2); }
     }
-  }, [images, look, team, motion, frame, heading, facing, marks]);
+  }, [images, look, team, motion, frame, heading, facing, marks, phase]);
   return <canvas ref={ref} width={FRAME.width * SPRITE_DETAIL} height={FRAME.height * SPRITE_DETAIL} style={{ width: FRAME.width * zoom, height: FRAME.height * zoom }} role="img" aria-label={`${motion}, image ${frame + 1}, ${heading}, ${facing}`} />;
 }
 function BallCanvas({ source, spin }: { source: HTMLImageElement; spin: number }) {

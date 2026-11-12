@@ -6,6 +6,10 @@ import type { Court, Vec3 } from '../physics/court';
 export const PLAYER_TUNING = {
   /** Accélération au sol (m/s²) : réactif, façon arcade. */
   accel: 28,
+  /** Deux appuis par cycle : référence partagée par la course et le dribble. */
+  strideMeters: 3.4,
+  movingThreshold: 0.18,
+  dribbleMinRate: 0.55,
   /**
    * Freinage au sol (m/s²) : à l'arrêt, dans un demi-tour et pour la part de la vitesse qui ne va
    * pas dans la direction voulue (virage). Fort, pour que les appuis accrochent le parquet.
@@ -53,6 +57,8 @@ export interface PlayerBody {
   /** Gravité du saut en cours, fixée au décollage (tir ou saut sans ballon ; relevée pour un dunk). */
   jumpGravity: number;
   airborne: boolean;
+  /** Distance réellement parcourue au sol, pour les huit poses de foulée. */
+  strideDistance: number;
 }
 
 export function createPlayerBody(athlete: Player, pos: Vec3, timeToApex: number): PlayerBody {
@@ -67,6 +73,7 @@ export function createPlayerBody(athlete: Player, pos: Vec3, timeToApex: number)
     timeToApex,
     jumpGravity: PLAYER_TUNING.freeJumpGravity,
     airborne: false,
+    strideDistance: 0,
   };
   setJumpTiming(body, timeToApex);
   return body;
@@ -130,6 +137,8 @@ function steer(body: PlayerBody, input: MoveInput, dt: number): void {
 
 export function stepPlayer(body: PlayerBody, input: MoveInput, dt: number, court: Court): void {
   const { pos, vel } = body;
+  const fromX = pos.x, fromY = pos.y;
+  const wasGrounded = !body.airborne;
   if (!body.airborne) {
     steer(body, input, dt);
     if (input.x !== 0) body.facing = input.x > 0 ? 1 : -1;
@@ -161,4 +170,5 @@ export function stepPlayer(body: PlayerBody, input: MoveInput, dt: number, court
   const m = PLAYER_TUNING.boundsMargin;
   pos.x = Math.min(court.length + m, Math.max(-m, pos.x + vel.x * dt));
   pos.y = Math.min(court.width + m, Math.max(-m, pos.y + vel.y * dt));
+  if (wasGrounded && !body.airborne) body.strideDistance += Math.hypot(pos.x - fromX, pos.y - fromY);
 }

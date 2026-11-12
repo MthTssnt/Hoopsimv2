@@ -33,10 +33,16 @@ puis les agrandir : les détails des yeux, des doigts et des vêtements seraient
 ## Ballon et phases du monde
 
 Le ballon reste séparé du personnage. Les emplacements de contact viennent des repères peints
-avec chaque pose. Pendant le dribble, une seule phase de 600 ms commande la foulée, le bras
-et le ballon. Entre le lâcher descendant et la reprise dans la paume, une trajectoire libre
-atteint le parquet. Le calque de doigts provient du personnage complet, à sa position réelle,
-et reste devant le ballon. Les autres gestes suivent les phases du saut, du lâcher, de la
+avec chaque pose. Pendant le dribble, une phase commune commande la foulée, le bras et le ballon : 600 ms
+à l’arrêt, cadence liée à la distance en course (3,4 m pour deux appuis ; cadence minimale
+×0,55 pour les petits déplacements). La course sans ballon avance uniquement avec la distance
+parcourue au sol et conserve sa phase quand le joueur tourne. Entre le lâcher descendant et la reprise dans la paume, une trajectoire libre
+atteint le parquet. Le nettoyage natif à la cuisson enlève les restes magenta et les composantes détachées de
+1 à 3 pixels. Les micro-trous fermés autour des contacts sont réparés par la matière voisine ;
+les grandes lacunes ne sont pas reconstruites automatiquement. Le calque de doigts conserve
+la peau et son contour dans le disque de contact, sans recopier le carré de maillot. Il reste
+devant le ballon ; le buste conserve son occultation de dos. Les repères absents des poses
+d’extension sont mesurés sur les pixels des mains, après transformation du gabarit et miroir. Les autres gestes suivent les phases du saut, du lâcher, de la
 passe et de la réception du monde ; la physique et les résultats ne dépendent pas du dessin.
 
 Ballon orange chaud, coutures sombres, reflet et six rotations en 20×20 natifs pour un diamètre
@@ -52,3 +58,15 @@ visible à côté de la pose. `?style` ouvre le catalogue des dix joueurs.
 
 Matheo a validé les captures réelles et les animations le 11 novembre 2026, puis demandé
 leur publication sur `main`. Provenance : `src/assets/CREDITS.md`.
+
+
+## Terrain et filets
+
+Parquet à lattes longues, grain discret en transparence, bordure double hors des lignes,
+raquettes bleu ardoise et médaillon central. Les tracés utilisent toujours les coordonnées
+métriques du terrain ; les demi-cercles intérieurs des lancers sont pointillés.
+Les deux paniers ont un verre plus transparent, des fixations et des reflets ; le filet
+comporte trois rangs de losanges. Chaque filet reçoit exclusivement les traversées physiques
+`score` de `stepBall`, publiées dans `MatchWorld.netPassages`, avant toute décision de score.
+Il s’ouvre et s’étire en 220 ms, oscille puis revient exactement au repos à 1,1 s ; amplitude
+×1,5 pour un dunk. Un goaltending accordé sans traversée ne déclenche rien.

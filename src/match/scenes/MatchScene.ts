@@ -20,12 +20,13 @@ import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
-import { animTimeScale, blendBall, blockGesture, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type BodyView, type JumpKind, type SpriteState } from '../render/playerView';
+import { blendBall, blockGesture, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type BodyView, type JumpKind, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
-import { animationKey, bakePlayer, bakeShadow, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
+import { bakePlayer, bakeShadow, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
 import type { Heading } from '../render/sprites/views';
 import { sheetIndexIn } from '../render/sprites/layout';
+import { dribbleBallAt } from '../render/sprites/motion';
 import { FRAME, SPRITE_DETAIL, seenFromBehind } from '../render/sprites/views';
 import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
@@ -323,6 +324,7 @@ export class MatchScene extends Phaser.Scene {
   private ringBlink = 0;
   /** Temps suivis par joueur pour choisir son geste (vol, lâcher, passe, réception…), et dernière passe déjà vue. */
   private clocks: BodyClocks[] = [];
+  private gestureClock = 0;
   private seenPass: object | null = null;
   /** Passe en vol à l'image précédente (réception). */
   private flyingPass: PassFlight | null = null;
@@ -340,6 +342,7 @@ export class MatchScene extends Phaser.Scene {
   private ballDrawn: Point = { x: 0, y: 0 };
   private blendFrom: Point | null = null;
   private blendClock = 0;
+  private nets: { side: 'left' | 'right'; update: (elapsed: number, dunk?: boolean) => void; active?: boolean }[] = [];
   /** Jauge de ton tir en cours ou de ton dernier tir (affichée encore un instant après le lâcher). */
   private gaugeShot: { shooter: number; window: number; timeToApex: number; release: number | null; side: number; linger: number } | null = null;
   /** Dernier tir déjà annoncé ; annonce en cours au-dessus de la tête de `tagOwner`. */
@@ -376,6 +379,8 @@ export class MatchScene extends Phaser.Scene {
 
   init() {
     this.playerDesigns.forEach((designs) => designs.clear());
+    this.nets = [];
+    this.gestureClock = 0;
     const param = new URLSearchParams(window.location.search).get('seed');
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.rng = new Rng(this.seed);
@@ -383,7 +388,7 @@ export class MatchScene extends Phaser.Scene {
     this.target = targetFromUrl(this.perTeam);
     this.settings = (this.registry.get('settings') as MatchSettings | undefined) ?? loadSettings();
     this.setup = (this.registry.get('matchSetup') as MatchSetup | null | undefined) ?? null;
-    this.watching = this.setup?.mode === 'regarder';
+    this.watching = this.setup ? this.setup.mode === 'regarder' : new URLSearchParams(window.location.search).has('watch');
     this.speed = 1;
     this.finishing = false;
     this.reported = false;
@@ -525,6 +530,7 @@ export class MatchScene extends Phaser.Scene {
       const art = drawHoopArt(this, MATCH_PROJECTION, hoop, arena);
       art.back.setDepth(depthOf(hoop.rim.y) - 0.2);
       art.front.setDepth(depthOf(hoop.rim.y) + 0.2);
+      this.nets.push({ side: hoop.side, update: art.updateNet });
     }
     this.marker = this.add.image(0, 0, 'shot-marker').setDepth(1).setVisible(false);
     this.ring = this.add.image(0, 0, 'control-ring').setDepth(2);
@@ -868,17 +874,14 @@ export class MatchScene extends Phaser.Scene {
   // --- Affichage ---
 
   /** Anime le sprite selon l'état choisi, sans relancer une animation déjà en cours. */
-  private applySprite(sprite: Phaser.GameObjects.Sprite, baked: BakedPlayer, state: SpriteState) {
-    if (state.kind === 'anim' && (state.name === 'dribble' || state.name === 'dribbleIdle')) {
+  private applySprite(sprite: Phaser.GameObjects.Sprite, baked: BakedPlayer, state: SpriteState, stridePhase: number) {
+    if (state.kind === 'anim') {
       if (sprite.anims.isPlaying) sprite.anims.stop();
       const frames = baked.layout.animations[state.name].frames;
-      const phase = this.world.dribblePhase;
+      // Le cycle ne repart pas à zéro quand on tourne, freine ou change de tenue.
+      const phase = state.name === 'run' ? stridePhase : state.name === 'idle' ? this.world.clock % 1 : this.world.dribblePhase;
       const frame = frames[Math.min(frames.length - 1, Math.floor(phase * frames.length))];
       sprite.setTexture(baked.key, sheetIndexIn(baked.layout, frame, state.facing, state.heading));
-      return;
-    }
-    if (state.kind === 'anim') {
-      sprite.play(animationKey(baked.key, state.name, state.facing, state.heading), true);
       return;
     }
     const index = frameIndex(state, baked.layout);
@@ -887,28 +890,51 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private renderWorld(deltaMs: number) {
-    this.trackGestures(deltaMs / 1000);
+    const gestureDt = Math.max(0, this.world.clock - this.gestureClock);
+    this.gestureClock = this.world.clock;
+    this.trackGestures(gestureDt);
     this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
     const me = this.bodies[this.world.controlled];
 
     // Ballon tenu : dans la main de l'image courante du porteur. Libre : à sa position physique.
-    // Raccord de ~80 ms quand il change de main ou de mode (lâcher, ramassage).
+    // Au lâcher, un décalage décroissant conserve le mouvement du vol. À la prise, la paume fait foi.
     const ball = this.world.ball.pos;
     const owner = this.world.holder;
     const holder = owner === null ? null : this.bodies[owner];
-    const anchor = holder ? holder.member.baked.anchors[Number(holder.sprite.frame.name)] : null;
+    let anchor = holder ? holder.member.baked.anchors[Number(holder.sprite.frame.name)] : null;
+    if (holder && owner !== null && !this.world.players[owner].airborne && !this.world.shot && !this.world.pass && !this.clocks[owner].catching && this.world.full?.phase !== 'lancers' && this.world.full?.phase !== 'remise') {
+      const frame = Number(holder.sprite.frame.name), baked = holder.member.baked;
+      const block = Math.floor(frame / baked.layout.framesPerBlock) * baked.layout.framesPerBlock;
+      const motion = Math.hypot(this.world.players[owner].vel.x, this.world.players[owner].vel.y) > PLAYER_VIEW_TUNING.runSpeed ? 'dribble' : 'dribbleIdle';
+      const anchors = baked.layout.animations[motion].frames.map((f) => baked.anchors[block + f]);
+      anchor = dribbleBallAt(this.world.dribblePhase, anchors, FRAME.groundY - 5);
+    }
     const target = holder && anchor ? heldBallPoint(holder.feet, anchor) : project(ball.x, ball.y, ball.z);
     if (owner !== this.ballOwner) {
+      const previous = this.ballOwner;
+      this.blendFrom = null;
+      if (owner === null && previous !== null && deltaMs > 0) {
+        const view = this.bodies[previous], shot = this.world.lastShot;
+        const shotRelease = shot?.shooter === previous && !this.world.pass && (this.world.followThrough[previous] || this.world.shot?.dunk?.slammed || this.clocks[previous].freeThrow !== null);
+        const motion = shotRelease ? (shot!.kind === 'jump' ? 'jumpShot' : shot!.kind === 'lancer' ? 'freeThrow' : shot!.kind) : 'pass';
+        const release = frameIndex({ kind: 'frame', gesture: motion, step: motion === 'freeThrow' ? 1 : 2, facing: this.world.players[previous].facing < 0 ? 'left' : 'right', heading: view.heading }, view.member.baked.layout);
+        const hand = view.member.baked.anchors[release];
+        const origin = hand ? heldBallPoint(view.feet, hand) : this.ballDrawn;
+        const start = shotRelease ? project(shot!.start.x, shot!.start.y, shot!.start.z) : target;
+        // Corriger la trajectoire par un décalage décroissant : le ballon avance dès le lâcher.
+        // Un gros écart (téléportation/remise/dunk) ne doit jamais traverser le joueur en fondu.
+        if (Math.hypot(origin.x - start.x, origin.y - start.y) <= 36 && motion !== 'dunk') this.blendFrom = { x: origin.x - start.x, y: origin.y - start.y };
+      }
       this.ballOwner = owner;
-      this.blendFrom = deltaMs > 0 ? { ...this.ballDrawn } : null;
       this.blendClock = 0;
     }
     let drawn = target;
-    if (this.blendFrom) {
-      this.blendClock += deltaMs;
-      drawn = blendBall(this.blendFrom, target, this.blendClock);
+    if (this.blendFrom && owner === null) {
+      const offset = blendBall(this.blendFrom, { x: 0, y: 0 }, this.blendClock);
+      drawn = { x: target.x + offset.x, y: target.y + offset.y };
+      this.blendClock += gestureDt * 1000;
       if (this.blendClock >= PLAYER_VIEW_TUNING.ballBlendMs) this.blendFrom = null;
     }
     this.ballDrawn = drawn;
@@ -924,6 +950,13 @@ export class MatchScene extends Phaser.Scene {
     const shadow = holder ? { x: Math.round(drawn.x), y: holder.ground.y } : rounded(project(ball.x, ball.y));
     this.ballShadow.setPosition(shadow.x, shadow.y + 1).setAlpha(Phaser.Math.Clamp(1 - (ball.z - BALL_RADIUS) / 6, 0.35, 1));
 
+    for (const net of this.nets) {
+      const passage = this.world.netPassages.findLast((event) => event.side === net.side);
+      const elapsed = passage ? this.world.clock - passage.time : -1;
+      const active = elapsed >= 0 && elapsed < 1.1;
+      if (active || net.active) net.update(elapsed, passage?.dunk);
+      net.active = active;
+    }
     this.updateShotFeedback(deltaMs);
     this.updateCallouts(deltaMs);
     this.updateScore();
@@ -1058,9 +1091,8 @@ export class MatchScene extends Phaser.Scene {
       sinceReach,
       offBalance: (this.world.offBalance[index] ?? 0) > 0,
     });
-    this.applySprite(view.sprite, view.member.baked, state);
-    // Les pas suivent la vitesse au sol : les pieds accrochent le parquet au lieu de glisser.
-    view.sprite.anims.timeScale = animTimeScale(state, speed);
+    this.applySprite(view.sprite, view.member.baked, state, (body.strideDistance / PLAYER_VIEW_TUNING.strideMeters) % 1);
+    // Les déplacements, et non une horloge minimale, font avancer les appuis.
     view.sprite.setPosition(view.feet.x, view.feet.y + 1).setDepth(depthOf(pos.y));
     const image = Number(view.sprite.frame.name);
     const center = view.member.baked.handCenters[image];

@@ -5,6 +5,7 @@ import { fillEllipse, fillPolygon, pixelLine, pixelPolyline, type Point } from '
 import { artPx } from '../artConfig';
 import type { ArtProjection } from './artProjection';
 import type { TeamLook } from './draw';
+import { netShape } from './net';
 
 /** Socle et poteau derrière la ligne de fond (m vers l'extérieur). */
 const STAND = { padFrom: 0.3, padTo: 1.0, padHalfDepth: 0.55, padHeight: 1.05, pole: 0.65, poleTop: 3.75 } as const;
@@ -23,7 +24,7 @@ const BEAM_Z = BACKBOARD.bottom + 0.6;
  * poutre, planche, moitié arrière du cercle) et devant (filet, moitié avant du cercle).
  * La planche est dessinée en biais pour l'effet de profondeur ; la physique la garde droite.
  */
-export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop, home: TeamLook): { back: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics } {
+export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop, home: TeamLook): { back: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics; updateNet: (elapsed: number, dunk?: boolean) => void } {
   const P = (x: number, y: number, z = 0) => proj.project(x, y, z);
   const { rim, board, toCourt, baselineX } = hoop;
   const out = -toCourt;
@@ -112,7 +113,7 @@ export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop
   const quad = [corner(board.min.y, board.max.z), corner(board.max.y, board.max.z), corner(board.max.y, board.min.z), corner(board.min.y, board.min.z)];
   back.fillStyle(PALETTE.ink);
   fillPolygon(back, quad.map((p) => ({ x: p.x + out * artPx(3), y: p.y + 1 })));
-  back.fillStyle(PALETTE.glass, 0.85);
+  back.fillStyle(PALETTE.glass, 0.38);
   fillPolygon(back, quad);
   back.fillStyle(PALETTE.chalk);
   pixelPolyline(back, [...quad, quad[0]]);
@@ -121,6 +122,11 @@ export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop
   pixelPolyline(back, [...target, target[0]]);
   back.fillStyle(home.primary[1]);
   for (let dy = 0; dy < artPx(3); dy++) pixelLine(back, { x: quad[2].x, y: quad[2].y + dy }, { x: quad[3].x, y: quad[3].y + dy });
+
+  back.fillStyle(PALETTE.silver);
+  for (const p of quad) back.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 2, 2);
+  back.fillStyle(PALETTE.chalk, 0.35);
+  pixelLine(back, corner(board.min.y + 0.16, board.max.z - 0.12), corner(board.max.y - 0.35, board.max.z - 0.12));
 
   // Cercle : support vers la planche, moitié arrière (sombre, derrière le ballon), moitié avant
   // épaisse (2 rangées orange + 1 sombre, devant), filet à mailles croisées.
@@ -139,24 +145,33 @@ export function drawHoopArt(scene: Phaser.Scene, proj: ArtProjection, hoop: Hoop
   pixelPolyline(back, ring(Math.PI, Math.PI * 2));
   pixelPolyline(back, shift(ring(Math.PI, Math.PI * 2), 1));
 
-  const drop = 0.5;
-  const strands = 12;
-  front.fillStyle(PALETTE.chalk, 0.9);
-  for (let i = 0; i <= strands; i++) {
-    const a = (Math.PI * i) / strands;
-    const upper = P(rim.x + Math.cos(a) * rimR, rim.y + Math.sin(a) * rimR, rim.z);
-    for (const lean of [0.3, -0.3]) {
-      const b = a + lean;
-      if (b < 0 || b > Math.PI) continue;
-      pixelLine(front, upper, P(rim.x + Math.cos(b) * rimR * 0.62, rim.y + Math.sin(b) * rimR * 0.62, rim.z - drop));
+  const updateNet = (elapsed: number, dunk = false) => {
+    front.clear();
+    const shape = netShape(elapsed, dunk);
+    const node = (a: number, tier: number): Point => {
+      const radius = rimR * (1 + (shape.flare - 1) * tier);
+      return P(rim.x + Math.cos(a) * radius + shape.sway * tier,
+        rim.y + Math.sin(a) * radius, rim.z - shape.drop * tier);
+    };
+    // Trois rangs de losanges : l'ouverture reste fixée au fer, le bas accompagne la balle.
+    for (let tier = 0; tier < 3; tier++) {
+      front.fillStyle(tier === 0 ? PALETTE.mist : PALETTE.chalk, 0.85);
+      for (let i = 0; i < 10; i++) {
+        const a = Math.PI * i / 10, b = Math.PI * (i + 1) / 10;
+        const mid = node((a + b) / 2, (tier + 1) / 3);
+        pixelLine(front, node(a, tier / 3), mid);
+        pixelLine(front, node(b, tier / 3), mid);
+      }
     }
-  }
-  pixelPolyline(front, ring(0, Math.PI, rimR * 0.8, -drop * 0.5));
-  pixelPolyline(front, ring(0, Math.PI, rimR * 0.62, -drop));
-  front.fillStyle(PALETTE.orangeDark);
-  pixelPolyline(front, shift(ring(0, Math.PI), 2));
-  front.fillStyle(PALETTE.orange);
-  pixelPolyline(front, ring(0, Math.PI));
-  pixelPolyline(front, shift(ring(0, Math.PI), 1));
-  return { back, front };
+    front.fillStyle(PALETTE.chalk, 0.9);
+    pixelPolyline(front, Array.from({ length: 25 }, (_, i) => node(Math.PI * i / 24, 1)));
+    front.fillStyle(PALETTE.orangeDark);
+    pixelPolyline(front, shift(ring(0, Math.PI), 2));
+    front.fillStyle(PALETTE.orange);
+    pixelPolyline(front, ring(0, Math.PI));
+    front.fillStyle(0xffbf76);
+    pixelPolyline(front, shift(ring(0, Math.PI), 1));
+  };
+  updateNet(-1);
+  return { back, front, updateNet };
 }

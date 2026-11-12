@@ -19,3 +19,10 @@ Les sources détaillées ont été générées pour HoopSim à partir des réfé
 `team-navy.png` et `team-ivory.png`. Elles ont été contrôlées par silhouettes connexes, sans
 couper les poses aux frontières supposées des rangées. Les atlas livrés sont autonomes :
 aucun outil de génération ni script externe n'est nécessaire au lancement du jeu.
+
+
+Au chargement, `motionArt.ts` met en cache une version nettoyée de chaque rectangle natif :
+restes magenta et poussières connexes de 1–3 pixels retirés, micro-trous fermés réparés
+près des repères. Les PNG sources restent les références archivées. Les contacts manquants
+des extensions et réceptions sont mesurés sur les mains dessinées, puis le masque de doigts
+exclut le maillot. Le même chemin sert au match et à l’atelier ; aucun lissage n’est appliqué.

@@ -306,6 +306,9 @@ export class MatchWorld {
   readonly turnovers: Turnover[] = [];
   /** Derniers événements à annoncer, et leur nombre total. */
   readonly events: MatchEvent[] = [];
+  /** Franchissements physiques uniquement, y compris hors score : jamais depuis onBasket/goaltending. */
+  readonly netPassages: { id: number; side: 'left' | 'right'; time: number; dunk: boolean }[] = [];
+  private netPassageId = 0;
   eventCount = 0;
   /** Terrain entier : rotation, énergie, fautes et stats de chaque équipe (null ailleurs). */
   squads: Squad[] | null = null;
@@ -464,6 +467,7 @@ export class MatchWorld {
     body.facing = old.facing;
     body.vel = { ...old.vel };
     body.airborne = old.airborne;
+    body.strideDistance = old.strideDistance;
     this.players[index] = body;
   }
 
@@ -611,7 +615,10 @@ export class MatchWorld {
     if (this.holder !== null) {
       const holder = this.players[this.holder];
       // Le lanceur d'une remise tient le ballon devant lui, sans dribbler.
-      this.dribbleTime = holder.airborne || this.holder === thrower ? 0 : this.dribbleTime + dt;
+      const speed = Math.hypot(holder.vel.x, holder.vel.y);
+      const cadence = speed > PLAYER_TUNING.movingThreshold
+        ? Math.max(PLAYER_TUNING.dribbleMinRate, speed * WORLD_TUNING.dribblePeriod / PLAYER_TUNING.strideMeters) : 1;
+      this.dribbleTime = holder.airborne || this.holder === thrower ? 0 : this.dribbleTime + dt * cadence;
       this.ball.pos = this.handPosition(holder);
       this.ball.vel = { ...holder.vel };
       // Demi-terrain : tenir le ballon derrière l'arc le « ressort » pour toute l'équipe.
@@ -625,6 +632,12 @@ export class MatchWorld {
         if (this.pass.elapsed > PASS_FLOW.maxFlight) this.pass = null;
       }
       for (const event of stepBall(this.ball, this.court, dt)) {
+        if (event.type === 'score') {
+          const shot = this.lastShot;
+          const dunk = shot?.kind === 'dunk' && shot.hoop === event.hoop && shot.live === null && !shot.scored && !this.pass;
+          this.netPassages.push({ id: ++this.netPassageId, side: event.hoop, time: this.clock, dunk });
+          if (this.netPassages.length > 8) this.netPassages.shift();
+        }
         if (event.type === 'wall') wall = true;
         // Passe ratée : au premier rebond, c'est un ballon libre.
         if (event.type === 'floor' && this.pass) this.pass = null;

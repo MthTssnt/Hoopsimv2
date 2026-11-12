@@ -295,6 +295,7 @@ describe('goaltending', () => {
       place(world, 1, { x: ball.x - 0.25, y: ball.y, z: Math.max(0.05, ball.z - shoulder - 0.4) }, true);
       world.step(WORLD_DT, [IDLE, IDLE]);
       expect(shot.goaltend).toBe(true);
+      expect(world.netPassages).toEqual([]);
       expect(shot.scored).toBe(true);
       expect(world.points).toEqual([2, 0]);
       run(world, 3, () => world.holder !== null);

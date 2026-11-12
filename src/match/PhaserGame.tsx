@@ -38,6 +38,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
   const settingsRef = useRef(settings);
   const panelOpenRef = useRef(panelOpen);
   /** Regarder : vitesse choisie ; fin simulée en cours (plus de boutons). */
+  const watching = match ? match.mode === 'regarder' : new URLSearchParams(window.location.search).has('watch');
   const [speed, setSpeed] = useState(1);
   const [finishing, setFinishing] = useState(false);
   const initialMatch = useRef(match ?? null);
@@ -143,7 +144,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
           ⏸ Pause
         </button>
       )}
-      {match?.mode === 'regarder' && !pause && !finishing && (
+      {watching && !pause && !finishing && (
         <div className="row" style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', gap: 6 }}>
           {WATCH_SPEEDS.map((value) => (
             <button key={value} className={`btn btn-sm${speed === value ? ' btn-primary' : ''}`} onClick={() => changeSpeed(gameRef.current, value)}>
