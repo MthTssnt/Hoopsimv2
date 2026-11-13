@@ -1,3 +1,12 @@
+> Contrat actuel — corrections du 13 novembre 2026 : `MatchWorld` possède le suivi
+> des gestes au pas fixe et `BallControlRig` exploite les contacts d’assets sans
+> Canvas/Phaser. Le rendu observe cette même position physique du ballon.
+> La réussite reçoit désormais la distance précise dans les matchs physiques ;
+> les appels historiques sans distance restent compatibles. Les anciennes limites
+> « faute/contre une seule fois par tir », « pas de contre dunk », « ballon tenu
+> séparé du ballon dessiné » et « rotation compressée à 95 s / échelle » ne décrivent
+> plus le comportement actuel. Voir [le rapport complet](GAMEPLAY_REMEDIATION.md).
+
 # Contrat engine ⇄ match
 
 > Version phase 1 (1 contre 1 de test). Ce document fixe qui décide de quoi entre `src/engine/`

@@ -1,0 +1,95 @@
+{
+  "errors": [],
+  "worker": {
+    "starterMs": 0.010000000149011612,
+    "startersMs": 0.10000000149011612,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 34360.5,
+    "mode": "worker"
+  },
+  "fallback": {
+    "starterMs": 0.010000000149011612,
+    "startersMs": 0.10000000149011612,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 18280.300000000745,
+    "mode": "main"
+  },
+  "replay": {
+    "steps": 600,
+    "dt": 0.008333333333333333,
+    "equal": true
+  },
+  "full_match": {
+    "step": 97347,
+    "clock": 811.2249999994266,
+    "score": [
+      69,
+      46
+    ],
+    "boxPoints": [
+      69,
+      46
+    ],
+    "playersUsed": [
+      10,
+      10
+    ],
+    "lineupVersion": 21,
+    "netPassages": {
+      "left": 27,
+      "right": 29
+    },
+    "preparation": {
+      "starterMs": 0,
+      "startersMs": 0,
+      "syncEntries": 0,
+      "prepared": 20,
+      "preparationMs": 33036.699999999255,
+      "mode": "worker"
+    }
+  },
+  "seeds": [
+    {
+      "seed": 31,
+      "clock": 17.174999999999667,
+      "audio": {
+        "state": "running",
+        "played": {
+          "foot": 68,
+          "floor": 10,
+          "rim": 2,
+          "board": 2,
+          "whistle": 1
+        },
+        "muted": false,
+        "volume": 0.35
+      },
+      "performance": {
+        "actualFps": 25.358329746049456,
+        "worstFrameMs": 50
+      }
+    },
+    {
+      "seed": 919,
+      "clock": 16.549999999999702,
+      "audio": {
+        "state": "running",
+        "played": {
+          "foot": 63,
+          "floor": 13,
+          "rim": 2,
+          "net": 2
+        },
+        "muted": false,
+        "volume": 0.35
+      },
+      "performance": {
+        "actualFps": 47.93285878298315,
+        "worstFrameMs": 55
+      }
+    }
+  ],
+  "keyboard_recorded": 279
+}

@@ -1,0 +1,11 @@
+{
+  "3": {
+    "finishVisible": false,
+    "pauseVisible": true
+  },
+  "5": {
+    "finishVisible": true,
+    "pauseVisible": true
+  },
+  "errors": []
+}

@@ -1,3 +1,12 @@
+## Validation des corrections de gameplay du 13 novembre 2026
+
+La campagne actuelle et sa vidéo avant/après sont dans
+[GAMEPLAY_REMEDIATION.md](GAMEPLAY_REMEDIATION.md). Elle complète les preuves de
+reconstruction ci-dessous sans réécrire leur historique. Le rendu du ballon est
+maintenant identique à sa position physique ; les nouveaux états d’appuis utilisent
+les poses complètes existantes. Les poses témoins ne sont pas une production validée
+pour les dix designs.
+
 # Validation du rendu en match — graine 8126
 
 ## Reconstruction vérifiée du 13 novembre 2026

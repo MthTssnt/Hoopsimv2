@@ -2,6 +2,22 @@
 
 Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu jouable et déployable.
 
+## Corrections du naturel des matchs — 13 novembre 2026 ✅
+
+- ✅ Huit lots autorisés : ballon/prises, contacts/appuis, rebonds, tirs/finitions,
+  défense/arbitrage, séquences collectives, fin de match et transitions/commandes.
+- ✅ Les 35 constats sont reliés à leur traitement et aux preuves dans
+  [GAMEPLAY_REMEDIATION.md](GAMEPLAY_REMEDIATION.md) ; audit initial conservé dans
+  [GAMEPLAY_AUDIT.md](GAMEPLAY_AUDIT.md).
+- ✅ Tests, build, lint, calibration de saison, 12 matchs physiques et campagne Chromium.
+- ✅ Vidéo comparative avant/après, graine 8126, 30 secondes simulées et captures publiées.
+- ✅ Rejeu worker/repli, fin accélérée autonome, restitution des commandes et audio contrôlés.
+- ⬜ Finition artistique : produire/valider des dessins de locomotion supplémentaires pour les
+  dix designs. Les nouveaux états utilisent des personnages entiers officiels existants ;
+  les planches témoins ne sont pas annoncées comme activées pour tous les joueurs.
+- ⬜ Continuer la calibration du match physique et le profilage sur poste cible ; la vidéo
+  à 30 i/s ne démontre pas 60 FPS stables.
+
 ## Reconstruction autorisée du 13 novembre 2026 ✅
 
 La récupération des anciens commits n'est plus un préalable. Audit et distinction

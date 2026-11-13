@@ -22,3 +22,12 @@ le document de l'ancien commit n'a pas été récupéré.
 
 État des nouveaux dessins : `players/locomotion/README.md`. État des contacts et
 capacités reconstruites : `RECONSTRUCTION.md`.
+
+## Référence de contact commune — autorisation du 13 novembre 2026
+
+Le plan de correction autorisé emploie les repères d’assets comme données de géométrie
+pures dans `BallControlRig`. Leur lecture ne dépend ni de Canvas, ni de Phaser, ni du
+nombre d’images affichées. Une retouche ultérieure de ces repères doit donc être
+validée sur les contacts physiques et les trajectoires, en plus du contrôle graphique.
+Les probabilités restent décidées par `engine/` ; la préparation worker et les sons
+ne consomment pas le générateur aléatoire du match.

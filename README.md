@@ -93,3 +93,14 @@ les moyennes obtenues. Les valeurs actuelles :
 - Les feuilles de match ne sont archivées que pour votre équipe et pour les playoffs, afin de
   garder la sauvegarde légère.
 - Le déroulé action par action n'est conservé que pour le dernier match affiché.
+
+## Naturel des matchs : audit et corrections
+
+Les 35 constats et les huit lots de correction sont documentés dans
+[le rapport de fin d’action](docs/GAMEPLAY_REMEDIATION.md), avec une
+[vidéo avant/après de 30 secondes](docs/media/gameplay-before-after.mp4).
+
+`npm run validate:gameplay` rejoue les trois graines de référence et vérifie la fin
+et la cohérence du box score. La campagne enregistrée contient douze graines.
+La capture reproductible utilise `scripts/record-gameplay.py` avec Playwright Python,
+Chromium et FFmpeg ; les commandes complètes figurent dans le rapport.

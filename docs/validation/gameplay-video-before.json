@@ -1,0 +1,262 @@
+{
+  "seed": 8126,
+  "step": 3582,
+  "clock": 29.849999999998946,
+  "paused": true,
+  "phase": "jeu",
+  "inspection": {
+    "player": 0,
+    "marks": true
+  },
+  "score": [
+    4,
+    2
+  ],
+  "holder": 1,
+  "controlled": 1,
+  "matchOver": false,
+  "lineupVersion": 3,
+  "netPassages": {
+    "left": 1,
+    "right": 2
+  },
+  "boxPoints": [
+    4,
+    2
+  ],
+  "playersUsed": [
+    8,
+    8
+  ],
+  "preparation": {
+    "starterMs": 0.05,
+    "startersMs": 0.5,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 15074.5,
+    "mode": "worker"
+  },
+  "audio": {
+    "state": "running",
+    "played": {
+      "foot": 199,
+      "floor": 29,
+      "net": 3,
+      "rim": 1,
+      "board": 1
+    },
+    "muted": false,
+    "volume": 0.35
+  },
+  "performance": {
+    "actualFps": 49.422434128132366,
+    "worstFrameMs": 43.33000000000029
+  },
+  "ball": {
+    "physical": {
+      "x": 18.3740131138843,
+      "y": 7.829363778950319,
+      "z": 0.7618123140295158
+    },
+    "drawn": {
+      "x": 694.9369966664177,
+      "y": 341.75828641643034
+    }
+  },
+  "players": [
+    {
+      "id": "p70",
+      "variant": 0,
+      "position": {
+        "x": 18.784954697180048,
+        "y": 10.472436573912116,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 174,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p71",
+      "variant": 0,
+      "position": {
+        "x": 18.1540131138843,
+        "y": 7.709363778950319,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "dribble",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 181,
+      "anchor": {
+        "x": 63.4030537445162,
+        "y": 68.67795918367347,
+        "behind": true
+      },
+      "palm": {
+        "x": 62.41993055555556,
+        "y": 64.84409722222222
+      }
+    },
+    {
+      "id": "p77",
+      "variant": 2,
+      "position": {
+        "x": 24.14745125089817,
+        "y": 5.098816373829531,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "down"
+      },
+      "frame": 7,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p76",
+      "variant": 0,
+      "position": {
+        "x": 20.026933848126912,
+        "y": 6.739701139446779,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 177,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p78",
+      "variant": 2,
+      "position": {
+        "x": 24.893588319213375,
+        "y": 8.340315887352983,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 177,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p2u",
+      "variant": 3,
+      "position": {
+        "x": 19.006637102086685,
+        "y": 9.808466008785311,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 178,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p2w",
+      "variant": 3,
+      "position": {
+        "x": 16.641353783605283,
+        "y": 9.809332193981046,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 179,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p2t",
+      "variant": 4,
+      "position": {
+        "x": 22.912534739840254,
+        "y": 5.2866566035403615,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "down"
+      },
+      "frame": 6,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p2q",
+      "variant": 1,
+      "position": {
+        "x": 20.423555326115146,
+        "y": 7.630138300249106,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 174,
+      "anchor": null,
+      "palm": null
+    },
+    {
+      "id": "p2x",
+      "variant": 4,
+      "position": {
+        "x": 22.86908115227195,
+        "y": 8.406149523296376,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 175,
+      "anchor": null,
+      "palm": null
+    }
+  ],
+  "errors": [],
+  "capture": {
+    "mode": "real-time canvas capture",
+    "seconds": 30,
+    "seed": 8126,
+    "audioTrack": false
+  }
+}

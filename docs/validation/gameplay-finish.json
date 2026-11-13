@@ -1,0 +1,32 @@
+{
+  "setup": false,
+  "sceneFinishing": false,
+  "phase": "fin-match",
+  "over": true,
+  "audio": {
+    "state": "running",
+    "played": {
+      "foot": 76,
+      "floor": 146,
+      "rim": 59,
+      "board": 15,
+      "whistle": 11,
+      "net": 51,
+      "siren": 4
+    },
+    "muted": false,
+    "volume": 0.35
+  },
+  "score": [
+    60,
+    49
+  ],
+  "boxPoints": [
+    60,
+    49
+  ],
+  "speedAfterKey2": 2,
+  "speedAfterButton2": 2,
+  "pauseButtonVisible": true,
+  "speedButtonVisible": true
+}

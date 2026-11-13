@@ -1,0 +1,58 @@
+
+> hoopsim@0.0.0 calibrate
+> tsx scripts/calibrate.ts
+
+Calendrier : 1230 matchs sur 138 journées
+Matchs par équipe : min 82 / max 82
+
+--- Saison régulière (1230 matchs, 2.3s) ---
+Points par équipe et par match : 112.7
+Victoires à domicile : 55.1 %
+FG : 43.1/89.7 (48.0 %)
+3 pts : 11.9/33.4 (35.6 %) — 37.2 % des tirs
+LF : 14.7/18.4 (79.7 %)
+Rebonds 48.7 (dont 11.1 off.) — Passes 24.7 — Pertes 12.3
+Interceptions 6.7 — Contres 4.5 — Fautes 17.5
+Minutes cumulées par équipe et par match : 240.4 (attendu ~240)
+
+Notes : moyenne 64.8, max 96, top10 96 94 93 93 92 91 91 91 90 89, min 41
+
+--- Meilleurs marqueurs ---
+Mario Woodard            BKN  30.1 pts  11.2 rbds  4.7 pd  34.0 min  (88)
+Magnus Perrin            SLC  29.6 pts  16.6 rbds  3.1 pd  36.4 min  (88)
+Jonas Weston             MIN  29.2 pts  14.6 rbds  4.3 pd  35.0 min  (91)
+Baran Halvorsen          PHI  28.7 pts  7.5 rbds  5.5 pd  32.9 min  (92)
+Tristan Castillo         PHX  28.3 pts  13.4 rbds  4.9 pd  34.3 min  (96)
+Robin Novotný            BOS  27.6 pts  12.1 rbds  4.0 pd  34.4 min  (93)
+Samuel Savić             IND  26.4 pts  13.0 rbds  3.2 pd  34.5 min  (86)
+Louis Rivas              WAS  25.9 pts  5.5 rbds  4.7 pd  32.3 min  (91)
+
+--- Rotation de Boston Ironsides (63-19) ---
+Robin Novotný            PF  93  34.4 min  27.6 pts  12.1 rbds
+Sami Delorme             PG  89  31.7 min  17.9 pts  6.8 rbds
+Quincy Dade              SF  78  30.8 min  17.2 pts  6.3 rbds
+Léo Sheldon              C  64  30.1 min  11.5 pts  7.1 rbds
+Zane Afolabi             PG  73  22.4 min  8.1 pts  2.2 rbds
+Jalen Fontaine           PF  70  21.6 min  10.3 pts  5.1 rbds
+Igor Bondarenko          SG  67  18.0 min  6.0 pts  2.0 rbds
+Noel Lupu                SG  67  15.1 min  7.4 pts  1.4 rbds
+Devin Ashford            PF  64  12.6 min  5.1 pts  2.9 rbds
+Bruno Kenyon             PG  82  17.0 min  7.2 pts  2.3 rbds
+
+--- Classement Est ---
+1. ORL 68-14 (+1660)
+2. BOS 63-19 (+1040)
+3. ATL 56-26 (+785)
+4. IND 54-28 (+560)
+5. WAS 53-29 (+773)
+6. TOR 53-29 (+750)
+7. DET 46-36 (+365)
+8. NYM 46-36 (+110)
+
+Champion : Phoenix Blaze — MVP des finales : Tristan Castillo
+Durée totale : 2.5s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

@@ -1,3 +1,11 @@
+> Mise à jour du 13 novembre 2026 : les huit lots de correction du naturel ont été
+> autorisés sans validation intermédiaire puis appliqués. Les changements de règles
+> et leur portée sont consignés dans [GAMEPLAY_REMEDIATION.md](GAMEPLAY_REMEDIATION.md).
+> Cette livraison remplace les approximations historiques ci-dessous concernant la
+> portée des tirs, la sélection du contest, les réceptions, les contacts successifs,
+> les contres descendants/dunks, le goaltending et les rotations. Les autres sections
+> conservent les décisions et observations de leur époque.
+
 # Spec de gameplay — ce que HoopSim doit reproduire
 
 > Rédigée par Matheo en jouant à Hoop Land. Fait foi pour Claude Code.
@@ -389,3 +397,30 @@ Apparu à la fin de la phase 1 (à trancher avant ou pendant la phase 2) :
 - **Contrer un dunk** : à quel moment, et avec quelle chance ?
 - **Hors-jeu** : le ballon peut partir dans le public et rester jouable ; quelle règle en
   1 contre 1 et en match ?
+
+## Paramètres livrés avec les corrections du naturel
+
+- Le tir physique transmet la distance. La pénalité démarre au-delà de l’arc + 0,8 m,
+  avec une petite extension selon la note utile ; elle décroît progressivement jusqu’aux
+  tirs désespérés. Le modèle historique sans distance reste compatible.
+- Une prise vérifie la portée, une hauteur minimale de 0,45 m au-dessus des pieds en
+  l’air, l’orientation pour une passe et la vitesse relative (limite : 13 + 0,08 × passe,
+  en m/s). La transition de contrôle dure 0,18 s ; elle ne suspend pas la simulation.
+- Les contacts utilisent des rayons de 0,29 à 0,43 m selon le gabarit ; poids, force et
+  appui établi répartissent le déplacement. Ils ne constituent pas une simulation
+  complète de corps articulés ni un système de charges offensives.
+- La fenêtre de faute accepte un autre défenseur ou une aggravation significative,
+  avec au moins 0,15 s entre réévaluations d’un même défenseur. Un contact inchangé
+  n’est pas tiré au sort à chacun des 120 pas.
+- Les séquences collectives expirent après 5 s ou en urgence de shot clock. Les
+  changements de duel possèdent une protection de 1,2 s contre les allers-retours.
+- En dernière période, l’intention dépend du score dans les 35 dernières secondes :
+  conserver une avance, attaquer vite ou chercher trois points ; une équipe menée
+  de 1 à 9 points peut chercher une faute sur le porteur dans les 22 dernières secondes.
+- Les rotations gardent le modèle de fatigue/minutes, avec au moins 60 s de chrono
+  entre décisions ordinaires. Les sorties pour élimination passent outre cet intervalle.
+- Les replacements logiques sont accompagnés d’une transition de présentation de
+  0,28 s de temps simulé ; ils ne sont pas des déplacements de joueurs contrôlables.
+
+La justification, les mesures et les limites de chaque changement figurent dans
+[le rapport de fin d’action](GAMEPLAY_REMEDIATION.md).
