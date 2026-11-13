@@ -1,5 +1,58 @@
 # Validation du rendu en match — graine 8126
 
+## Planches témoins du 13 novembre 2026
+
+Reprise réelle sur `work` à partir de `a9f1291`, et non `e101c11` : les trois commits
+locaux décrits dans la demande n'ont pas été retrouvés (branches, reflog, objets Git et
+branches distantes consultées). Les résultats historiques ci-dessous restent historiques.
+En particulier, `?court&seed=8126&watch&atelier` ne fournit pas l'inspecteur de pas physique
+dans cette version. Une sauvegarde des lots absents est nécessaire pour reprendre leurs
+contacts explicites, leur suivi au pas et leurs outils de preuve sans les réinventer.
+
+Nouveaux dessins disponibles dans `?anims&poses`, ou **Poses témoins** depuis `?anims` :
+
+1. Choisir démarrage, freinage, pivot, défense, pas chassés ou recul.
+2. Comparer la pose à l'identité validée à taille match, puis à ×3.
+3. Vérifier les quatre orientations, 180/200/220 cm et les deux corpulences.
+4. Lire à ×1 puis ×0,25, mettre en pause et avancer les quatre images.
+5. Déplier les deux planches sources pour examiner les 48 dessins originaux.
+
+Ce lot ajoute des images candidates, pas seulement un sélecteur. Il ne remplace aucune
+pose du match. Le calage provisoire au bas de la silhouette ne valide pas un pied d'appui
+ni l'absence de glissement. Le pivot et le recul doivent être examinés dans une trajectoire
+avant déclinaison aux dix designs et activation. Les gabarits et miroirs de l'atelier
+ne constituent pas une nouvelle validation des contacts avec ballon.
+
+Les artefacts de cette reprise sont isolés sous
+`/workspace/hoopsim-evidence/2026-11-13-witness/` ; ne pas les confondre avec les captures
+historiques citées plus bas. Le script `validate.py` utilise le Chromium système et
+Playwright Python ; le ffmpeg système est accessible à Playwright via
+`PLAYWRIGHT_BROWSERS_PATH=/workspace/.cache/ms-playwright` (lien local, aucune dépendance
+ajoutée au dépôt). Les vidéos du match montrent uniquement la base actuelle : aucune
+comparaison avant/après en match des nouveaux dessins n'est revendiquée.
+
+Vérification de code de ce lot : **348 tests dans 37 fichiers**, lint et build réussis.
+Avertissement Vite non bloquant sur le chunk Phaser. Aucun changement du moteur ou des
+paramètres de réussite : calibration non relancée pour ce lot.
+
+Contrôles Chromium de cette reprise : **576 cas** (6 gestes × 4 images × 4 orientations ×
+3 tailles × 2 corpulences), silhouettes visibles et contenues dans le cadre. Captures
+`witness-normal.png` et `witness-detail.png` examinées face à la référence : identité
+reconnaissable, posture basse lisible ; ancrage et continuité dynamique restent à établir.
+Lecture des six gestes à ×1 dans `poses-temoins-x1.webm` ; `validation.webm` conserve
+le parcours complet. Aucun événement `pageerror` durant les contrôles.
+
+Match de base réellement ouvert sur les trois URL demandées, avec essai clavier,
+pause et vues 1280×720 / 1920×1080. Pause disponible, mais avance de 1/60 s absente
+sur cette base. Pas de match complet, de trois graines ni de nouvelle validation
+des dix designs dans ce lot. Aucun rejeu avant/après déterministe revendiqué.
+
+Mesure limitée pendant le vrai match spectateur ×1, Chromium headless **avec enregistrement** :
+233 callbacks `requestAnimationFrame` sur 5 015,7 ms (~46,5/s), intervalle médian 16,7 ms,
+95e centile 33,4 ms. C'est une mesure de cadence navigateur, pas une mesure instrumentée
+des rendus Phaser ; elle **ne démontre pas 60 FPS stables**. Les nouveaux atlas ne sont
+chargés qu'à l'ouverture du comparateur et n'ont pas été ajoutés au rendu du match.
+
 ## Rejouer
 
 Depuis le dépôt : `npm ci`, puis `npm run dev`. Dans le navigateur local :

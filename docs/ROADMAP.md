@@ -2,6 +2,27 @@
 
 Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu jouable et déployable.
 
+## Reprise du 13 novembre 2026 — planches témoins 🔄
+
+- État retrouvé : branche `work` sur `a9f1291`, checkout propre avant intervention.
+  Les commits locaux annoncés `d85dc11`, `5fea0f9`, `e101c11` sont absents des objets,
+  branches et reflog. `git fsck --full --no-reflogs --unreachable` ne retrouve rien.
+  Les branches distantes consultées ne fournissent pas ces lots. Aucun reset ni reclonage.
+- Manquent également `PLAYER_ART_CHARTER.md`, `PLAYER_ACTION_PHASES.md`,
+  `painted/contacts.json` et les anciennes preuves de validation. Ne pas déclarer restaurés
+  le worker, les contacts explicites, l'audio ou l'inspecteur physique de ces trois lots.
+- ✅ Production de **48 nouveaux dessins entiers** : six gestes sans ballon, quatre images,
+  face et dos, pour le design témoin « Afro, bandeau jaune ».
+- ✅ Comparateur `?anims&poses` : référence validée, miroir, 180/200/220 cm,
+  corpulence, taille match/zoom, pause et image par image ; planches sources consultables.
+- 🔄 Contrôle artistique : identité reconnaissable et défense distincte de la course.
+  Appui du pivot, glissement et ancrage du torse à affiner en trajectoire ; pas d'activation
+  dans le vrai match ni de déclinaison annoncée comme validée sur les dix designs.
+- ⬜ Récupérer les trois lots manquants depuis l'ancienne session ou un bundle/patch,
+  conserver ce lot témoin, puis reprendre l'intégration sans perdre leurs priorités de gestes.
+- Les résultats de cette reprise et les limites des preuves figurent dans
+  `MATCH_VISUAL_VALIDATION.md`, section « Planches témoins du 13 novembre 2026 ».
+
 ## Rendu officiel des joueurs ✅
 
 - ✅ Matheo valide les dix designs et demande leur publication sur `main`.

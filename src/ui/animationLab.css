@@ -46,3 +46,9 @@
 .lab-reference canvas { margin: 0 auto; }
 .lab-designs figure { width: 240px; overflow: hidden; }
 .lab-designs canvas { margin-left: -24px; }
+.lab-witness p { color: #b7c5d7; max-width: 900px; line-height: 1.6; }
+.lab-witness-comparison { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
+.lab-witness-comparison figure { margin: 0; padding: 12px; border: 1px solid #43546d; background: #243650; overflow: auto; max-width: 100%; }
+.lab-witness-comparison figcaption { font-size: 12px; margin-bottom: 8px; }
+.lab-witness-sheets { display: flex; flex-wrap: wrap; gap: 16px; }
+.lab-witness-sheets img { width: min(100%, 560px); height: auto; object-fit: contain; }

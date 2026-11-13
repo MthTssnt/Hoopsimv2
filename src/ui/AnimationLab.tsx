@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { PLAYER_SOURCES } from '../assets/players/sources';
 import { COURT_DESIGNS } from '../assets/players/courtDesigns';
 import { BALL_ART, MAPLE_ART } from '../match/render/arena/style';
@@ -7,6 +7,8 @@ import { paintMotion } from '../match/render/sprites/motionArt';
 import { MOTIONS, dribbleBallAt, type MotionId } from '../match/render/sprites/motion';
 import { FRAME, SPRITE_DETAIL, type Facing, type Heading } from '../match/render/sprites/views';
 import './animationLab.css';
+
+const LocomotionWitness = lazy(() => import('./LocomotionWitness'));
 
 let loaded: Promise<HTMLImageElement[]> | undefined;
 function loadImages() {
@@ -17,7 +19,7 @@ const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 export default function AnimationLab({ embedded = false }: { embedded?: boolean }) {
   const [images, setImages] = useState<HTMLImageElement[]>([]);
   const [failed, setFailed] = useState(false);
-  const [section, setSection] = useState<'designs' | 'animations' | 'court'>(() => !embedded && new URLSearchParams(location.search).has('style') ? 'designs' : 'animations');
+  const [section, setSection] = useState<'designs' | 'animations' | 'court' | 'witness'>(() => !embedded && new URLSearchParams(location.search).has('poses') ? 'witness' : !embedded && new URLSearchParams(location.search).has('style') ? 'designs' : 'animations');
   const [motion, setMotion] = useState<MotionId>('dribble');
   const [team, setTeam] = useState(0), [variant, setVariant] = useState(0);
   const [direction, setDirection] = useState('down:right');
@@ -37,13 +39,15 @@ export default function AnimationLab({ embedded = false }: { embedded?: boolean 
   const look = useMemo(() => ({ ...appearanceFor({ id: `atelier-${team}-${variant}`, heightCm: height, weightKg: heavy ? 130 : 90, number: 23 }, variant), heavy }), [team, variant, height, heavy]);
   const selectFrame = (i: number) => { setPlaying(false); setTime(i * def.ms / def.count); };
   return <section className={`animation-lab${embedded ? ' is-embedded' : ''}`}>
-    <header className="lab-heading"><div><span className="lab-eyebrow">HOOPSIM · ATELIER VISUEL</span><h1>Animations & terrain</h1><p>Les mêmes images et les mêmes points de contact que dans le match.</p></div><a className="lab-link" href="?court&seed=8126">Tester sur le terrain →</a></header>
+    <header className="lab-heading"><div><span className="lab-eyebrow">HOOPSIM · ATELIER VISUEL</span><h1>Animations & terrain</h1><p>{section === 'witness' ? 'Nouveaux dessins candidats, comparés aux références validées.' : 'Les mêmes images et les mêmes points de contact que dans le match.'}</p></div><a className="lab-link" href="?court&seed=8126">Tester sur le terrain →</a></header>
     <nav className="lab-tabs" aria-label="Atelier visuel">
       <button aria-pressed={section === 'animations'} onClick={() => setSection('animations')}>Animations</button>
       <button aria-pressed={section === 'designs'} onClick={() => setSection('designs')}>Joueurs</button>
       <button aria-pressed={section === 'court'} onClick={() => setSection('court')}>Terrain & ballon</button>
+      <button aria-pressed={section === 'witness'} onClick={() => setSection('witness')}>Poses témoins</button>
     </nav>
     {failed ? <p role="alert">Le chargement des dessins a échoué. Recharge la page pour réessayer.</p> : images.length !== PLAYER_SOURCES.length + 2 ? <p role="status">Chargement de l’atelier…</p> : <>
+      {section === 'witness' && <Suspense fallback={<p role="status">Chargement des poses témoins…</p>}><LocomotionWitness /></Suspense>}
       {section === 'animations' && <>
         <div className="lab-layout">
           <aside className="lab-motion-list" aria-label="Liste des animations">{MOTIONS.map((m) => <button key={m.id} aria-pressed={motion === m.id} onClick={() => { setMotion(m.id); setTime(0); }}><span>{m.label}</span><small>{m.count} images</small></button>)}</aside>
