@@ -42,6 +42,15 @@ Preuves nouvelles sous `/workspace/hoopsim-evidence/reconstruction/` :
 de l'atelier ; scripts `validate.py` et `validate_art.py`. Les anciennes captures
 ne sont pas utilisées comme preuve des reconstructions.
 
+Les versions réutilisables des contrôles sont commitées dans
+`scripts/validate-reconstruction.py` et `scripts/validate-player-art.py`.
+Avec Vite lancé sur le port 5173, Chromium et Playwright Python installés :
+`python scripts/validate-reconstruction.py`, puis `python scripts/validate-player-art.py`.
+Elles écrivent leurs résultats dans `/tmp/hoopsim-reconstruction` ; définir
+`HOOPSIM_EVIDENCE_DIR` pour conserver un autre répertoire. Aucune dépendance ajoutée
+au projet JavaScript. `match-8126-x1.mp4` est un extrait de huit secondes à vitesse
+réelle, **sans piste audio** ; il ne constitue pas une comparaison avec les commits perdus.
+
 Pour tester : ouvrir `?court&seed=8126&watch&atelier`, lire puis figer, avancer de
 1/60 s, choisir le joueur et afficher les repères. Exporter les entrées pour une
 comparaison au même pas. Ajouter `&sansWorker` pour vérifier le repli. Dans `?anims`,
@@ -55,8 +64,8 @@ Reprise réelle sur `work` à partir de `a9f1291`, et non `e101c11` : les trois 
 locaux décrits dans la demande n'ont pas été retrouvés (branches, reflog, objets Git et
 branches distantes consultées). Les résultats historiques ci-dessous restent historiques.
 En particulier, `?court&seed=8126&watch&atelier` ne fournit pas l'inspecteur de pas physique
-dans cette version. Une sauvegarde des lots absents est nécessaire pour reprendre leurs
-contacts explicites, leur suivi au pas et leurs outils de preuve sans les réinventer.
+dans cette version initiale. Les contacts, le suivi au pas et les outils ont depuis été
+réimplémentés sur autorisation explicite ; voir le bilan de reconstruction ci-dessus.
 
 Nouveaux dessins disponibles dans `?anims&poses`, ou **Poses témoins** depuis `?anims` :
 

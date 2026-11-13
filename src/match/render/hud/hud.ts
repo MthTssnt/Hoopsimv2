@@ -139,10 +139,10 @@ export function drawBanner(g: Phaser.GameObjects.Graphics, cx: number, y: number
 }
 
 /** Anneau jaune au sol sous le joueur contrôlé (ellipse d'un pixel d'épaisseur). */
-export function createControlRing(scene: Phaser.Scene, key: string, width: number, height: number): void {
+export function createControlRing(scene: Phaser.Scene, key: string, width: number, height: number, color: number = PALETTE.yellow): void {
   if (scene.textures.exists(key)) return;
   const g = scene.add.graphics();
-  g.fillStyle(PALETTE.yellow);
+  g.fillStyle(color);
   const rx = (width - 1) / 2;
   const ry = (height - 1) / 2;
   for (let i = 0; i < 96; i++) {

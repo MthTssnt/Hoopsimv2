@@ -21,6 +21,7 @@ pas présentés comme une restauration exacte de ces commits.
 | Inspecteur | Paramètre `atelier` sans effet | Pause initiale, lecture, avance de 1/60 s, repères, export des entrées réellement appliquées |
 | Sons et réglages | Absents | Ballon, fer, planche, filet physique, appuis et premier sifflet synthétisés ; déverrouillage utilisateur, volume et coupure persistés |
 | Règles, box score, sauts, filets | Présents | Conservés ; ajout d'observations d'impacts sans décision supplémentaire ni tirage aléatoire |
+| Couleurs des indicateurs | Tableau et portraits déjà accordés aux tenues officielles | Anneau et teintes du box score de pause désormais accordés à ces mêmes tenues |
 
 ## Détails de reconstruction
 
@@ -77,3 +78,7 @@ Les preuves nouvelles, résultats de tests, vidéos et limites sont consignés d
 `MATCH_VISUAL_VALIDATION.md`. Le total historique de 362 tests n'est pas utilisé comme
 preuve de restauration : la suite actuelle et les nouveaux tests sont exécutés réellement.
 Les nouvelles poses témoins ne sont pas encore activées en match ni déclinées aux dix designs.
+
+Premier lot de reconstruction : commit local `3e44580`. Les scripts navigateur réutilisables,
+les contrôles de sélection des repères et l'accord des indicateurs aux tenues sont livrés
+dans le lot de validation suivant. Aucun des anciens commits n'a été récupéré ou réécrit.

@@ -121,12 +121,6 @@ const FAR_LINE_ON_SCREEN = 55;
 const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 /** Ton équipe dans le monde (l'autre est l'IA). */
 const USER_TEAM = 0;
-/** Distance (m) sous laquelle un saut sans ballon près d'un tireur en l'air est un contre. */
-
-/**
- * Ce que la scène suit pour chaque corps afin de choisir son geste (`spriteStateFor`), tiré du
- * monde à chaque image : temps de vol, geste du saut, lâcher, atterrissage, passe, réception, lancer.
- */
 /**
  * Messages des événements, au-dessus du joueur concerné : vols et passes coupées (au-dessus du
  * défenseur ; la faute de main reprend FAUTE), violations (au-dessus du fautif).
@@ -279,9 +273,9 @@ export class MatchScene extends Phaser.Scene {
    * Effectifs complets préparés avant le premier pas ; aucune composition à une substitution.
    */
   private castCache = new Map<string, CastMember>();
-  private lastBakeMs = 0;
-  /** Mesures publiques (debug H et captures) : cuisson moyenne d'un titulaire et chargement des dix (ms). */
+  /** Preparation and cache lookup metrics; syncEntries counts unexpected missing members. */
   bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0, prepared: 0, preparationMs: 0, mode: 'main' as 'main' | 'worker' };
+  private jerseyLooks: TeamLook[] = [];
   /** Durées des images récentes, pour la plus longue des 5 dernières secondes. */
   private frameTimes: { at: number; ms: number }[] = [];
   /** Carte du joueur contrôlé déjà publiée (énergie et stats changent pendant le match). */
@@ -429,7 +423,6 @@ export class MatchScene extends Phaser.Scene {
     this.homeCast = [];
     this.awayCast = [];
     this.castCache = new Map();
-    this.lastBakeMs = 0;
     this.bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0, prepared: 0, preparationMs: 0, mode: 'main' as 'main' | 'worker' };
     this.frameTimes = [];
     this.cardKey = '';
@@ -496,7 +489,8 @@ export class MatchScene extends Phaser.Scene {
       });
     }
     createBallTextures(this);
-    createControlRing(this, 'control-ring', 28, 9);
+    createControlRing(this, 'control-ring', 28, 9, home.secondary[0]);
+    this.jerseyLooks = [home, away];
     createShotMarker(this, 'shot-marker');
     for (const [grade, tag] of Object.entries(GRADE_TAGS)) createTag(this, `grade-${grade}`, tag.text, tag.color);
     createTag(this, 'tag-dunk', 'DUNK', PALETTE.yellow);
@@ -749,6 +743,7 @@ export class MatchScene extends Phaser.Scene {
     return {
       seed: this.seed, step: this.stepNumber, clock: this.world.clock,
       paused: this.inspectorPaused, phase: this.world.full?.phase ?? 'demi-terrain',
+      inspection: { player: this.inspectedPlayer, marks: this.inspectorMarks },
       score: [...this.world.points],
       holder: this.world.holder, controlled: this.world.controlled, matchOver: this.world.matchOver,
       lineupVersion: this.world.lineupVersion, netPassages: { ...this.netCounts },
@@ -908,7 +903,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Box score du menu pause (terrain entier), aux noms et couleurs des deux équipes. */
   private boxView(): BoxView | null {
-    const names = [this.homeSeed, this.awaySeed].map((t) => ({ name: `${t.city} ${t.name}`, abbr: t.abbr, color: t.colors.primary }));
+    const names = [this.homeSeed, this.awaySeed].map((t, i) => ({ name: `${t.city} ${t.name}`, abbr: t.abbr, color: `#${this.jerseyLooks[i].primary[1].toString(16).padStart(6, '0')}` }));
     return buildBoxView(this.world, names);
   }
 
@@ -1532,12 +1527,11 @@ export class MatchScene extends Phaser.Scene {
     );
   }
 
-  /** Terrain entier : cuisson des titulaires, banc encore en file, entrées cuites d'un trait, plus longue image. */
+  /** Effectif préparé, méthode de composition et incidents de cache. */
   private bakeLine(): string {
-    const sync = this.bakeStats.syncEntries ? ` (dernière ${this.lastBakeMs.toFixed(0)} ms)` : '';
     return (
-      `Cuisson : titulaire ${this.bakeStats.starterMs.toFixed(0)} ms (les dix ${this.bakeStats.startersMs.toFixed(0)} ms) · ` +
-      `entrées chargées ${this.bakeStats.syncEntries}${sync} · ` +
+      `Préparation : ${this.bakeStats.prepared} joueurs (${this.bakeStats.mode}, ${this.bakeStats.preparationMs.toFixed(0)} ms) · ` +
+      `incidents de cache ${this.bakeStats.syncEntries} · ` +
       `plus longue image ${this.worstFrameMs.toFixed(0)} ms`
     );
   }

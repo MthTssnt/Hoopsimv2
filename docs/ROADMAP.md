@@ -2,7 +2,7 @@
 
 Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu jouable et déployable.
 
-## Reconstruction autorisée du 13 novembre 2026 🔄
+## Reconstruction autorisée du 13 novembre 2026 ✅
 
 La récupération des anciens commits n'est plus un préalable. Audit et distinction
 entre code conservé et nouvelles implémentations : `RECONSTRUCTION.md`.
@@ -16,7 +16,7 @@ entre code conservé et nouvelles implémentations : `RECONSTRUCTION.md`.
 - ✅ Inspecteur `atelier`, pause initiale, avance de 1/60 s (deux pas physiques), repères
   et export/rejeu des entrées ; atelier de poses utilisant le même sélecteur.
 - ✅ Premiers sons de ballon/fer/planche/filet/appuis et réglages volume/coupure.
-- 🔄 Validation navigateur, parité de composition, rejeu et match complet : résultats
+- ✅ Validation navigateur, parité de composition, rejeu et match complet : résultats
   nouveaux dans `MATCH_VISUAL_VALIDATION.md`, distincts des preuves historiques.
 - ⬜ Suite artistique : affiner l'appui des poses témoins, les intégrer aux trajectoires,
   décliner aux dix designs, puis compléter public/banc, transitions et décor selon diagnostic.
