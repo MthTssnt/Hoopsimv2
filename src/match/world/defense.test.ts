@@ -26,6 +26,11 @@ function place(world: MatchWorld, index: number, pos: Partial<Vec3>, airborne = 
   body.pos = { ...body.pos, ...pos };
   body.vel = { x: 0, y: 0, z: 0 };
   body.airborne = airborne;
+  if (airborne) {
+    body.look = { x: world.ball.pos.x - body.pos.x, y: world.ball.pos.y - body.pos.y };
+    body.vel.z = 0.3;
+    world.gestures.advance(0); world.gestures.clocks[index].air = 0.1;
+  }
 }
 
 /** Le joueur 0 tire depuis `spot` et relâche au sommet ; renvoie le tir enregistré. */
@@ -101,7 +106,7 @@ describe('mesures de la défense', () => {
 
   it('zone de goaltending : ballon qui redescend au-dessus du cercle, près de lui', () => {
     const at = (dx: number, z: number, vz: number) => ({ pos: { x: rim.x + dx, y: rim.y, z }, vel: { x: 0, y: 0, z: vz } });
-    expect(inGoaltendZone(hoop, at(-0.5, RIM_HEIGHT + 0.5, -2))).toBe(true);
+    expect(inGoaltendZone(hoop, at(-0.1, RIM_HEIGHT + 0.5, -2))).toBe(true);
     expect(inGoaltendZone(hoop, at(-0.5, RIM_HEIGHT + 0.5, 2))).toBe(false);
     expect(inGoaltendZone(hoop, at(-1.5, RIM_HEIGHT + 0.5, -2))).toBe(false);
     expect(inGoaltendZone(hoop, at(-0.5, RIM_HEIGHT - 0.2, -2))).toBe(false);
@@ -155,7 +160,7 @@ describe('contre', () => {
     }
   });
 
-  it('pas de contre au sol, ni sur un ballon qui redescend loin du cercle', () => {
+  it('pas de contre au sol ; contre possible sur un ballon descendant hors de la zone protégée', () => {
     const ground = oneOnOne(3);
     place(ground, 1, { x: 2, y: 1 });
     const shot = shootFrom(ground, { x: rim.x - 6, y: rim.y });
@@ -177,11 +182,11 @@ describe('contre', () => {
     const shoulder = (tallest.heightCm / 100) * DEFENSE_FLOW.shoulderRatio;
     place(late, 1, { x: b.x + 0.25, y: b.y, z: Math.max(0.05, b.z - shoulder - 0.4) }, true);
     late.step(WORLD_DT, [IDLE, IDLE]);
-    expect(lob.block).toBeNull();
+    expect(lob.block).not.toBeNull();
     expect(lob.goaltend).toBe(false);
   });
 
-  it('pas de contre sur un dunk', () => {
+  it('une main hors de la fenêtre de contact du dunk ne produit pas de contre', () => {
     const dunker = [...players].sort((a, b) => b.attrs.standingDunk + b.heightCm / 10 - (a.attrs.standingDunk + a.heightCm / 10))[0];
     const world = oneOnOne(2, dunker, byOverall[5]);
     place(world, 1, { x: 2, y: 1 });
@@ -200,7 +205,7 @@ describe('faute', () => {
   /** Tir à mi-distance avec un défenseur collé au sol (contact dès le décollage). */
   const fouled = Array.from({ length: 40 }, (_, i) => {
     const world = oneOnOne(i + 1);
-    place(world, 1, { x: rim.x - 5.25, y: rim.y });
+    place(world, 1, { x: rim.x - 5.45, y: rim.y });
     const shot = shootFrom(world, { x: rim.x - 6, y: rim.y });
     return { world, shot };
   });
@@ -266,7 +271,7 @@ describe('faute', () => {
       .map(({ world, shot }) => {
         // Le défenseur retombe sur le tireur encore en l'air.
         const s = world.players[0].pos;
-        place(world, 1, { x: s.x + 0.72, y: s.y, z: 0.3 }, true);
+        place(world, 1, { x: s.x + 0.5, y: s.y, z: 0.3 }, true);
         world.step(WORLD_DT, [IDLE, IDLE]);
         return { world, shot };
       })
@@ -288,8 +293,7 @@ describe('goaltending', () => {
       place(world, 1, { x: 2, y: 1 });
       const shot = shootFrom(world, { x: rim.x - 6.5, y: rim.y + 1 });
       if (shot.wanted) continue;
-      run(world, 2, () => inGoaltendZone(hoop, world.ball));
-      if (!inGoaltendZone(hoop, world.ball)) continue;
+      world.ball = { pos: { x: rim.x - 0.1, y: rim.y, z: RIM_HEIGHT + 0.6 }, vel: { x: -1.5, y: 0, z: -2 } };
       const ball = world.ball.pos;
       const shoulder = (tallest.heightCm / 100) * DEFENSE_FLOW.shoulderRatio;
       place(world, 1, { x: ball.x - 0.25, y: ball.y, z: Math.max(0.05, ball.z - shoulder - 0.4) }, true);

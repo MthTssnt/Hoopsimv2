@@ -134,8 +134,9 @@ describe('changements au ballon mort', () => {
   it('sortie : le remplaçant prend le corps (même place), le poste et le contrôle de celui qui sort', () => {
     const { w, squad, tired } = tiredStarter();
     expect(w.controlled).toBe(0);
-    // Le porteur sort du terrain : ballon mort.
-    for (let t = 0; t < 2 && w.full!.phase === 'jeu'; t += WORLD_DT) stepWith(w, 0, { ...IDLE, y: -1 });
+    // Put the tired starter outside without involving an unrelated contact trajectory.
+    place(w, 0, { y: -0.2 });
+    w.step(WORLD_DT, idle());
     expect(w.full!.phase).toBe('mort');
     w.players[0].vel = { x: 0, y: 0, z: 0 };
     const at = { ...w.players[0].pos };
@@ -254,7 +255,7 @@ describe('lancers et changements', () => {
     for (let seed = 1; seed <= 80 && found.length < 3; seed++) {
       const w = match(seed);
       live(w, 0, { x: rim.x - 5, y: rim.y });
-      place(w, 5, { x: rim.x - 5 + 0.72, y: rim.y });
+      place(w, 5, { x: rim.x - 5 + 0.5, y: rim.y });
       prepare(w);
       stepWith(w, 0, { ...IDLE, jump: true });
       for (let t = 0; t < 2 && w.shot; t += WORLD_DT) stepWith(w, 0, { ...IDLE, release: w.shot.airTime + WORLD_DT >= w.players[0].timeToApex });

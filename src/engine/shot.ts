@@ -94,6 +94,9 @@ export interface Contest {
 }
 
 export interface ShotContext {
+  /** Exact range in metres; omitted by the legacy possession simulator. */
+  distance?: number;
+  rangeStart?: number;
   shooter: Athlete;
   zone: ShotZone;
   kind: ShotKind;
@@ -175,7 +178,10 @@ export function shotProbability(ctx: ShotContext): number {
   const contest = 1 - SHOT_TUNING.contest.maxPenalty[ctx.zone] * contestLevel(ctx.contest);
   const { fullSpeed, maxPenalty } = SHOT_TUNING.moving;
   const moving = ctx.kind === 'layup' ? 1 : 1 - maxPenalty * clamp(ctx.moveSpeed / fullSpeed, 0, 1);
-  return clamp(base * timing * contest * moving, SHOT_TUNING.minProbability, SHOT_MODEL.bounds[ctx.zone][1]);
+  const excess = Math.max(0, (ctx.distance ?? 0) - (ctx.rangeStart ?? 8) - Math.max(0, skill - 70) * 0.025);
+  const range = Math.exp(-0.16 * Math.pow(excess, 1.35));
+  const minimum = excess > 4 ? 0.0005 : SHOT_TUNING.minProbability;
+  return clamp(base * timing * contest * moving * range, minimum, SHOT_MODEL.bounds[ctx.zone][1]);
 }
 
 export interface FreeThrowContext {

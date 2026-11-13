@@ -104,6 +104,7 @@ describe('IA en défense', () => {
   it('saute pour contester un tireur proche, pas un tireur loin', () => {
     const near = oneOnOne();
     const ai = new PlayerAi(1, new Rng(1));
+    noSteals(near, 1);
     place(near, 0, { x: rim.x - 6, y: rim.y });
     place(near, 1, { x: rim.x - 6 + AI_TUNING.guardGap, y: rim.y });
     play(near, ai, 0.3);
@@ -490,6 +491,8 @@ describe('IA sur terrain entier (5 contre 5)', () => {
         holder = w.holder;
         holdStart = t;
       }
+      const protectsLead = w.holder !== null && full.period >= 4 && full.clock <= 35 && w.points[w.team[w.holder]] > w.points[1 - w.team[w.holder]];
+      if (protectsLead) holdStart = t;
       if (w.holder !== null && full.phase === 'jeu') maxHold = Math.max(maxHold, t - holdStart);
       // Quand l'attaque amène le ballon devant, les défenseurs sont déjà revenus dans leur moitié.
       if (full.frontcourt && !wasFront && w.holder !== null) {

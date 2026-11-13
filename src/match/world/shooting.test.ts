@@ -47,11 +47,11 @@ describe('mesures du tir', () => {
     expect(rim.x - baseline.x).toBeCloseTo(SHOT_FLOW.minFront, 5);
   });
 
-  it('lâche le ballon au-dessus de la tête, devant le cercle si le joueur est dessous', () => {
+  it('lâche le ballon au-dessus de la tête, sans téléporter l’origine si le joueur est dessous', () => {
     const open = releasePoint({ x: rim.x - 6, y: rim.y, z: 0.5 }, 200, right, 0.12);
     expect(open).toEqual({ x: rim.x - 6, y: rim.y + 0.12, z: 0.5 + 2 * SHOT_FLOW.releaseHeight });
     const under = releasePoint({ x: rim.x + 0.2, y: rim.y, z: 0 }, 200, right, 0);
-    expect(under.x).toBeCloseTo(rim.x - SHOT_FLOW.minFront, 5);
+    expect(under.x).toBeCloseTo(rim.x + 0.2, 5);
     // Dans le coin, derrière la ligne du cercle mais loin de la planche : pas déplacé.
     const corner = releasePoint({ x: rim.x + 0.8, y: rim.y + 6.5, z: 0 }, 200, right, 0);
     expect(corner.x).toBe(rim.x + 0.8);

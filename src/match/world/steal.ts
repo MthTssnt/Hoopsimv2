@@ -49,10 +49,11 @@ export interface StealMeasure {
  * Mesure d'un geste de vol sur le porteur, à l'appui : null si le ballon est hors de portée
  * (geste dans le vide).
  */
-export function measureSteal(defender: Vec3, holder: Vec3, ball: Vec3): StealMeasure | null {
+export function measureSteal(defender: Vec3, holder: Vec3, ball: Vec3, facing?: Point): StealMeasure | null {
   if (ball.z > STEAL_FLOW.maxBallHeight) return null;
   const distance = Math.hypot(ball.x - defender.x, ball.y - defender.y);
   if (distance > STEAL_FLOW.reachMax) return null;
+  if (facing && distance > 0.15 && ((ball.x - defender.x) * facing.x + (ball.y - defender.y) * facing.y) / (distance * Math.hypot(facing.x, facing.y) || 1) < -0.25) return null;
   const reach = distance <= STEAL_FLOW.reachBest ? 1 : 1 - (distance - STEAL_FLOW.reachBest) / (STEAL_FLOW.reachMax - STEAL_FLOW.reachBest);
   const closeness = Math.max(0, STEAL_FLOW.closeRange - Math.hypot(defender.x - holder.x, defender.y - holder.y));
   return { distance, reach, exposed: ballExposure(defender, holder, ball), closeness };

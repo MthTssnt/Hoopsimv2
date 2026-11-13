@@ -1,4 +1,4 @@
-import { PLAYER_TUNING } from '../world/player';
+import { PLAYER_TUNING, type Locomotion } from '../world/player';
 import type { PlayKind } from '../world/MatchWorld';
 import type { Point } from './pixelDraw';
 import type { Facing, Heading } from './sprites/views';
@@ -59,6 +59,9 @@ export interface AirPhase {
 
 /** Ce que le monde dit du joueur, réduit à ce qui choisit l'image. */
 export interface BodyView {
+  locomotion?: Locomotion;
+  locomotionPhase?: number;
+  idlePhase?: number;
   airborne: boolean;
   /** Vitesse horizontale (m/s). */
   speed: number;
@@ -96,7 +99,7 @@ export interface BodyView {
 
 /** Animation en boucle, ou image `step` d'un geste (voir `SheetLayout`). */
 export type SpriteState =
-  | { kind: 'anim'; name: AnimationName; facing: Facing; heading: Heading }
+  | { kind: 'anim'; name: AnimationName; phase?: number; facing: Facing; heading: Heading }
   | { kind: 'frame'; gesture: Gesture; step: number; facing: Facing; heading: Heading };
 
 /**
@@ -173,8 +176,8 @@ function groundGesture(body: BodyView): Pick | null {
   if (body.sinceReach != null && body.sinceReach * 1000 < t.stealMs) return ['steal', Math.min(3, Math.floor(body.sinceReach * 1000 / t.stealMs * 4))];
   if (body.offBalance) return ['offBalance', Math.min(3, Math.floor((body.motionPhase ?? 0) * 4))];
   if (!body.holding && body.sincePass != null && body.sincePass * 1000 < t.passMs && (body.speed < 1.2 || body.sincePass < 0.08)) return [body.lob ? 'lobPass' : 'pass', body.sincePass < 0.08 ? 2 : 3];
-  if (body.catching && (!body.holding || body.speed < 1.2)) return ['catch', body.sinceCatch == null ? 0 : Math.min(3, 1 + Math.floor(body.sinceCatch * 1000 / t.catchMs * 3))];
-  if (!body.holding && body.speed < 1.2 && body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', Math.min(3, Math.floor(body.sinceLanding * 1000 / t.landingMs * 4))];
+  if (body.catching) return ['catch', body.sinceCatch == null ? 0 : Math.min(3, 1 + Math.floor(body.sinceCatch * 1000 / t.catchMs * 3))];
+  if (body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', Math.min(3, Math.floor(body.sinceLanding * 1000 / t.landingMs * 4))];
   return null;
 }
 
@@ -190,9 +193,12 @@ export function spriteStateFor(body: BodyView): SpriteState {
   const { heading } = body;
   const pick = body.airborne ? airGesture(body) : groundGesture(body);
   if (pick) return { kind: 'frame', gesture: pick[0], step: pick[1], facing, heading };
+  if (!body.holding && body.locomotion && body.locomotion !== 'idle' && body.locomotion !== 'run') return {
+    kind: 'anim', name: body.locomotion, phase: body.locomotionPhase ?? 0, facing, heading,
+  };
   const moving = body.speed > PLAYER_VIEW_TUNING.runSpeed;
   const name: AnimationName = body.holding ? (moving ? 'dribble' : 'dribbleIdle') : moving ? 'run' : 'idle';
-  return { kind: 'anim', name, facing, heading };
+  return { kind: 'anim', name, facing, heading, ...(name === 'idle' && body.idlePhase !== undefined ? { phase: body.idlePhase } : {}) };
 }
 
 /**

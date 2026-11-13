@@ -1,5 +1,5 @@
 import type { Rng } from '../../engine/rng';
-import { BALL_RADIUS, RIM_HEIGHT, type Hoop, type Vec3 } from '../physics/court';
+import { BALL_RADIUS, RIM_HEIGHT, RIM_RADIUS, type Hoop, type Vec3 } from '../physics/court';
 
 /** Contre, faute et goaltending côté `match/` : mesures et mise en scène (valeurs réglables). */
 export const DEFENSE_FLOW = {
@@ -37,12 +37,14 @@ export interface ArmContact {
  * au-dessus de l'épaule (jamais à l'horizontale : ce serait un bras tendu devant, pas un contre),
  * jusqu'à la hauteur de main levée `reachM` mesurée depuis les pieds.
  */
-export function armContact(feet: Vec3, heightCm: number, reachM: number, ball: Vec3): ArmContact | null {
+export function armContact(feet: Vec3, heightCm: number, reachM: number, ball: Vec3, facing?: Point): ArmContact | null {
   const shoulderHeight = (heightCm / 100) * DEFENSE_FLOW.shoulderRatio;
   const arm = reachM - shoulderHeight;
   const dx = ball.x - feet.x;
   const dy = ball.y - feet.y;
   const dz = ball.z - (feet.z + shoulderHeight);
+  const horizontal = Math.hypot(dx, dy);
+  if (facing && horizontal > 0.15 && (dx * facing.x + dy * facing.y) / (horizontal * Math.hypot(facing.x, facing.y) || 1) < -0.25) return null;
   const distance = Math.hypot(dx, dy, dz);
   const limit = arm + BALL_RADIUS;
   if (distance > limit) return null;
@@ -54,19 +56,24 @@ export function armContact(feet: Vec3, heightCm: number, reachM: number, ball: V
  * Contact des corps pendant un tir, mesuré pour `foulOnContact` : recouvrement (m) sous la
  * distance de contact, vitesse du défenseur vers le tireur (m/s). null s'ils ne se touchent pas.
  */
-export function bodyContact(defender: { pos: Vec3; vel: Vec3 }, shooter: { pos: Vec3 }): { overlap: number; approachSpeed: number } | null {
+export function bodyContact(defender: { pos: Vec3; vel: Vec3 }, shooter: { pos: Vec3; vel?: Vec3 }): { overlap: number; approachSpeed: number } | null {
   const dx = shooter.pos.x - defender.pos.x;
   const dy = shooter.pos.y - defender.pos.y;
   const distance = Math.hypot(dx, dy);
+  if (Math.abs(shooter.pos.z - defender.pos.z) > 1.6) return null;
   if (distance > DEFENSE_FLOW.contactRange) return null;
-  const approachSpeed = distance < 1e-6 ? 0 : Math.max(0, (defender.vel.x * dx + defender.vel.y * dy) / distance);
+  const approachSpeed = distance < 1e-6 ? 0 : Math.max(0, ((defender.vel.x - (shooter.vel?.x ?? 0)) * dx + (defender.vel.y - (shooter.vel?.y ?? 0)) * dy) / distance);
   return { overlap: DEFENSE_FLOW.contactRange - distance, approachSpeed };
 }
 
 /** Le ballon redescend au-dessus du cercle, assez près de lui pour avoir une chance d'entrer. */
 export function inGoaltendZone(hoop: Hoop, ball: { pos: Vec3; vel: Vec3 }): boolean {
   const { pos, vel } = ball;
-  return vel.z < 0 && pos.z > RIM_HEIGHT + BALL_RADIUS && Math.hypot(pos.x - hoop.rim.x, pos.y - hoop.rim.y) <= DEFENSE_FLOW.goaltendRadius;
+  if (vel.z >= 0 || pos.z <= RIM_HEIGHT + BALL_RADIUS) return false;
+  const cylinder = Math.hypot(pos.x - hoop.rim.x, pos.y - hoop.rim.y) <= RIM_RADIUS;
+  const time = (vel.z + Math.sqrt(vel.z * vel.z + 2 * 9.81 * (pos.z - RIM_HEIGHT))) / 9.81;
+  const crossing = Math.hypot(pos.x + vel.x * time - hoop.rim.x, pos.y + vel.y * time - hoop.rim.y);
+  return cylinder || crossing <= RIM_RADIUS;
 }
 
 /**

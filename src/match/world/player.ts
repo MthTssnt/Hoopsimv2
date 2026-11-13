@@ -38,17 +38,23 @@ export interface MoveInput {
   y: number;
   /** Saut demandé à ce pas. */
   jump: boolean;
+  /** Look direction can differ from locomotion during defense and receptions. */
+  face?: { x: number; y: number };
   /** Ce saut lance un tir : son sommet tombe à la fin de la jauge (sinon, saut vif sans ballon). */
   shotJump?: boolean;
 }
 
+export type Locomotion = 'idle' | 'run' | 'start' | 'brake' | 'pivot' | 'defense' | 'shuffle' | 'backpedal';
 export interface PlayerBody {
+  locomotion: Locomotion;
+  motionAge: number;
   athlete: Player;
   /** Position des pieds (z = 0 au sol). */
   pos: Vec3;
   vel: Vec3;
   /** Orientation à l'écran : 1 vers la droite, -1 vers la gauche. */
   facing: 1 | -1;
+  look: { x: number; y: number };
   runSpeed: number;
   jumpHeight: number;
   /** Saut de tir : sommet à `timeToApex` (fin de la jauge), avec cette gravité. */
@@ -64,9 +70,11 @@ export interface PlayerBody {
 export function createPlayerBody(athlete: Player, pos: Vec3, timeToApex: number): PlayerBody {
   const body: PlayerBody = {
     athlete,
+    locomotion: 'idle', motionAge: 0,
     pos: { ...pos },
     vel: { x: 0, y: 0, z: 0 },
     facing: 1,
+    look: { x: 1, y: 0 },
     runSpeed: runSpeed(athlete),
     jumpHeight: jumpHeight(athlete),
     shotGravity: 0,
@@ -139,9 +147,26 @@ export function stepPlayer(body: PlayerBody, input: MoveInput, dt: number, court
   const { pos, vel } = body;
   const fromX = pos.x, fromY = pos.y;
   const wasGrounded = !body.airborne;
+  const beforeSpeed = Math.hypot(vel.x, vel.y), beforeFacing = body.facing;
+  body.motionAge += dt;
   if (!body.airborne) {
     steer(body, input, dt);
-    if (input.x !== 0) body.facing = input.x > 0 ? 1 : -1;
+    const direction = input.face ?? (Math.hypot(vel.x, vel.y) > 0.25 ? vel : { x: input.x, y: input.y });
+    if (Math.hypot(direction.x, direction.y) > 0.01) {
+      const d = Math.hypot(direction.x, direction.y);
+      body.look = { x: direction.x / d, y: direction.y / d };
+      if (Math.abs(body.look.x) > 0.15) body.facing = body.look.x > 0 ? 1 : -1;
+    }
+    const speed = Math.hypot(vel.x, vel.y);
+    let mode: Locomotion = speed > 0.18 ? 'run' : 'idle';
+    if (input.face) {
+      const dot = (vel.x * body.look.x + vel.y * body.look.y) / (speed || 1);
+      mode = speed < 0.18 ? 'defense' : dot < -0.35 ? 'backpedal' : 'shuffle';
+    } else if (speed > 0.18 && (Math.hypot(input.x, input.y) === 0 || vel.x * input.x + vel.y * input.y < 0)) mode = 'brake';
+    else if (beforeFacing !== body.facing && speed < 1) mode = 'pivot';
+    else if (beforeSpeed < 0.18 && speed > 0.18 || body.locomotion === 'start' && body.motionAge < 0.12) mode = 'start';
+    else if (body.locomotion === 'pivot' && body.motionAge < 0.1) mode = 'pivot';
+    if (mode !== body.locomotion) { body.locomotion = mode; body.motionAge = 0; }
     if (input.jump) {
       body.airborne = true;
       // Saut de tir : sommet à la fin de la jauge ; sans ballon : saut vif, à la gravité réelle.

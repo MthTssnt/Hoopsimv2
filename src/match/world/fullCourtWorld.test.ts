@@ -428,7 +428,7 @@ describe('lancers francs (faute sur un tir)', () => {
     const rim = attackHoop(court, 0, 1).rim;
     live(w, 0, { x: rim.x - dx, y: rim.y });
     w.full!.frontcourt = true;
-    place(w, 5, { x: rim.x - dx + 0.72, y: rim.y });
+    place(w, 5, { x: rim.x - dx + 0.5, y: rim.y });
     stepWith(w, 0, { ...IDLE, jump: true });
     for (let t = 0; t < 2 && w.shot; t += WORLD_DT) stepWith(w, 0, { ...IDLE, release: w.shot.airTime + WORLD_DT >= w.players[0].timeToApex });
     return w;
@@ -477,7 +477,9 @@ describe('lancers francs (faute sur un tir)', () => {
       w.step(WORLD_DT, Array.from({ length: 10 }, () => ({ x: 1, y: 1, jump: false })));
       w.players.forEach((p, i) => expect(p.pos).toEqual(frozen[i]));
       for (let n = 0; n < 2; n++) {
-        run(w, 2, () => w.holder === 0 && full.freeThrows?.aim === null && full.freeThrows?.pause === 0 && !full.freeThrows.flying);
+        run(w, 4, () => w.holder === 0 && full.freeThrows?.aim === null && full.freeThrows?.pause === 0 && !full.freeThrows.flying);
+        expect(full.freeThrows?.flying).toBe(false);
+        expect(full.freeThrows?.pause).toBe(0);
         stepWith(w, 0, { ...IDLE, jump: true });
         expect(shooter.airborne).toBe(false);
         for (let t = 0; t < 2 && full.freeThrows?.aim !== null && w.holder === 0; t += WORLD_DT) {

@@ -25,7 +25,7 @@ export function previewPose(id: MotionId, phase: number, heading: BodyView['head
     body.freeThrow = phase < 0.2 ? { stage: 'setup' } : phase < 0.5 ? { stage: 'aim' } : { stage: 'after', since: (phase - 0.5) * 0.8 };
   }
   const state = spriteStateFor(body);
-  const motion: MotionId = state.kind === 'frame' ? state.gesture : state.name === 'shoot' ? 'jumpShot' : state.name;
+  const motion = (state.kind === 'frame' ? state.gesture : state.name === 'shoot' ? 'jumpShot' : state.name) as MotionId;
   const def = MOTIONS.find((m) => m.id === motion)!;
   return { motion, frame: state.kind === 'frame' ? state.step : Math.min(def.count - 1, Math.floor(phase * def.count)), body };
 }

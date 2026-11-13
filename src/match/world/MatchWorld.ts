@@ -1,7 +1,11 @@
+import { bodyRadius, resolveBodies } from './bodyContacts';
+import { BallControlRig, catchable } from './ballControl';
+import { GestureTracker } from '../render/gestureTracker';
 import { reach } from '../../engine/athletics';
 import type { Rng } from '../../engine/rng';
 import {
   blockProbability,
+  contestLevel,
   canDunk,
   FREE_THROW_TUNING,
   foulOnContact,
@@ -33,9 +37,9 @@ import {
   stealProbability,
   type InterceptOutcome,
 } from '../../engine/steal';
-import { deflectVelocity, laneContact, measureSteal, pokeVelocity, STEAL_FLOW, type StealMeasure } from './steal';
+import { ballExposure, deflectVelocity, laneContact, measureSteal, pokeVelocity, STEAL_FLOW, type StealMeasure } from './steal';
 import { armContact, bodyContact, DEFENSE_FLOW, inGoaltendZone, swatVelocity } from './defense';
-import { solveShot } from '../physics/shotSolver';
+import { launchVelocity, solveShot } from '../physics/shotSolver';
 import {
   attackHoop,
   baselineSpot,
@@ -60,7 +64,7 @@ import { leadPoint, PASS_FLOW, passSpeed, passTarget, passVelocity } from './pas
 import { BOX_RULES, LiveBox, type ShotValue } from './boxScore';
 import { createPlayerBody, PLAYER_TUNING, setBodyAthlete, setJumpTiming, stepPlayer, type MoveInput, type PlayerBody } from './player';
 import { createSquad, matchProgress, matchTimeScale, substitute, tickSquad, tiredAthlete, type MatchMember, type Squad } from './rotation';
-import { attacksRim, dunkFinish, dunkJumpHeight, layupFinish, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
+import { attacksRim, dunkFinish, dunkJumpHeight, releasePoint, SHOT_FLOW, shotZone, targetHoop } from './shooting';
 
 /** Valeurs provisoires, réglables à l'œil. */
 export const WORLD_TUNING = {
@@ -145,6 +149,8 @@ export interface FoulCall {
 /** Un vrai tir, de l'appui à son issue : fenêtre de faute et ballon mort après une faute. */
 interface Play {
   shooter: number;
+  contacts: Map<number, { severity: number; time: number }>;
+  blocks: Set<number>;
   /** Tir enregistré dès le lâcher (au smash pour un dunk). */
   record: ShotRecord | null;
   foul: FoulCall | null;
@@ -162,6 +168,7 @@ interface Play {
 export interface ActiveDunk {
   made: boolean;
   probability: number;
+  block?: BlockAttempt;
   /** Ballon smashé (le joueur ne le tient plus). */
   slammed: boolean;
   /** Temps d'accroche au cercle restant (s). */
@@ -198,6 +205,8 @@ export interface ShotSettings {
 
 /** Ce que le monde reçoit à chaque pas pour un joueur : direction, appui et relâche de Tir, passe. */
 export interface WorldInput extends MoveInput {
+  intentionalFoul?: boolean;
+  receiver?: number;
   /** Tir relâché à ce pas. */
   release?: boolean;
   /** Passe demandée à ce pas (en défense, pour le joueur contrôlé : changer de défenseur). */
@@ -238,7 +247,7 @@ export interface Turnover {
 /** Événement à annoncer (messages du rendu), numéroté dans l'ordre : `by` est le joueur au-dessus duquel l'annoncer. */
 export interface MatchEvent {
   id: number;
-  kind: 'vol' | 'faute-main' | 'interception' | 'déviation' | 'bonus' | '6 fautes' | 'changement' | ViolationKind;
+  kind: 'faute-tir' | 'faute-intentionnelle' | 'sirène' | 'vol' | 'faute-main' | 'interception' | 'déviation' | 'bonus' | '6 fautes' | 'changement' | ViolationKind;
   by: number;
   of: number;
   time: number;
@@ -246,6 +255,7 @@ export interface MatchEvent {
 
 /** Passe en vol : seuls les coéquipiers du passeur peuvent l'attraper (l'interception arrive au 9). */
 export interface PassFlight {
+  kind?: 'chest' | 'lob';
   passer: number;
   receiver: number;
   team: number;
@@ -333,6 +343,17 @@ export class MatchWorld {
   private subsDue = false;
   /** Temps de chrono depuis la dernière mise à jour des notes (fatigue, s). */
   private tiredClock = 0;
+  private pendingQuarterMinutes: number | null = null;
+  private pendingShotSettings: ShotSettings | null = null;
+  readonly gestures: GestureTracker;
+  private readonly controlRig = new BallControlRig();
+  presentation = { version: 0, time: -10, kind: 'remise' as 'remise' | 'placement' | 'changement' };
+  readonly dunkRecoveries = new Map<number, { hang: number; apex: number }>();
+  readonly trajectoryFallbacks: { time: number; start: Vec3 }[] = [];
+  lastCatch: { player: number; time: number } | null = null;
+  private capture: { player: number; elapsed: number; duration: number; offset: Vec3 } | null = null;
+  private pickupLocked: number | null = null;
+  private pickupLockedAlso: number | null = null;
   private dribbleTime = 0;
   private cooldown = 0;
   private play: Play | null = null;
@@ -351,6 +372,7 @@ export class MatchWorld {
     this.players.push(createPlayerBody(athlete, start, gaugeTime(shotSettings.speed)));
     this.holder = 0;
     this.ball = { pos: this.handPosition(this.players[0]), vel: { x: 0, y: 0, z: 0 } };
+    this.gestures = new GestureTracker(this);
   }
 
   get player(): PlayerBody {
@@ -414,7 +436,7 @@ export class MatchWorld {
 
   /** Durée d'un quart-temps (min), appliquée à partir du suivant. */
   setQuarterMinutes(minutes: number): void {
-    if (this.full) this.full.quarterMinutes = minutes;
+    if (Number.isFinite(minutes) && minutes > 0 && this.full) this.pendingQuarterMinutes = minutes;
   }
 
   /** 1 contre 1 : ton joueur contre `opponent`. */
@@ -476,6 +498,11 @@ export class MatchWorld {
 
   /** Mode et vitesse de tir : la vitesse règle aussi la durée du saut (sommet = fin de la jauge). */
   setShotSettings(settings: ShotSettings): void {
+    if (this.shot || this.players.some((body) => body.airborne) || this.full?.freeThrows?.aim != null) {
+      this.pendingShotSettings = { ...settings };
+      return;
+    }
+    this.pendingShotSettings = null;
     this.shotSettings = { ...settings };
     for (const body of this.players) setJumpTiming(body, gaugeTime(settings.speed));
   }
@@ -485,6 +512,18 @@ export class MatchWorld {
 
   /** Position du ballon tenu : dribble au sol, levé au-dessus de la tête en l'air. */
   handPosition(body: PlayerBody): Vec3 {
+    const index = this.players.indexOf(body);
+    const state = this.gestures?.states[index] ?? { kind: 'anim' as const, name: body.airborne ? 'shoot' as const : 'dribbleIdle' as const, facing: body.facing < 0 ? 'left' as const : 'right' as const, heading: 'down' as const };
+    const point = this.controlRig.point(body, this.team[index] ?? 0, state, this.dribblePhase, this.clock);
+    if (point) {
+      const shot = this.shot;
+      if (shot?.shooter === index && shot.dunk && !shot.dunk.slammed) {
+        const k = Math.max(0, Math.min(1, (shot.airTime / body.timeToApex - 0.6) / 0.4));
+        const t = k * k * (3 - 2 * k), rim = shot.hoop.rim;
+        return { x: point.x + (rim.x - point.x) * t, y: point.y + (rim.y - point.y) * t, z: point.z + (rim.z + 0.2 - point.z) * t };
+      }
+      return point;
+    }
     const t = WORLD_TUNING;
     const x = body.pos.x + body.facing * t.handForward;
     const y = body.pos.y + t.handDepth;
@@ -500,17 +539,22 @@ export class MatchWorld {
   contestFor(index: number, hoop: Hoop): (Contest & { player: Player }) | null {
     const shooter = this.players[index].pos;
     let best: (Contest & { player: Player }) | null = null;
+    let bestContest = -1;
     this.players.forEach((body, i) => {
       if (this.team[i] === this.team[index]) return;
       const dx = body.pos.x - shooter.x;
       const dy = body.pos.y - shooter.y;
       const distance = Math.hypot(dx, dy);
-      if (best && distance >= best.distance) return;
       const rx = hoop.rim.x - shooter.x;
       const ry = hoop.rim.y - shooter.y;
       const rimDist = Math.hypot(rx, ry);
       const facing = distance < 1e-6 || rimDist < 1e-6 ? 1 : clamp01((dx * rx + dy * ry) / (distance * rimDist));
-      best = { distance, facing, player: body.athlete };
+      const candidate = { distance, facing, player: body.athlete };
+      const pressure = contestLevel(candidate);
+      if (pressure > bestContest || (pressure === bestContest && distance < (best?.distance ?? Infinity))) {
+        best = candidate;
+        bestContest = pressure;
+      }
     });
     return best;
   }
@@ -521,7 +565,9 @@ export class MatchWorld {
     const hoop = this.hoopFor(index);
     return {
       dunker: body.athlete,
-      inDunkZone: inPaintHalf(this.court, hoop, body.pos.x, body.pos.y),
+      inDunkZone: inPaintHalf(this.court, hoop, body.pos.x, body.pos.y)
+        && (body.pos.x - hoop.rim.x) * hoop.toCourt > 0.1
+        && distanceToRim(hoop, body.pos.x, body.pos.y) <= (Math.hypot(body.vel.x, body.vel.y) < 1 ? 1.1 : 2.6),
       moveSpeed: Math.hypot(body.vel.x, body.vel.y),
       defender: this.contestFor(index, hoop),
     };
@@ -533,7 +579,9 @@ export class MatchWorld {
    */
   step(dt: number, inputs: WorldInput | readonly WorldInput[]): void {
     let list: readonly WorldInput[] = Array.isArray(inputs) ? inputs : [inputs as WorldInput];
+    const previousHolder = this.holder;
     this.clock += dt;
+    if (this.pendingShotSettings && !this.shot && !this.players.some((body) => body.airborne) && this.full?.freeThrows?.aim == null) this.setShotSettings(this.pendingShotSettings);
     this.passCooldown = Math.max(0, this.passCooldown - dt);
     for (let i = 0; i < this.players.length; i++) {
       this.stealCooldown[i] = Math.max(0, (this.stealCooldown[i] ?? 0) - dt);
@@ -561,8 +609,11 @@ export class MatchWorld {
     const full = this.full;
     const thrower = full?.phase === 'remise' && this.holder === full.inbound?.thrower ? this.holder : null;
 
+    const movementStart = this.players.map((body) => ({ x: body.pos.x, y: body.pos.y, z: body.pos.z, stride: body.strideDistance }));
     this.players.forEach((body, i) => {
       let raw = list[i] ?? IDLE_INPUT;
+      if (raw.steal && this.holder !== null && this.holder !== i) raw = { ...raw, face: { x: this.ball.pos.x - body.pos.x, y: this.ball.pos.y - body.pos.y } };
+      if (this.pass?.receiver === i && this.pass.elapsed > 0.1 && !raw.face) raw = { ...raw, face: { x: this.ball.pos.x - body.pos.x, y: this.ball.pos.y - body.pos.y } };
       // Le lanceur d'une remise ne bouge pas et ne tire pas : il passe.
       if (i === thrower) raw = { x: 0, y: 0, jump: false, pass: raw.pass };
       // Déséquilibré après un vol raté : il avance au ralenti et ne peut pas sauter.
@@ -570,9 +621,12 @@ export class MatchWorld {
       const input = this.offBalance[i] > 0 ? { ...raw, x: raw.x * k, y: raw.y * k, jump: false } : raw;
       // Appui sur Tir avec le ballon, au sol : le tir commence avec le saut. Dunk d'abord (s'il
       // est possible), sinon layup en attaquant le cercle, sinon tir en suspension.
-      const startsShot = input.jump && this.holder === i && !body.airborne && this.shot === null;
+      const available = this.shot === null || this.shot.dunk?.slammed === true;
+      const startsShot = input.jump && this.holder === i && !body.airborne && available;
+      if (startsShot && this.shot?.dunk?.slammed) this.endShot();
       const takeoffSpeed = Math.hypot(body.vel.x, body.vel.y);
       const takeoff = { ...body.pos };
+      const takeoffVelocity = { x: body.vel.x, y: body.vel.y };
       let kind: PlayKind | null = null;
       let dunkCtx: DunkContext | null = null;
       if (startsShot) {
@@ -581,18 +635,23 @@ export class MatchWorld {
         else kind = attacksRim(body.pos, body.vel, this.hoopFor(i)) ? 'layup' : 'jump';
       }
       // Accroché au cercle : le dunkeur ne bouge plus jusqu'à la fin de l'accroche.
-      const dunk = this.shot?.shooter === i ? this.shot.dunk : null;
+      const dunk = this.dunkRecoveries.get(i);
       if (dunk && dunk.hang > 0) dunk.hang = Math.max(0, dunk.hang - dt);
       else stepPlayer(body, startsShot ? { ...input, shotJump: true } : input, dt, this.court);
-      if (!body.airborne) this.followThrough[i] = false;
-      if (kind) this.startShot(i, kind, takeoffSpeed, takeoff, dunkCtx);
+      if (!body.airborne) { this.followThrough[i] = false; if (this.dunkRecoveries.delete(i)) { body.jumpGravity = PLAYER_TUNING.freeJumpGravity; setJumpTiming(body, body.timeToApex); } }
+      if (kind) this.startShot(i, kind, takeoffSpeed, takeoff, dunkCtx, takeoffVelocity);
     });
-    this.separateBodies();
     this.checkFoul();
+    this.separateBodies();
+    this.players.forEach((body, i) => {
+      const before = movementStart[i];
+      if (before.z === 0 && !body.airborne) body.strideDistance = before.stride + Math.hypot(body.pos.x - before.x, body.pos.y - before.y);
+    });
     this.cooldown = Math.max(0, this.cooldown - dt);
+    if (this.cooldown === 0) this.pickupLockedAlso = null;
 
     // Passe du porteur, au sol et hors tir ; en défense, le joueur contrôlé change de défenseur.
-    if (this.holder !== null && this.shot === null) {
+    if (this.holder !== null && (this.shot === null || this.shot.dunk?.slammed)) {
       const input = list[this.holder] ?? IDLE_INPUT;
       if (input.pass && this.passCooldown <= 0 && !this.players[this.holder].airborne) this.passBall(this.holder, input);
     }
@@ -601,14 +660,17 @@ export class MatchWorld {
     if (mine?.pass && defending && this.teamPlay && !this.rules?.restart) this.switchDefender();
     // Interception (A) : geste de vol sur le porteur, ou bras allongé dans une ligne de passe.
     if (this.teamPlay && !this.rules?.restart && (!full || full.phase === 'jeu' || full.phase === 'remise')) {
-      for (let i = 0; i < this.players.length; i++) if (list[i]?.steal) this.stealGesture(i);
+      for (let i = 0; i < this.players.length; i++) {
+        if (list[i]?.intentionalFoul) this.intentionalFoul(i);
+        else if (list[i]?.steal) this.stealGesture(i);
+      }
     }
 
     if (this.shot) {
       const shooter = this.players[this.shot.shooter];
       const input = list[this.shot.shooter] ?? IDLE_INPUT;
       this.shot.airTime += dt;
-      if (this.shot.dunk) this.stepDunk();
+      if (this.shot.dunk) { this.checkDunkBlock(); this.stepDunk(); }
       // Lâcher au relâchement de Tir ; Tir encore enfoncé à l'atterrissage : le tir part tout seul.
       else if (input.release) this.releaseShot(false);
       else if (!shooter.airborne) this.releaseShot(true);
@@ -622,8 +684,7 @@ export class MatchWorld {
       const cadence = speed > PLAYER_TUNING.movingThreshold
         ? Math.max(PLAYER_TUNING.dribbleMinRate, speed * WORLD_TUNING.dribblePeriod / PLAYER_TUNING.strideMeters) : 1;
       this.dribbleTime = holder.airborne || this.holder === thrower ? 0 : this.dribbleTime + dt * cadence;
-      this.ball.pos = this.handPosition(holder);
-      this.ball.vel = { ...holder.vel };
+
       // Demi-terrain : tenir le ballon derrière l'arc le « ressort » pour toute l'équipe.
       const team = this.team[this.holder];
       if (this.rules?.mustClear[team] && isCleared(this.court, this.court.hoops.right, holder.pos)) {
@@ -672,6 +733,36 @@ export class MatchWorld {
     if (this.subsDue) {
       this.subsDue = false;
       if (this.full?.phase === 'mort') this.coachSubs(this.full.freeThrows?.shooter ?? null);
+    }
+    const owner = this.holder;
+    if (owner !== previousHolder) {
+      this.capture = null;
+      if (owner !== null && (!this.full || this.full.phase === 'jeu') && !this.rules?.restart) {
+        const body = this.players[owner], pos = this.ball.pos;
+        this.lastCatch = { player: owner, time: this.clock };
+        this.capture = { player: owner, elapsed: 0, duration: 0.18,
+          offset: { x: pos.x - body.pos.x, y: pos.y - body.pos.y, z: pos.z - body.pos.z } };
+      }
+    }
+    this.gestures.advance(dt);
+    if (owner !== null) {
+      const body = this.players[owner], target = this.handPosition(body), before = this.ball.pos;
+      const capture = this.capture;
+      if (capture?.player === owner) {
+        const k = Math.min(1, capture.elapsed / capture.duration), smooth = k * k * (3 - 2 * k);
+        const from = { x: body.pos.x + capture.offset.x, y: body.pos.y + capture.offset.y, z: body.pos.z + capture.offset.z };
+        this.ball.pos = { x: from.x + (target.x - from.x) * smooth, y: from.y + (target.y - from.y) * smooth, z: from.z + (target.z - from.z) * smooth };
+        capture.elapsed += dt;
+        if (k === 1) this.capture = null;
+      } else {
+        if (previousHolder === owner && !body.airborne && (!this.full || this.full.phase === 'jeu')) {
+          const dx = target.x - before.x, dy = target.y - before.y, distance = Math.hypot(dx, dy);
+          if (distance > 8 * dt) { target.x = before.x + dx / distance * 8 * dt; target.y = before.y + dy / distance * 8 * dt; }
+          target.z = Math.max(before.z - 14 * dt, Math.min(before.z + 14 * dt, target.z));
+        }
+        this.ball.pos = target;
+      }
+      this.ball.vel = { x: (this.ball.pos.x - before.x) / dt, y: (this.ball.pos.y - before.y) / dt, z: (this.ball.pos.z - before.z) / dt };
     }
   }
 
@@ -776,7 +867,7 @@ export class MatchWorld {
     const keeper = keep !== null ? this.memberOf(keep) : null;
     for (const squad of this.squads) {
       const forced = squad.members.some((m) => m.body !== null && m.fouledOut);
-      if (!forced && squad.sinceSub * ctx.timeScale < SUB_INTERVAL) continue;
+      if (!forced && squad.sinceSub < Math.max(60, SUB_INTERVAL / ctx.timeScale)) continue;
       const five = nextLineup(squad.members, ctx);
       if (keeper && keeper.team === squad.team && !five.includes(keeper)) continue;
       squad.sinceSub = 0;
@@ -792,7 +883,10 @@ export class MatchWorld {
         this.offBalance[sub.body] = 0;
         this.pushEvent('changement', sub.body, sub.body);
       }
-      if (entering.length > 0 || lineup.join() !== before) this.lineupVersion++;
+      if (entering.length > 0 || lineup.join() !== before) {
+        this.lineupVersion++;
+        this.presentation = { version: this.presentation.version + 1, time: this.clock, kind: 'changement' };
+      }
     }
   }
 
@@ -1038,6 +1132,7 @@ export class MatchWorld {
    * du terrain) avec le ballon ; possession, shot clock, contrôle. Le chrono repart au toucher.
    */
   private setupInbound(): void {
+    this.presentation = { version: this.presentation.version + 1, time: this.clock, kind: 'remise' };
     const full = this.full!;
     const inbound = full.inbound!;
     const thrower = inbound.thrower ?? this.nearestOf(inbound.team, inbound.spot) ?? this.lineup[inbound.team][0];
@@ -1089,6 +1184,10 @@ export class MatchWorld {
   /** Période `period` : chrono plein ; entre-deux en prolongation, sinon remise de la ligne de fond dans sa moitié. */
   private startPeriod(period: number): void {
     const full = this.full!;
+    if (this.pendingQuarterMinutes !== null) {
+      full.quarterMinutes = this.pendingQuarterMinutes;
+      this.pendingQuarterMinutes = null;
+    }
     full.period = period;
     full.clock = periodLength(full.quarterMinutes, period);
     full.buzzerPending = false;
@@ -1122,6 +1221,7 @@ export class MatchWorld {
     full.freeThrows = null;
     full.waitTouch = false;
     full.clock = 0;
+    this.pushEvent('sirène', this.controlled, this.controlled);
     this.box?.dead();
     // Repos entre les périodes (plus long à la mi-temps), comme en simulation.
     for (const squad of this.squads ?? []) for (const m of squad.members) m.energy = restEnergy(m.energy, full.period);
@@ -1137,6 +1237,7 @@ export class MatchWorld {
 
   /** Tous les joueurs à leur place, immobiles ; plus de tir, de passe ni de vol en cours. */
   private placeAll(positions: Map<number, Vec3>): void {
+    this.presentation = { version: this.presentation.version + 1, time: this.clock, kind: 'placement' };
     for (const [i, pos] of positions) {
       const body = this.players[i];
       body.pos = { ...pos };
@@ -1225,6 +1326,7 @@ export class MatchWorld {
     const d = Math.hypot(dx, dy) || 1;
     const speed = Math.min(5, d * 1.6);
     this.ball.vel = { x: (dx / d) * speed, y: (dy / d) * speed, z: 1 };
+    this.pickupLocked = winner;
     this.cooldown = 0.15;
     full.tip = null;
     full.tipWinner ??= team;
@@ -1311,6 +1413,17 @@ export class MatchWorld {
    * porteur adverse, `match/` mesure la main (distance, exposition du ballon, rapprochement) et
    * `engine/` tranche : faute de main d'abord, puis vol. Raté ou dans le vide : déséquilibre.
    */
+  private intentionalFoul(index: number): void {
+    const full = this.full, holder = this.holder;
+    if (!full || full.phase !== 'jeu' || holder === null || this.shot || this.team[index] === this.team[holder]) return;
+    const a = this.players[index], b = this.players[holder];
+    if (a.airborne || b.airborne || Math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y) > 1.15) return;
+    this.pushEvent('faute-intentionnelle', index, holder);
+    this.foulCommitted(index);
+    if (inBonus(this.squads![this.team[index]].fouls)) this.freeThrowsFor(holder, 2);
+    else this.foulInbound(holder);
+  }
+
   private stealGesture(i: number): void {
     const body = this.players[i];
     if (this.stealCooldown[i] > 0 || body.airborne || this.holder === i) return;
@@ -1319,7 +1432,12 @@ export class MatchWorld {
     const h = this.holder;
     if (h === null || this.team[h] === this.team[i] || this.full?.phase === 'remise') return;
     const handler = this.players[h];
-    const m = measureSteal(body.pos, handler.pos, this.ball.pos);
+    let m = measureSteal(body.pos, handler.pos, this.ball.pos, body.look);
+    if (!m && Math.hypot(body.pos.x - handler.pos.x, body.pos.y - handler.pos.y) < STEAL_FLOW.closeRange) m = {
+      distance: Math.hypot(body.pos.x - this.ball.pos.x, body.pos.y - this.ball.pos.y), reach: 0,
+      exposed: ballExposure(body.pos, handler.pos, this.ball.pos),
+      closeness: STEAL_FLOW.closeRange - Math.hypot(body.pos.x - handler.pos.x, body.pos.y - handler.pos.y),
+    };
     if (!m) {
       this.offBalance[i] = STEAL_FLOW.offBalance;
       return;
@@ -1351,12 +1469,15 @@ export class MatchWorld {
       this.startRestart(h);
       return;
     }
-    if (resolveSteal(stealCtx, this.rng)) {
+    if (m.reach > 0 && resolveSteal(stealCtx, this.rng)) {
       // Ballon arraché : il part vers le défenseur, libre.
       attempt.result = 'vol';
       this.touchBall(i);
       this.ball = { pos: { ...this.ball.pos }, vel: pokeVelocity(handler.pos, body.pos, this.rng) };
       this.holder = null;
+      if (this.shot?.shooter === h) { this.endShot(); this.play = null; }
+      this.pickupLocked = i;
+      this.pickupLockedAlso = h;
       this.cooldown = STEAL_FLOW.pokeCooldown;
       this.loose = { by: i, from: h, kind: 'vol' };
       this.pushEvent('vol', i, h);
@@ -1390,7 +1511,8 @@ export class MatchWorld {
         reaching,
         airborne: body.airborne,
       };
-      const outcome = resolveInterception(ctx, this.rng);
+      let outcome = resolveInterception(ctx, this.rng);
+      if (outcome === 'catch' && !catchable(body, ball, reach(body.athlete), true)) outcome = 'deflect';
       this.lastIntercept = { defender: j, passer: pass.passer, contact: contact.quality, ...interceptionChances(ctx), outcome, time: this.clock };
       if (outcome === 'catch') {
         this.pass = null;
@@ -1406,6 +1528,7 @@ export class MatchWorld {
         if (!this.touchLoose(j)) return;
         this.ball.vel = deflectVelocity(this.rng);
         this.pass = null;
+        this.pickupLocked = j;
         this.cooldown = STEAL_FLOW.deflectCooldown;
         this.loose = { by: j, from: pass.passer, kind: 'déviation' };
         this.pushEvent('déviation', j, pass.passer);
@@ -1488,11 +1611,11 @@ export class MatchWorld {
 
   /**
    * Faute : au premier contact des corps pendant le tir (de l'appui à l'atterrissage du tireur),
-   * au sol ou en l'air, `engine/` dit si elle est sifflée. Une seule évaluation par tir.
+   * au sol ou en l'air, `engine/` dit si elle est sifflée. Une nouvelle évaluation exige un contact distinct ou sensiblement plus violent.
    */
   private checkFoul(): void {
     const play = this.play;
-    if (!play || !play.watching || play.foul || !this.teamPlay) return;
+    if (!play || !play.watching || play.foul?.called || !this.teamPlay) return;
     const shooter = this.players[play.shooter];
     if (this.shot?.shooter !== play.shooter && !shooter.airborne) {
       play.watching = false;
@@ -1503,11 +1626,18 @@ export class MatchWorld {
       const defender = this.players[i];
       const contact = bodyContact(defender, shooter);
       if (!contact) continue;
+      const distance = Math.hypot(defender.pos.x - shooter.pos.x, defender.pos.y - shooter.pos.y);
+      contact.overlap = Math.max(0, bodyRadius(defender) + bodyRadius(shooter) - distance);
+      const severity = contact.overlap * 4 + contact.approachSpeed * 0.15;
+      if (contact.approachSpeed < 0.9 && contact.overlap < 0.06) continue;
+      const previous = play.contacts.get(i);
+      if (previous && (severity <= previous.severity + 0.12 || this.clock - previous.time < 0.15)) continue;
+      play.contacts.set(i, { severity, time: this.clock });
       const ctx = { defender: defender.athlete, shooter: shooter.athlete, ...contact };
       const foul: FoulCall = { defender: i, probability: foulProbability(ctx), called: foulOnContact(ctx, this.rng) };
       play.foul = foul;
       if (play.record) play.record.foul = foul;
-      if (foul.called) this.foulCommitted(i);
+      if (foul.called) { this.foulCommitted(i); this.pushEvent('faute-tir', i, play.shooter); }
       if (foul.called && play.missed) this.foulOnMiss(play);
       // Contact après que le ballon est entré (dunk) : panier et un lancer.
       else if (foul.called && this.full && play.record?.scored && !play.record.invalid) this.awardFreeThrows(play, 1);
@@ -1523,17 +1653,20 @@ export class MatchWorld {
   private checkTouch(): void {
     const play = this.play;
     const shot = this.lastShot;
-    if (!play || !shot || play.record !== shot || shot.kind === 'dunk' || shot.kind === 'lancer' || shot.live !== null || shot.scored) return;
+    if (!play || !shot || play.record !== shot || shot.live !== null || shot.scored) return;
     const hoop = shot.hoop === 'left' ? this.court.hoops.left : this.court.hoops.right;
     const rising = this.ball.vel.z > 0;
     const goaltend = !rising && !this.rimTouched && inGoaltendZone(hoop, this.ball);
-    const blockable = rising && shot.block === null && !play.foul?.called;
+    const blockable = !goaltend && !shot.block?.success && !play.foul?.called;
     if (!goaltend && !blockable) return;
     for (let i = 0; i < this.players.length; i++) {
       if (this.team[i] === this.team[shot.shooter]) continue;
       const body = this.players[i];
-      if (!body.airborne) continue;
-      const contact = armContact(body.pos, body.athlete.heightCm, reach(body.athlete), this.ball.pos);
+      if (!body.airborne || play.blocks.has(i) || this.gestures.clocks[i]?.air < 0.06) continue;
+      const phase = this.gestures.views[i]?.air;
+      const extension = !phase ? 1 : phase.rising ? Math.min(1, phase.progress / 0.8) : 0.6;
+      const shoulder = body.athlete.heightCm / 100 * DEFENSE_FLOW.shoulderRatio;
+      const contact = armContact(body.pos, body.athlete.heightCm, shoulder + (reach(body.athlete) - shoulder) * extension, this.ball.pos, body.look);
       if (!contact) continue;
       const shooter = this.players[shot.shooter];
       if (goaltend) {
@@ -1543,6 +1676,7 @@ export class MatchWorld {
         this.onBasket(shot);
         return;
       }
+      play.blocks.add(i);
       const ctx = { blocker: body.athlete, shooter: shooter.athlete, contact: contact.quality };
       const probability = blockProbability(ctx);
       const success = resolveBlock(ctx, this.rng);
@@ -1564,6 +1698,7 @@ export class MatchWorld {
   private swat(by: PlayerBody, shooter: PlayerBody): void {
     this.ball.vel = swatVelocity(by.pos, this.ball.pos, shooter.pos, this.rng);
     // Le temps que le ballon s'éloigne : la main qui l'a frappé ne le rattrape pas aussitôt.
+    this.pickupLocked = this.players.indexOf(by);
     this.cooldown = DEFENSE_FLOW.swatCooldown;
   }
 
@@ -1686,8 +1821,9 @@ export class MatchWorld {
     const hoop = this.attackHoop(ft.team);
     const timingError = (ft.aim ?? 0) - body.timeToApex;
     const result = resolveFreeThrow({ shooter: body.athlete, mode: this.shotSettings.mode, speed: this.shotSettings.speed, timingError }, this.rng);
-    const start = releasePoint(body.pos, body.athlete.heightCm, hoop, WORLD_TUNING.handDepth);
-    this.launch(start, result.made, hoop);
+    const start = this.controlRig.gesture(body, this.team[ft.shooter], 'freeThrow', 2, hoop.rim.y < body.pos.y ? 'up' : 'down')
+      ?? releasePoint(body.pos, body.athlete.heightCm, hoop, WORLD_TUNING.handDepth);
+    if (!this.launch(start, result.made, hoop)) result.made = false;
     ft.taken++;
     ft.aim = null;
     this.lastShot = {
@@ -1808,7 +1944,7 @@ export class MatchWorld {
     const body = this.players[passer];
     const mates = this.teammatesOf(passer).map((index) => ({ index, pos: this.players[index].pos }));
     const dir = input.x !== 0 || input.y !== 0 ? { x: input.x, y: input.y } : { x: body.facing, y: 0 };
-    const receiver = passTarget(body.pos, dir, mates);
+    const receiver = input.receiver !== undefined && mates.some((m) => m.index === input.receiver) ? input.receiver : passTarget(body.pos, dir, mates);
     if (receiver === null) return;
     const target = this.players[receiver];
     const speed = passSpeed(body.athlete.attrs.passing);
@@ -1819,59 +1955,34 @@ export class MatchWorld {
     const dy = aim.y - body.pos.y;
     const d = Math.hypot(dx, dy) || 1;
     const from = { x: body.pos.x + (dx / d) * WORLD_TUNING.bodyRadius, y: body.pos.y + (dy / d) * WORLD_TUNING.bodyRadius, z: chest(body) };
-    const { vel, time } = passVelocity(from, aim, speed);
-    this.ball = { pos: from, vel };
+    const kind = Math.hypot(aim.x - body.pos.x, aim.y - body.pos.y) > 8 ? 'lob' : 'chest';
+    body.facing = dx >= 0 ? 1 : -1;
+    body.look = { x: dx / d, y: dy / d };
+    const start = this.controlRig.gesture(body, this.team[passer], kind === 'lob' ? 'lobPass' : 'pass', 2, dy < -0.2 ? 'up' : 'down') ?? from;
+    const { vel, time } = passVelocity(start, aim, kind === 'lob' ? speed * 0.72 : speed);
+    this.ball = { pos: start, vel };
     this.holder = null;
     this.cooldown = 0;
     this.passCooldown = PASS_FLOW.cooldown;
     body.facing = dx >= 0 ? 1 : -1;
-    this.pass = { passer, receiver, team: this.team[passer], target: aim, time, elapsed: 0, checked: [] };
+    this.pass = { kind, passer, receiver, team: this.team[passer], target: aim, time, elapsed: 0, checked: [] };
     this.loose = null;
     this.touchBall(passer);
     if (this.team[passer] === this.userTeam) this.controlled = receiver;
   }
 
-  /** Deux joueurs ne se chevauchent jamais : on les écarte à parts égales (le lanceur d'une remise ne bouge pas). */
+  /** Contact massique et appuis ; le lanceur d'une remise reste ancré. */
   private separateBodies(): void {
-    const min = 2 * WORLD_TUNING.bodyRadius;
-    const m = PLAYER_TUNING.boundsMargin;
     const full = this.full;
     const anchor = full?.phase === 'remise' && this.holder === full.inbound?.thrower ? this.holder : null;
-    for (let i = 0; i < this.players.length; i++) {
-      for (let j = i + 1; j < this.players.length; j++) {
-        const a = this.players[i].pos;
-        const b = this.players[j].pos;
-        let dx = b.x - a.x;
-        let dy = b.y - a.y;
-        let d = Math.hypot(dx, dy);
-        if (d >= min) continue;
-        if (d < 1e-6) {
-          dx = 1;
-          dy = 0;
-          d = 1;
-          // Superposés exactement : on écarte le long du terrain.
-        }
-        const push = min - Math.hypot(b.x - a.x, b.y - a.y);
-        const ux = dx / d;
-        const uy = dy / d;
-        const ka = i === anchor ? 0 : j === anchor ? 1 : 0.5;
-        a.x -= ux * push * ka;
-        a.y -= uy * push * ka;
-        b.x += ux * push * (1 - ka);
-        b.y += uy * push * (1 - ka);
-        for (const p of [a, b]) {
-          p.x = Math.min(this.court.length + m, Math.max(-m, p.x));
-          p.y = Math.min(this.court.width + m, Math.max(-m, p.y));
-        }
-      }
-    }
+    resolveBodies(this.players, this.court, anchor);
   }
 
   /**
    * Début du tir : tourné vers le panier. Un layup file vers un point devant le cercle ; un dunk
    * (résultat tiré dès l'appui) file tout près du cercle et l'atteint au sommet, la main au-dessus.
    */
-  private startShot(shooter: number, kind: PlayKind, takeoffSpeed: number, takeoff: Vec3, dunkCtx: DunkContext | null): void {
+  private startShot(shooter: number, kind: PlayKind, takeoffSpeed: number, takeoff: Vec3, dunkCtx: DunkContext | null, takeoffVelocity: { x: number; y: number }): void {
     const body = this.players[shooter];
     const hoop = this.hoopFor(shooter);
     body.facing = hoop.rim.x >= takeoff.x ? 1 : -1;
@@ -1880,7 +1991,9 @@ export class MatchWorld {
       const { made, probability } = resolveDunk(dunkCtx, this.rng);
       const T = body.timeToApex;
       // Saut relevé si besoin : la main doit dépasser le cercle au sommet (mise en scène).
-      const apex = dunkJumpHeight(body.jumpHeight, reach(body.athlete));
+      const hand = this.controlRig.gesture(body, this.team[shooter], 'dunk', 2);
+      const handReach = hand ? hand.z - body.pos.z : reach(body.athlete);
+      const apex = dunkJumpHeight(body.jumpHeight, handReach);
       dunk = { made, probability, slammed: false, hang: 0, apex };
       body.jumpGravity = (2 * apex) / (T * T);
       body.vel.z = body.jumpGravity * T;
@@ -1893,20 +2006,16 @@ export class MatchWorld {
       body.vel.y = vy * k;
     }
     if (kind === 'layup') {
-      // Le layup garde son propre élan (pas celui, réduit, d'un tir en suspension).
-      const finish = layupFinish(takeoff, hoop);
-      const airTime = 2 * body.timeToApex;
-      const vx = (finish.x - takeoff.x) / airTime;
-      const vy = (finish.y - takeoff.y) / airTime;
-      const speed = Math.hypot(vx, vy);
-      const k = speed > SHOT_FLOW.layupMaxSpeed ? SHOT_FLOW.layupMaxSpeed / speed : 1;
-      body.vel.x = vx * k;
-      body.vel.y = vy * k;
+      // Preserve approach momentum, including when already beyond a nominal finish point.
+      const speed = Math.hypot(takeoffVelocity.x, takeoffVelocity.y);
+      const k = Math.min(0.8, SHOT_FLOW.layupMaxSpeed / Math.max(0.01, speed), PLAYER_TUNING.jumpMaxDrift / (2 * body.timeToApex * Math.max(0.01, speed)));
+      body.vel.x = takeoffVelocity.x * k;
+      body.vel.y = takeoffVelocity.y * k;
     }
     const zone: ShotZone = kind === 'jump' ? shotZone(this.court, hoop, takeoff.x, takeoff.y) : 'rim';
     const contest = dunkCtx?.defender ? { distance: dunkCtx.defender.distance, facing: dunkCtx.defender.facing } : null;
     this.shot = { shooter, kind, zone, hoop, airTime: 0, takeoffSpeed, takeoff, contest, dunk };
-    this.play = { shooter, record: null, foul: null, watching: true, missed: false, freeThrows: false, assist: null };
+    this.play = { shooter, contacts: new Map(), blocks: new Set(), record: null, foul: null, watching: true, missed: false, freeThrows: false, assist: null };
   }
 
   /** L'équipe du tireur avait-elle ressorti le ballon (toujours vrai hors demi-terrain) ? */
@@ -1914,20 +2023,41 @@ export class MatchWorld {
     return !this.rules?.mustClear[this.team[shooter]];
   }
 
+  private checkDunkBlock(): void {
+    const shot = this.shot, play = this.play;
+    if (!shot?.dunk || shot.dunk.slammed || !play || play.foul?.called || shot.airTime < 0.12) return;
+    const shooter = this.players[shot.shooter];
+    for (const i of this.opponentsOf(shot.shooter)) {
+      const body = this.players[i];
+      if (!body.airborne || play.blocks.has(i) || this.gestures.clocks[i]?.air < 0.06) continue;
+      const contact = armContact(body.pos, body.athlete.heightCm, reach(body.athlete), this.ball.pos, body.look);
+      if (!contact) continue;
+      play.blocks.add(i);
+      const ctx = { blocker: body.athlete, shooter: shooter.athlete, contact: contact.quality };
+      const success = resolveBlock(ctx, this.rng);
+      shot.dunk.block = { blocker: i, contact: contact.quality, probability: blockProbability(ctx), success };
+      if (success) shot.dunk.made = false;
+      if (success) return;
+    }
+  }
+
   /** Dunk : smash au sommet du saut, accroche au cercle s'il est réussi, fin à l'atterrissage. */
   private stepDunk(): void {
     const shot = this.shot!;
     const dunk = shot.dunk!;
     const body = this.players[shot.shooter];
-    if (!dunk.slammed && shot.airTime >= body.timeToApex) {
+    if (!dunk.slammed && (dunk.block?.success || shot.airTime >= body.timeToApex)) {
       dunk.slammed = true;
-      const plan = solveDunk(dunk.made, shot.hoop, shot.takeoff, this.court, this.rng);
+      const plan = dunk.block?.success
+        ? { start: { ...this.ball.pos }, velocity: swatVelocity(this.players[dunk.block.blocker].pos, this.ball.pos, body.pos, this.rng) }
+        : solveDunk(dunk.made, shot.hoop, shot.takeoff, this.court, this.rng);
       this.ball = { pos: { ...plan.start }, vel: { ...plan.velocity } };
+      this.pickupLocked = shot.shooter;
       this.holder = null;
       this.cooldown = WORLD_TUNING.pickupCooldown;
-      body.vel.x = 0;
-      body.vel.y = 0;
       if (dunk.made) {
+        body.vel.x = 0;
+        body.vel.y = 0;
         dunk.hang = SHOT_FLOW.dunkHang;
         body.vel.z = 0;
       }
@@ -1949,8 +2079,8 @@ export class MatchWorld {
         forced: false,
         scored: false,
         invalid: false,
-        live: null,
-        block: null,
+        live: dunk.block?.success ? false : null,
+        block: dunk.block ?? null,
         foul: this.play?.foul ?? null,
         goaltend: false,
       };
@@ -1959,8 +2089,17 @@ export class MatchWorld {
       this.shotReleased(shot.shooter);
       if (this.play) this.play.assist = this.assistFor(shot.shooter);
       this.boxAttempt(shot.shooter, 2);
+      if (dunk.block?.success) {
+        const blocker = this.memberOf(dunk.block.blocker);
+        if (blocker) this.box?.block(blocker);
+        this.boxMissed(this.lastShot);
+        this.markMissed(this.lastShot);
+      }
+      this.dunkRecoveries.set(shot.shooter, { hang: dunk.hang, apex: dunk.apex });
+      this.followThrough[shot.shooter] = true;
+      this.shot = null;
     }
-    if (!body.airborne) this.endShot();
+    if (!body.airborne && this.shot === shot) this.endShot();
   }
 
   /** Fin d'un tir en cours : le saut retrouve sa hauteur normale (un dunk a pu la relever). */
@@ -1983,6 +2122,8 @@ export class MatchWorld {
         shooter: body.athlete,
         zone,
         kind: shot.kind === 'layup' ? 'layup' : 'jump',
+        distance: distanceToRim(hoop, takeoff.x, takeoff.y),
+        rangeStart: this.court.threeArc + 0.8,
         mode: this.shotSettings.mode,
         speed: this.shotSettings.speed,
         timingError,
@@ -1991,8 +2132,9 @@ export class MatchWorld {
       },
       this.rng,
     );
-    const start = releasePoint(body.pos, body.athlete.heightCm, hoop, WORLD_TUNING.handDepth);
-    this.launch(start, result.made, hoop);
+    const start = this.controlRig.gesture(body, this.team[shot.shooter], shot.kind === 'layup' ? 'layup' : 'jumpShot', 2, hoop.rim.y < body.pos.y ? 'up' : 'down')
+      ?? releasePoint(body.pos, body.athlete.heightCm, hoop, WORLD_TUNING.handDepth);
+    if (!this.launch(start, result.made, hoop)) result.made = false;
     this.lastShot = {
       demo: false,
       shooter: shot.shooter,
@@ -2024,32 +2166,44 @@ export class MatchWorld {
   }
 
   /**
-   * Le ballon quitte la main vers `hoop` avec le résultat voulu. Si aucune trajectoire n'existe
-   * (cas extrême), il tombe de la main : raté.
+   * Le ballon quitte la main vers `hoop` avec le résultat voulu. Si la trajectoire demandée est impossible,
+   * un lancer physique non nul sert de repli explicite et son résultat n'est pas garanti.
    */
-  private launch(start: Vec3, made: boolean, hoop: Hoop): void {
+  private launch(start: Vec3, made: boolean, hoop: Hoop): boolean {
+    let solved = true;
     let velocity: Vec3 = { x: 0, y: 0, z: 0 };
     try {
       velocity = solveShot(start, made, this.court, hoop, this.rng).velocity;
     } catch {
-      // Position impossible (sous ou derrière la planche) malgré `releasePoint`.
+      solved = false;
+      velocity = launchVelocity(start, hoop.rim, 65) ?? { x: hoop.toCourt * 2, y: 0, z: 4 };
+      this.trajectoryFallbacks.push({ time: this.clock, start: { ...start } });
+      if (this.trajectoryFallbacks.length > 32) this.trajectoryFallbacks.shift();
     }
     this.ball = { pos: { ...start }, vel: velocity };
+    this.pickupLocked = this.holder;
     this.holder = null;
     this.cooldown = WORLD_TUNING.pickupCooldown;
     this.rimTouched = false;
+    return solved;
   }
 
   /** Ballon libre : ramassé par le joueur à portée le plus proche. */
   private tryPickup(): void {
-    if (this.cooldown > 0) return;
     const { pos } = this.ball;
     let picker: number | null = null;
     let best = Infinity;
     const pass = this.pass;
+    if (!pass && !this.loose && this.lastShot?.live === null) {
+      if (this.ball.vel.z > 0 && !this.rimTouched) return;
+      const hoop = this.lastShot.hoop === 'left' ? this.court.hoops.left : this.court.hoops.right;
+      if (pos.z > hoop.rim.z - BALL_RADIUS && (!this.rimTouched || Math.hypot(pos.x - hoop.rim.x, pos.y - hoop.rim.y) < 0.36)) return;
+    }
     this.players.forEach((body, index) => {
       // Passe en vol : seuls les coéquipiers du passeur (pas lui) peuvent l'attraper.
       if (pass && (this.team[index] !== pass.team || index === pass.passer)) return;
+      if (this.cooldown > 0 && (index === this.pickupLocked || index === this.pickupLockedAlso)) return;
+      if (!catchable(body, this.ball, reach(body.athlete), pass !== null)) return;
       const dist = Math.hypot(pos.x - body.pos.x, pos.y - body.pos.y);
       const reachable = pos.z <= body.pos.z + reach(body.athlete) + WORLD_TUNING.pickupReachMargin;
       if (dist <= WORLD_TUNING.pickupRadius && reachable && dist < best) {
@@ -2171,6 +2325,7 @@ export class MatchWorld {
     this.play = null;
     this.pass = null;
     this.ball = { pos: { ...start }, vel: velocity };
+    this.pickupLocked = this.holder;
     this.holder = null;
     this.cooldown = WORLD_TUNING.pickupCooldown;
     this.rimTouched = false;

@@ -68,9 +68,18 @@ const animation = (id: MotionId): AnimationDef => {
   const def = MOTIONS.find((m) => m.id === id)!;
   return { frames: MOTION_INDICES[id], durations: Array.from({ length: def.count }, () => def.ms / def.count), loop: def.loop };
 };
+const sequence = (frames: number[], ms: number, loop = false): AnimationDef => ({ frames, durations: frames.map(() => ms / frames.length), loop });
 export const OFFICIAL_LAYOUT: SheetLayout = {
   framesPerBlock: MOTION_FRAMES.length,
-  animations: { idle: animation('idle'), run: animation('run'), dribble: animation('dribble'), dribbleIdle: animation('dribbleIdle'), shoot: animation('jumpShot'), dunk: animation('dunk') },
+  animations: { idle: animation('idle'), run: animation('run'), dribble: animation('dribble'), dribbleIdle: animation('dribbleIdle'), shoot: animation('jumpShot'), dunk: animation('dunk'),
+    // Whole official character frames; no anatomy cutouts or generated deformations.
+    start: sequence([MOTION_INDICES.landing[1], MOTION_INDICES.landing[2], MOTION_INDICES.run[0], MOTION_INDICES.run[1]], 120),
+    brake: sequence([MOTION_INDICES.run[4], MOTION_INDICES.landing[0], MOTION_INDICES.landing[1], MOTION_INDICES.idle[0]], 160),
+    pivot: sequence([MOTION_INDICES.landing[1], MOTION_INDICES.idle[1], MOTION_INDICES.landing[2], MOTION_INDICES.idle[0]], 120),
+    defense: sequence([MOTION_INDICES.catch[0], MOTION_INDICES.catch[1]], 900, true),
+    shuffle: sequence([MOTION_INDICES.run[1], MOTION_INDICES.run[2], MOTION_INDICES.run[5], MOTION_INDICES.run[6]], 600, true),
+    backpedal: sequence([...MOTION_INDICES.run].reverse(), 700, true),
+  },
   gestures: Object.fromEntries(GESTURES.map((g) => [g, MOTION_INDICES[g]])) as Record<Gesture, number[]>,
 };
 

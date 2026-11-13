@@ -9,8 +9,8 @@ import { FRAME } from './sprites/views';
 const ground = { airborne: false, speed: 0, holding: false, facing: 1, heading: 'down' as const };
 
 describe('image du joueur selon l’état du monde', () => {
-  it('interrompt les raccords au sol quand le porteur repart ou déclenche un saut', () => {
-    expect(spriteStateFor({ ...ground, speed: 4, holding: true, catching: true, sinceCatch: 0.02, sincePass: 0.1 })).toMatchObject({ kind: 'anim', name: 'dribble' });
+  it('conserve la réception en course et donne priorité au saut', () => {
+    expect(spriteStateFor({ ...ground, speed: 4, holding: true, catching: true, sinceCatch: 0.02, sincePass: 0.1 })).toMatchObject({ kind: 'frame', gesture: 'catch' });
     expect(spriteStateFor({ ...ground, speed: 4, sincePass: 0.12 })).toMatchObject({ kind: 'anim', name: 'run' });
     expect(spriteStateFor({ ...ground, airborne: true, holding: true, shot: 'jump', catching: true, sinceCatch: 0.02 })).toMatchObject({ kind: 'frame', gesture: 'jumpShot' });
   });
@@ -125,7 +125,7 @@ describe('gestes : l’image suit la phase du saut et le temps écoulé', () => 
     expect(pick({ ...ground, sincePass: 0.3 })).toBe('idle');
     expect(pick({ ...ground, catching: true })).toBe('catch:0');
     expect(pick({ ...ground, sinceLanding: 0.05 })).toBe('landing:1');
-    expect(pick({ ...ground, sinceLanding: 0.05, holding: true })).toBe('dribbleIdle');
+    expect(pick({ ...ground, sinceLanding: 0.05, holding: true })).toBe('landing:1');
     expect(pick({ ...ground, sinceLanding: 0.2, speed: 4 })).toBe('run');
   });
 });

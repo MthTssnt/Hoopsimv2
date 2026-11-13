@@ -20,7 +20,7 @@ import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
-import { blendBall, dunkLift, frameIndex, heldBallPoint, PLAYER_VIEW_TUNING, type SpriteState } from '../render/playerView';
+import { frameIndex, heldBallPoint, PLAYER_VIEW_TUNING, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
 import { bakeShadow, installPlayer, playerSources, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
@@ -28,14 +28,13 @@ import { PlayerComposer } from '../render/sprites/composer';
 import { MatchAudio } from '../audio/MatchAudio';
 import type { Heading } from '../render/sprites/views';
 import { sheetIndexIn } from '../render/sprites/layout';
-import { dribbleBallAt } from '../render/sprites/motion';
 import { FRAME, SPRITE_DETAIL, seenFromBehind } from '../render/sprites/views';
 import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
-import { GestureTracker } from '../render/gestureTracker';
+import type { GestureTracker } from '../render/gestureTracker';
 import { attacksRight, formatClock, FULL_COURT, periodLabel } from '../world/fullCourt';
 import { defaultTarget } from '../world/halfCourt';
 import { HUD_KEYS, type HudBanner, type HudDebug } from './HudScene';
@@ -126,6 +125,9 @@ const USER_TEAM = 0;
  * défenseur ; la faute de main reprend FAUTE), violations (au-dessus du fautif).
  */
 const EVENT_TAGS: Record<MatchEvent['kind'], string> = {
+  'faute-tir': 'tag-foul',
+  'faute-intentionnelle': 'tag-foul',
+  'sirène': 'tag-period-end',
   vol: 'tag-steal',
   interception: 'tag-intercept',
   'déviation': 'tag-deflect',
@@ -208,6 +210,8 @@ interface Callout {
   /** Au-dessus d'un joueur, du panier visé ou du rond central. */
   owner: number | 'rim' | 'center';
   clock: number;
+  playerId: string | null;
+  location: Point | null;
 }
 
 /** Ce qui dessine un corps du monde, et où il a été dessiné à cette image. */
@@ -298,11 +302,7 @@ export class MatchScene extends Phaser.Scene {
   private ringBlink = 0;
   /** Temps suivis par joueur pour choisir son geste (vol, lâcher, passe, réception…), et dernière passe déjà vue. */
   private tracker!: GestureTracker;
-  private get clocks() { return this.tracker.clocks; }
   private stepNumber = 0;
-  private lastHolder: number | null = null;
-  private lastReleaseShot: ShotRecord | null = null;
-  private releaseAt = 0;
   private inspectorEnabled = false;
   private inspectorPaused = false;
   private inspectorMarks = true;
@@ -322,9 +322,8 @@ export class MatchScene extends Phaser.Scene {
   private anchorY = 0;
   private bodies: BodySprite[] = [];
   /** Ballon dessiné : dans la main du porteur ou à sa position physique, raccord au changement. */
+  private lastRenderedClock = 0;
   private ballDrawn: Point = { x: 0, y: 0 };
-  private blendFrom: Point | null = null;
-  private blendClock = 0;
   private nets: { side: 'left' | 'right'; update: (elapsed: number, dunk?: boolean) => void; active?: boolean }[] = [];
   /** Jauge de ton tir en cours ou de ton dernier tir (affichée encore un instant après le lâcher). */
   private gaugeShot: { shooter: number; window: number; timeToApex: number; release: number | null; side: number; linger: number } | null = null;
@@ -369,7 +368,6 @@ export class MatchScene extends Phaser.Scene {
     this.inspectorPaused = this.inspectorEnabled;
     this.inputTrace = [];
     this.netCounts = { left: 0, right: 0 }; this.lastNet = 0;
-    this.lastReleaseShot = null;
     const param = new URLSearchParams(window.location.search).get('seed');
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.rng = new Rng(this.seed);
@@ -435,8 +433,6 @@ export class MatchScene extends Phaser.Scene {
     this.accumulator = 0;
     this.debugKey = '';
     this.debugVisible = false;
-    this.blendFrom = null;
-    this.blendClock = 0;
     this.gaugeShot = null;
     this.seenShot = null;
     this.tagOwner = 0;
@@ -572,8 +568,8 @@ export class MatchScene extends Phaser.Scene {
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
     this.ais = this.world.players.map((_, i) => new PlayerAi(i, new Rng(hashSeed(`ia-${this.seed}-${i}`))));
-    this.tracker = new GestureTracker(this.world);
-    this.lastHolder = this.world.holder;
+    this.tracker = this.world.gestures;
+    this.tracker.advance(0);
     this.inspectorGraphics = this.add.graphics().setDepth(990);
 
     const keyboard = this.input.keyboard!;
@@ -622,7 +618,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number) {
-    if (!this.ready) return;
+    if (!this.ready || this.blocked) return;
     this.trackFrame(deltaMs);
     // « Simuler la fin » : le monde avance à l'IA par tranches, sans entrées, jusqu'à la fin.
     if (this.finishing) {
@@ -682,7 +678,6 @@ export class MatchScene extends Phaser.Scene {
 
   /** Match du GM fini (après le bandeau) : le résultat part au GM, une seule fois. */
   private afterWorldStep(inputs?: readonly WorldInput[]) {
-    this.tracker.advance(WORLD_DT);
     this.syncCast();
     this.audio.observe(this.world);
     this.stepNumber++;
@@ -690,28 +685,7 @@ export class MatchScene extends Phaser.Scene {
     for (const passage of this.world.netPassages) if (passage.id > this.lastNet) {
       this.netCounts[passage.side]++; this.lastNet = passage.id;
     }
-    const previous = this.lastHolder, owner = this.world.holder;
-    if (owner !== previous) {
-      this.blendFrom = null;
-      const shot = this.world.lastShot;
-      const shotRelease = shot !== this.lastReleaseShot && shot && shot.shooter === previous;
-      const passing = this.world.pass?.passer === previous;
-      if (previous !== null && owner === null && (shotRelease || passing)) {
-        const state = this.tracker.states[previous], member = this.bodies[previous].member;
-        const motion = shotRelease ? (shot.kind === 'jump' ? 'jumpShot' : shot.kind === 'lancer' ? 'freeThrow' : shot.kind) : this.clocks[previous].lob ? 'lobPass' : 'pass';
-        const frame = frameIndex({ kind: 'frame', gesture: motion, step: motion === 'freeThrow' ? 1 : 2, facing: state.facing, heading: state.heading }, member.baked.layout);
-        const anchor = member.baked.anchors[frame], pos = this.world.players[previous].pos;
-        const origin = anchor ? heldBallPoint(project(pos.x, pos.y, pos.z), anchor) : null;
-        const ball = shotRelease ? shot.start : this.world.ball.pos;
-        const start = project(ball.x, ball.y, ball.z);
-        if (origin && motion !== 'dunk' && Math.hypot(origin.x - start.x, origin.y - start.y) <= 36) {
-          this.blendFrom = { x: origin.x - start.x, y: origin.y - start.y };
-          this.releaseAt = this.world.clock;
-        }
-      }
-    }
-    this.lastReleaseShot = this.world.lastShot;
-    this.lastHolder = owner;
+
   }
 
   /** Development inspector: one real physics step, with the normal AI or exact replay inputs. */
@@ -798,14 +772,19 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private reportMatchOver() {
-    if (!this.setup || this.reported || !this.world.matchOver) return;
+    if (this.reported || !this.world.matchOver) return;
     this.reported = true;
-    this.game.events.emit('match-over', toPlayedGame(this.world, this.setup));
+    this.finishing = false;
+    if (!this.setup) this.inspectorPaused = true;
+    this.game.events.emit('finish-complete');
+    if (this.setup) this.game.events.emit('match-over', toPlayedGame(this.world, this.setup));
   }
 
   /** « Simuler la fin » : le menu pause se ferme, le match finit tout seul en accéléré. */
   private startFinishing() {
-    if (!this.setup || this.finishing) return;
+    if (!this.world.full || this.finishing) return;
+    this.world.autoRestart = false;
+    this.inspectorPaused = false;
     this.finishing = true;
     if (this.paused) {
       this.paused = false;
@@ -960,6 +939,7 @@ export class MatchScene extends Phaser.Scene {
     switch (event.keyCode) {
       case K.R:
       case K.M:
+        if (!this.inspectorEnabled) break;
         if (this.world.demoShot(event.keyCode === K.R)) {
           const s = this.world.lastShot!.start;
           const spot = rounded(project(s.x, s.y));
@@ -1008,7 +988,7 @@ export class MatchScene extends Phaser.Scene {
       if (sprite.anims.isPlaying) sprite.anims.stop();
       const frames = baked.layout.animations[state.name].frames;
       // Le cycle ne repart pas à zéro quand on tourne, freine ou change de tenue.
-      const phase = state.name === 'run' ? stridePhase : state.name === 'idle' ? this.world.clock % 1 : this.world.dribblePhase;
+      const phase = state.phase ?? (state.name === 'run' ? stridePhase : state.name === 'idle' ? this.world.clock % 1 : this.world.dribblePhase);
       const frame = frames[Math.min(frames.length - 1, Math.floor(phase * frames.length))];
       sprite.setTexture(baked.key, sheetIndexIn(baked.layout, frame, state.facing, state.heading));
       return;
@@ -1019,6 +999,8 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private renderWorld(deltaMs: number) {
+    const gameDeltaMs = Math.max(0, this.world.clock - this.lastRenderedClock) * 1000;
+    this.lastRenderedClock = this.world.clock;
     this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
@@ -1029,23 +1011,8 @@ export class MatchScene extends Phaser.Scene {
     const ball = this.world.ball.pos;
     const owner = this.world.holder;
     const holder = owner === null ? null : this.bodies[owner];
-    let anchor = holder ? holder.member.baked.anchors[Number(holder.sprite.frame.name)] : null;
-    if (holder && owner !== null && !this.world.players[owner].airborne && !this.world.shot && !this.world.pass && !this.clocks[owner].catching && this.world.full?.phase !== 'lancers' && this.world.full?.phase !== 'remise') {
-      const frame = Number(holder.sprite.frame.name), baked = holder.member.baked;
-      const block = Math.floor(frame / baked.layout.framesPerBlock) * baked.layout.framesPerBlock;
-      const motion = Math.hypot(this.world.players[owner].vel.x, this.world.players[owner].vel.y) > PLAYER_VIEW_TUNING.runSpeed ? 'dribble' : 'dribbleIdle';
-      const anchors = baked.layout.animations[motion].frames.map((f) => baked.anchors[block + f]);
-      anchor = dribbleBallAt(this.world.dribblePhase, anchors, FRAME.groundY - 5);
-    }
-    const target = holder && anchor ? heldBallPoint(holder.feet, anchor) : project(ball.x, ball.y, ball.z);
-    this.blendClock = (this.world.clock - this.releaseAt) * 1000;
-    let drawn = target;
-    if (this.blendFrom && owner === null) {
-      const offset = blendBall(this.blendFrom, { x: 0, y: 0 }, this.blendClock);
-      drawn = { x: target.x + offset.x, y: target.y + offset.y };
-
-      if (this.blendClock >= PLAYER_VIEW_TUNING.ballBlendMs) this.blendFrom = null;
-    }
+    const anchor = holder ? holder.member.baked.anchors[Number(holder.sprite.frame.name)] : null;
+    const drawn = project(ball.x, ball.y, ball.z);
     this.ballDrawn = drawn;
     // Le ballon passe derrière le buste vu de dos ; la main de contact reste au premier plan.
     let depth = depthOf(ball.y);
@@ -1066,8 +1033,12 @@ export class MatchScene extends Phaser.Scene {
       if (active || net.active) net.update(elapsed, passage?.dunk);
       net.active = active;
     }
-    this.updateShotFeedback(deltaMs);
-    this.updateCallouts(deltaMs);
+    this.updateShotFeedback(gameDeltaMs);
+    this.updateCallouts(gameDeltaMs);
+    const transition = this.world.presentation;
+    const alpha = Math.max(0, 1 - (this.world.clock - transition.time) / 0.28);
+    if (alpha > 0 || this.registry.get(HUD_KEYS.transition)?.alpha > 0) this.registry.set(HUD_KEYS.transition, { alpha,
+      label: transition.kind === 'changement' ? 'CHANGEMENTS' : transition.kind === 'remise' ? 'REMISE EN JEU' : 'MISE EN PLACE' });
     this.updateScore();
     this.updateCamera(me, rounded(drawn), deltaMs);
     this.updateDebug();
@@ -1084,16 +1055,9 @@ export class MatchScene extends Phaser.Scene {
     const body = this.world.players[index];
     const view = this.bodies[index];
     const { pos } = body;
-    const shot = this.world.shot?.shooter === index ? this.world.shot : null;
     // Pendant un dunk, le sprite est monté pour que ses mains (bras levés) touchent le cercle.
     const lifted = rounded(project(pos.x, pos.y, pos.z));
-    let lift = 0;
-    if (shot?.dunk) {
-      const { baked } = view.member;
-      const handY = lifted.y + 1 - FRAME.height + baked.metrics.raisedHandTop;
-      lift = dunkLift(handY, project(pos.x, pos.y, RIM_HEIGHT).y, pos.z / shot.dunk.apex);
-    }
-    view.feet = { x: lifted.x, y: lifted.y - lift };
+    view.feet = { x: lifted.x, y: lifted.y };
     view.ground = rounded(project(pos.x, pos.y));
     const state = this.tracker.states[index];
     const holding = this.world.holder === index;
@@ -1258,7 +1222,7 @@ export class MatchScene extends Phaser.Scene {
     for (const event of this.world.events) {
       if (event.id <= this.seenEvent) continue;
       this.seenEvent = event.id;
-      this.addCallout(EVENT_TAGS[event.kind], event.by);
+      if (event.kind !== 'sirène' && event.kind !== 'faute-tir') this.addCallout(EVENT_TAGS[event.kind], event.by);
     }
     // Entre-deux : annonce au-dessus du rond central, au premier lancer.
     const full = this.world.full;
@@ -1273,6 +1237,7 @@ export class MatchScene extends Phaser.Scene {
     const stack = new Map<number | 'rim' | 'center', number>();
     for (const c of this.callouts) {
       if (!c.image.visible) continue;
+      if (typeof c.owner === 'number' && this.world.players[c.owner].athlete.id !== c.playerId) { c.image.setVisible(false); continue; }
       c.clock += deltaMs;
       if (c.clock >= CALLOUT_MS) {
         c.image.setVisible(false);
@@ -1287,7 +1252,7 @@ export class MatchScene extends Phaser.Scene {
         const shot = this.world.lastShot;
         const rim = shot?.hoop === 'left' ? this.world.court.hoops.left.rim : this.world.court.hoops.right.rim;
         const spot = c.owner === 'rim' ? rim : { x: this.world.court.length / 2, y: this.world.court.width / 2 };
-        at = rounded(project(spot.x, spot.y, RIM_HEIGHT + 1.4));
+        at = c.location ?? rounded(project(spot.x, spot.y, RIM_HEIGHT + 1.4));
         at = { x: at.x, y: at.y - below };
       } else {
         // Au-dessus de la tête, et de l'annonce du tir si elle est sur le même joueur.
@@ -1302,11 +1267,15 @@ export class MatchScene extends Phaser.Scene {
   private addCallout(texture: string, owner: number | 'rim' | 'center') {
     let callout = this.callouts.find((c) => !c.image.visible);
     if (!callout) {
-      callout = { image: this.add.image(0, 0, texture).setOrigin(0.5, 1).setDepth(960), owner, clock: 0 };
+      callout = { image: this.add.image(0, 0, texture).setOrigin(0.5, 1).setDepth(960), owner, clock: 0, playerId: null, location: null };
       this.callouts.push(callout);
     }
     callout.image.setTexture(texture).setVisible(true).setAlpha(1);
     callout.owner = owner;
+    callout.playerId = typeof owner === 'number' ? this.world.players[owner].athlete.id : null;
+    const shot = this.world.lastShot;
+    const hoop = shot?.hoop === 'left' ? this.world.court.hoops.left : this.world.court.hoops.right;
+    callout.location = owner === 'rim' ? rounded(project(hoop.rim.x, hoop.rim.y, RIM_HEIGHT + 1.4)) : owner === 'center' ? rounded(project(this.world.court.length / 2, this.world.court.width / 2, RIM_HEIGHT + 1.4)) : null;
     callout.clock = 0;
     // Le plus récent en bas de la pile : on le replace en tête de liste.
     this.callouts = [callout, ...this.callouts.filter((c) => c !== callout)];

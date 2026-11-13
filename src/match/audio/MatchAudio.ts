@@ -2,7 +2,7 @@ import type { MatchWorld } from '../world/MatchWorld';
 import type { MatchSettings } from '../settings';
 import { PLAYER_TUNING } from '../world/player';
 
-type Sound = 'floor' | 'rim' | 'board' | 'net' | 'foot' | 'whistle';
+type Sound = 'floor' | 'rim' | 'board' | 'net' | 'foot' | 'whistle' | 'siren';
 /** Synthesized effects only; never consumes the match RNG or advances simulation. */
 export class MatchAudio {
   private context: AudioContext | null = null;
@@ -59,7 +59,8 @@ export class MatchAudio {
       for (const id of this.feet.keys()) if (!active.has(id)) this.feet.delete(id);
     }
     for (const event of world.events) if (event.id > this.lastEvent) {
-      if (event.kind === 'faute-main') this.emit('whistle', 0.4);
+      if (event.kind === 'faute-main' || event.kind === 'faute-tir' || event.kind === 'faute-intentionnelle') this.emit('whistle', 0.4);
+      if (event.kind === 'sirène') this.emit('siren', 0.6);
       this.lastEvent = event.id;
     }
   }
@@ -70,7 +71,7 @@ export class MatchAudio {
     if (now - (this.recent.get(kind) ?? -Infinity) < (kind === 'foot' ? 0.09 : 0.04)) return;
     this.recent.set(kind, now);
     const noisy = kind === 'net' || kind === 'foot';
-    const duration = kind === 'net' ? 0.08 : kind === 'foot' ? 0.035 : kind === 'whistle' ? 0.12 : 0.09;
+    const duration = kind === 'siren' ? 0.65 : kind === 'net' ? 0.08 : kind === 'foot' ? 0.035 : kind === 'whistle' ? 0.12 : 0.09;
     const gain = ctx.createGain(); gain.gain.setValueAtTime(Math.max(0.001, strength * (kind === 'foot' ? 0.12 : 0.3)), now); gain.gain.exponentialRampToValueAtTime(0.001, now + duration); gain.connect(master);
     let source: AudioScheduledSourceNode;
     if (noisy) {
@@ -80,7 +81,7 @@ export class MatchAudio {
       source.onended = () => { filter.disconnect(); gain.disconnect(); this.voices--; };
     } else {
       const oscillator = ctx.createOscillator(); oscillator.type = kind === 'rim' ? 'triangle' : 'sine';
-      const frequency = kind === 'rim' ? 740 : kind === 'board' ? 220 : kind === 'whistle' ? 1700 : 145;
+      const frequency = kind === 'siren' ? 620 : kind === 'rim' ? 740 : kind === 'board' ? 220 : kind === 'whistle' ? 1700 : 145;
       oscillator.frequency.setValueAtTime(frequency, now); oscillator.frequency.exponentialRampToValueAtTime(frequency * (kind === 'whistle' ? 1.05 : 0.4), now + duration);
       oscillator.connect(gain); source = oscillator;
       source.onended = () => { gain.disconnect(); this.voices--; };

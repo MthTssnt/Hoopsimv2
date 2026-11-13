@@ -2,7 +2,7 @@
 export const FRAME = { width: 96, height: 96, centerX: 48, groundY: 84 } as const;
 export type Facing = 'right' | 'left';
 export type Heading = 'down' | 'up';
-export type AnimationName = 'idle' | 'run' | 'dribble' | 'dribbleIdle' | 'shoot' | 'dunk';
+export type AnimationName = 'idle' | 'run' | 'dribble' | 'dribbleIdle' | 'shoot' | 'dunk' | 'start' | 'brake' | 'pivot' | 'defense' | 'shuffle' | 'backpedal';
 export const SHEET_VIEWS: readonly { facing: Facing; heading: Heading }[] = [
   { facing: 'right', heading: 'down' }, { facing: 'left', heading: 'down' },
   { facing: 'right', heading: 'up' }, { facing: 'left', heading: 'up' },

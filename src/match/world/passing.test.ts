@@ -82,6 +82,7 @@ describe('passe dans le monde', () => {
   it('le receveur arrêté l’attrape ; le contrôle passe sur lui dès le lâcher', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const world = threeOnThree(seed);
+      world.opponentsOf(0).forEach((i) => place(world, i, { x: 2, y: 2 + i }));
       expect(world.holder).toBe(0);
       expect(world.controlled).toBe(0);
       const to = world.players[1].pos;
@@ -99,6 +100,7 @@ describe('passe dans le monde', () => {
     let caught = 0;
     for (let seed = 1; seed <= 30; seed++) {
       const world = threeOnThree(seed);
+      world.opponentsOf(0).forEach((i) => place(world, i, { x: 2, y: 2 + i }));
       const run1: WorldInput = { x: 0, y: 1, jump: false };
       // Le receveur court vers le spectateur pendant 0,4 s avant la passe, puis continue.
       for (let t = 0; t < 0.4; t += WORLD_DT) stepWith(world, 1, run1);
@@ -225,8 +227,9 @@ describe('équipes au demi-terrain', () => {
     place(world, 0, { x: rim.x - 9, y: rim.y - 5 });
     stepWith(world, 0, { ...IDLE, pass: true });
     expect(world.controlled).toBe(1);
+    const expected = world.membersOf(0).filter((i) => i !== 1).sort((a, b) => Math.hypot(world.players[a].pos.x - world.ball.pos.x, world.players[a].pos.y - world.ball.pos.y) - Math.hypot(world.players[b].pos.x - world.ball.pos.x, world.players[b].pos.y - world.ball.pos.y))[0];
     stepWith(world, 1, { ...IDLE, pass: true });
-    expect(world.controlled).toBe(2);
+    expect(world.controlled).toBe(expected);
   });
 
   it('panier non valable : ballon à l’adversaire le plus proche, qui doit ressortir', () => {

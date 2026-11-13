@@ -30,6 +30,7 @@ export const HUD_KEYS = {
   debug: 'hudDebug',
   debugVisible: 'hudDebugVisible',
   banner: 'hudBanner',
+  transition: 'hudTransition',
 } as const;
 
 const TEXT_STYLE = { fontFamily: 'monospace', fontSize: '8px', color: '#f6f2ea', backgroundColor: '#18203acc' };
@@ -44,6 +45,7 @@ const BANNER_Y = 112;
  * fin de partie au centre, texte de debug sur demande. Le match publie le contenu dans le registre.
  */
 export class HudScene extends Phaser.Scene {
+  private transition!: Phaser.GameObjects.Graphics;
   private board!: Phaser.GameObjects.Graphics;
   private card!: Phaser.GameObjects.Graphics;
   private banner!: Phaser.GameObjects.Graphics;
@@ -56,6 +58,7 @@ export class HudScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setZoom(RENDER_SCALE).centerOn(VIEW_WIDTH / 2, VIEW_HEIGHT / 2);
+    this.transition = this.add.graphics();
     this.board = this.add.graphics();
     this.card = this.add.graphics();
     this.banner = this.add.graphics();
@@ -71,6 +74,14 @@ export class HudScene extends Phaser.Scene {
     drawSmallText(hint, hintText, VIEW_WIDTH - hintW, VIEW_HEIGHT - SMALL_H - 3);
 
     const handlers: [string, (value: never) => void][] = [
+      [HUD_KEYS.transition, (value: { alpha: number; label: string }) => {
+        this.transition.clear();
+        if (value.alpha > 0) {
+          this.transition.fillStyle(PALETTE.navy, value.alpha).fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+          this.transition.fillStyle(PALETTE.chalk, value.alpha);
+          drawSmallText(this.transition, value.label, (VIEW_WIDTH - smallTextWidth(value.label)) / 2, VIEW_HEIGHT / 2);
+        }
+      }],
       [HUD_KEYS.score, (value: ScoreboardData) => this.showScore(value)],
       [HUD_KEYS.card, (value: PlayerCardData | null) => this.showCard(value)],
       [HUD_KEYS.debug, (value: HudDebug) => this.showDebug(value)],

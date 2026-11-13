@@ -90,10 +90,6 @@ export function dunkJumpHeight(jumpHeight: number, reach: number): number {
  * joueur est sous lui ou derrière la planche (aucune trajectoire n'en part).
  */
 export function releasePoint(pos: Vec3, heightCm: number, hoop: Hoop, handDepth: number): Vec3 {
-  const { rim, toCourt } = hoop;
-  let x = pos.x;
-  const y = pos.y + handDepth;
-  const behind = (x - rim.x) * toCourt < SHOT_FLOW.minFront && Math.abs(y - rim.y) <= SHOT_FLOW.boardShadow;
-  if (behind) x = rim.x + toCourt * SHOT_FLOW.minFront;
-  return { x, y, z: pos.z + (heightCm / 100) * SHOT_FLOW.releaseHeight };
+  void hoop;
+  return { x: pos.x, y: pos.y + handDepth, z: pos.z + (heightCm / 100) * SHOT_FLOW.releaseHeight };
 }

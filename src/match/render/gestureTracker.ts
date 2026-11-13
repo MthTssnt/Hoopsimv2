@@ -1,7 +1,8 @@
+import { hashSeed } from '../../engine/rng';
 import { appearanceFor } from './sprites/appearance';
 import { blockGesture, headingFor, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type BodyView, type JumpKind, type SpriteState } from './playerView';
 import type { Heading } from './sprites/views';
-import type { MatchWorld, PassFlight, PlayKind, ShotRecord } from '../world/MatchWorld';
+import type { MatchWorld, PlayKind, ShotRecord } from '../world/MatchWorld';
 import { STEAL_FLOW } from '../world/steal';
 const BLOCK_RANGE = 3;
 export interface BodyClocks {
@@ -33,7 +34,6 @@ export class GestureTracker {
   views: BodyView[] = [];
   states: SpriteState[] = [];
   private seenPass: object | null = null;
-  private flyingPass: PassFlight | null = null;
   private seenShot: ShotRecord | null = null;
   constructor(world: MatchWorld) { this.world = world; this.advance(0); }
   advance(dt: number) {
@@ -52,7 +52,7 @@ export class GestureTracker {
       c.freeThrow = tick(c.freeThrow, dt);
       if (c.freeThrow !== null && c.freeThrow * 1000 >= PLAYER_VIEW_TUNING.freeThrowHoldMs) c.freeThrow = null;
       // Réception : la passe arrive bientôt dans ses mains, ou vient d'y arriver.
-      if (this.flyingPass && this.flyingPass.receiver === i && !pass && world.holder === i) c.caught = 0;
+      if (world.lastCatch?.player === i && world.lastCatch.time === world.clock) c.caught = 0;
       const arriving = pass !== null && pass.receiver === i && (pass.time - pass.elapsed) * 1000 < PLAYER_VIEW_TUNING.catchMs;
       c.catching = !body.airborne && (arriving || (c.caught !== null && c.caught * 1000 < PLAYER_VIEW_TUNING.catchMs));
       if (body.airborne && !c.airborne) {
@@ -83,14 +83,13 @@ export class GestureTracker {
       const c = this.clocks[pass.passer];
       c.pass = 0;
       c.direction = { x: pass.target.x - from.x, y: pass.target.y - from.y };
-      c.lob = Math.hypot(pass.target.x - from.x, pass.target.y - from.y) > PLAYER_VIEW_TUNING.lobDistance;
+      c.lob = pass.kind === 'lob' || (!pass.kind && Math.hypot(pass.target.x - from.x, pass.target.y - from.y) > PLAYER_VIEW_TUNING.lobDistance);
     }
 
     if (world.lastShot !== this.seenShot) {
       this.seenShot = world.lastShot;
       if (world.lastShot?.kind === 'lancer') this.clocks[world.lastShot.shooter].freeThrow = 0;
     }
-    this.flyingPass = pass;
     this.views = world.players.map((_, i) => this.read(i));
     this.states = this.views.map(spriteStateFor);
   }
@@ -118,6 +117,7 @@ export class GestureTracker {
     // Le tireur fait face au panier, dans la vue du secteur de la direction du cercle.
     const towardRim = (rim: { x: number; y: number }) => ({ x: rim.x - pos.x, y: rim.y - pos.y });
     this.headings[index] = nextHeading(this.headings[index], body.vel, body.airborne, shot ? towardRim(shot.hoop.rim) : null);
+    if (['defense', 'shuffle', 'backpedal'].includes(body.locomotion) || this.world.pass?.receiver === index) this.headings[index] = headingFor(body.look, this.headings[index]);
     const clock = this.clocks[index];
     const holding = this.world.holder === index;
     // Lancer franc : le tireur fait face au cercle (mise en place, visée, lâcher).
@@ -138,6 +138,9 @@ export class GestureTracker {
       facingSign = Math.sign(toward.x) || body.facing;
     }
     return {
+      locomotion: body.locomotion,
+      locomotionPhase: ['shuffle', 'backpedal'].includes(body.locomotion) ? body.strideDistance / 3.4 % 1 : body.locomotion === 'defense' ? (this.world.clock * 0.8 + hashSeed(body.athlete.id) % 1000 / 1000) % 1 : Math.min(0.999, body.motionAge / 0.15),
+      idlePhase: (this.world.clock + hashSeed(body.athlete.id) % 1000 / 1000) % 1,
       airborne: body.airborne,
       speed,
       holding,
@@ -153,7 +156,7 @@ export class GestureTracker {
       lob: clock.lob,
       catching: clock.catching,
       sinceCatch: clock.caught,
-      motionPhase: (this.world.clock * 1.5) % 1,
+      motionPhase: Math.max(0, Math.min(0.999, (STEAL_FLOW.offBalance - (this.world.offBalance[index] ?? 0)) / STEAL_FLOW.offBalance)),
       sinceLanding: clock.landing,
       sinceReach,
       offBalance: (this.world.offBalance[index] ?? 0) > 0,

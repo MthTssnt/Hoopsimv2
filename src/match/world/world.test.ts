@@ -137,7 +137,7 @@ describe('joueur contrôlé', () => {
     const phase = world.dribblePhase;
     expect(phase).toBeGreaterThan(0);
     expect(phase).toBeLessThan(1);
-    expect(world.ball.pos.z).toBeCloseTo(BALL_RADIUS + (WORLD_TUNING.dribbleHandHeight - BALL_RADIUS) * Math.abs(Math.cos(Math.PI * phase)), 8);
+    expect(world.ball.pos).toEqual(world.handPosition(world.player));
     world.step(WORLD_DT, { x: 0, y: 0, jump: true });
     world.step(WORLD_DT, IDLE);
     expect(world.dribblePhase).toBe(0);
@@ -336,11 +336,11 @@ describe('dunk', () => {
   const playDunk = (world: MatchWorld) => {
     let hang = 0;
     let margin = -Infinity;
-    for (let t = 0; t < 3 && world.shot; t += WORLD_DT) {
+    for (let t = 0; t < 3 && (world.shot || world.player.airborne); t += WORLD_DT) {
       const before = world.player.pos.z;
       world.step(WORLD_DT, { ...IDLE, release: true });
       margin = Math.max(margin, world.player.pos.z + reach(world.player.athlete) - RIM_HEIGHT);
-      if (world.player.airborne && world.player.pos.z === before && world.shot?.dunk?.slammed) hang += WORLD_DT;
+      if (world.player.airborne && world.player.pos.z === before && world.dunkRecoveries.has(world.controlled)) hang += WORLD_DT;
     }
     return { hang, margin };
   };

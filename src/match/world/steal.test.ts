@@ -47,6 +47,12 @@ function reachScenario(seed: number, dx: number, dy = 0): MatchWorld {
   place(w, 4, { x: 2, y: 1 });
   place(w, 5, { x: 2, y: 14 });
   run(w, 0.05);
+  if (dx > 0 && dx < 1.5) {
+    // Place the hand at a known distance from the actual ball, not the retired generic offset.
+    const ball = w.ball.pos, holder = w.players[0].pos;
+    const bx = ball.x - holder.x, by = ball.y - holder.y, length = Math.hypot(bx, by) || 1;
+    place(w, 3, { x: ball.x + bx / length * 0.7, y: ball.y + by / length * 0.7 });
+  }
   return w;
 }
 
@@ -96,7 +102,8 @@ describe('vol sur le porteur', () => {
     let defenseGot = 0;
     for (const w of stolen) {
       expect(w.holder).toBeNull();
-      expect(w.ball.vel.x).toBeGreaterThan(0);
+      const from = w.players[0].pos, to = w.players[3].pos;
+      expect(w.ball.vel.x * (to.x - from.x) + w.ball.vel.y * (to.y - from.y)).toBeGreaterThan(0);
       run(w, 2, () => w.holder !== null);
       if (w.holder !== null && w.team[w.holder] === 1) {
         defenseGot++;
@@ -158,6 +165,12 @@ describe('ligne de passe', () => {
     inputs[0] = { ...IDLE, pass: true, x: 0, y: -1 };
     if (reachPress) inputs[4] = { ...IDLE, steal: true };
     w.step(WORLD_DT, inputs);
+    if (w.pass) {
+      const from = w.ball.pos, target = w.pass.target;
+      const dx = target.x - from.x, dy = target.y - from.y, d = Math.hypot(dx, dy) || 1;
+      w.players[4].pos.x = (from.x + target.x) / 2 - dy / d * offset;
+      w.players[4].pos.y = (from.y + target.y) / 2 + dx / d * offset;
+    }
     return w;
   }
 

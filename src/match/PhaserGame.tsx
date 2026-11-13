@@ -70,6 +70,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     });
     game.registry.set('settings', initialSettings.current);
     game.registry.set('matchSetup', initialMatch.current);
+    game.events.on('finish-complete', () => setFinishing(false));
     game.events.on('match-over', (played: PlayedGame) => onMatchOverRef.current?.(played));
     // Le jeu peut demander un changement de réglage (ex. touche C pour la caméra).
     game.events.on('request-settings', (next: MatchSettings) => setSettings(next));
@@ -92,7 +93,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
       if (Object.values(settingsRef.current.bindings).some((b) => b.code === event.keyCode)) return;
       // Regarder : 1, 2, 3 pour ×1, ×2, ×4.
       const k = ['1', '2', '3'].indexOf(event.key);
-      if (k >= 0 && initialMatch.current?.mode === 'regarder' && !pausedRef.current) {
+      if (k >= 0 && (initialMatch.current ? initialMatch.current.mode === 'regarder' : new URLSearchParams(location.search).has('watch')) && !pausedRef.current) {
         changeSpeed(game, WATCH_SPEEDS[k]);
         return;
       }
