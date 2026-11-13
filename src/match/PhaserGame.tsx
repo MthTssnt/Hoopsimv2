@@ -10,6 +10,7 @@ import { attachIntegerScaling, integerZoom } from './screen';
 import { loadSettings, saveSettings, type MatchSettings } from './settings';
 import { MatchPause } from './ui/MatchPause';
 import { MatchSettingsPanel } from './ui/MatchSettings';
+import { MatchInspector, type InspectorApi } from './ui/MatchInspector';
 
 /** Touches du menu pause (si elles ne servent pas déjà à une action du joueur). */
 const isPauseKey = (event: KeyboardEvent) => event.key === 'Escape' || event.key === 'p' || event.key === 'P';
@@ -41,6 +42,10 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
   const watching = match ? match.mode === 'regarder' : new URLSearchParams(window.location.search).has('watch');
   const [speed, setSpeed] = useState(1);
   const [finishing, setFinishing] = useState(false);
+  const [preparation, setPreparation] = useState({ done: 0, total: 0 });
+  const [ready, setReady] = useState(false);
+  const [preparationError, setPreparationError] = useState<string | null>(null);
+  const [inspection, setInspection] = useState<ReturnType<MatchScene['inspect']> | null>(null);
   const initialMatch = useRef(match ?? null);
   const onMatchOverRef = useRef(onMatchOver);
   onMatchOverRef.current = onMatchOver;
@@ -70,6 +75,18 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     game.events.on('request-settings', (next: MatchSettings) => setSettings(next));
     // Le match s'est arrêté : il publie son box score.
     game.events.on('pause-box', (box: BoxView | null) => setPause({ box }));
+    game.events.on('preparation-progress', (progress: { done: number; total: number }) => setPreparation(progress));
+    game.events.on('preparation-error', (message: string) => setPreparationError(message));
+    let inspectorApi: InspectorApi | undefined;
+    game.events.on('match-ready', () => {
+      setReady(true);
+      if (new URLSearchParams(location.search).has('atelier')) {
+        const scene = game.scene.getScene('Match') as MatchScene;
+        inspectorApi = { snapshot: () => scene.inspect(), step: (inputs) => scene.inspectorStep(inputs), play: (play) => scene.inspectorPlay(play), recording: () => scene.inspectorRecording(), advance: (count) => scene.inspectorAdvance(count) };
+        window.__hoopsim = inspectorApi;
+      }
+    });
+    game.events.on('inspector-snapshot', (snapshot: ReturnType<MatchScene['inspect']>) => setInspection(snapshot));
     const onPauseKey = (event: KeyboardEvent) => {
       if (event.repeat || panelOpenRef.current) return;
       if (Object.values(settingsRef.current.bindings).some((b) => b.code === event.keyCode)) return;
@@ -95,6 +112,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
       window.removeEventListener('keydown', onPauseKey);
       detach();
       gameRef.current = null;
+      if (inspectorApi && window.__hoopsim === inspectorApi) delete window.__hoopsim;
       game.destroy(true);
     };
   }, []);
@@ -114,7 +132,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
 
   /** Pause ou reprise : le match s'arrête (et publie son box score) ou repart. */
   function togglePause(game: Phaser.Game | null) {
-    if (!game) return;
+    if (!game || !game.registry.get('matchReady')) return;
     const paused = !pausedRef.current;
     pausedRef.current = paused;
     if (!paused) setPause(null);
@@ -138,13 +156,17 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
   return (
     <div ref={rootRef} style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
       <div ref={parentRef} style={{ width: '100%', height: '100%' }} />
+      {ready && inspection && gameRef.current && <MatchInspector snapshot={inspection} scene={gameRef.current.scene.getScene('Match') as MatchScene} />}
       {pause && <MatchPause box={pause.box} onResume={onResume} onFinish={match && !finishing ? onFinish : undefined} />}
-      {!pause && !finishing && (
+      {!ready && <div role={preparationError ? 'alert' : 'status'} style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff5e5', background: '#17243b' }}>
+        {preparationError ? `Préparation impossible : ${preparationError}` : `Préparation des joueurs… ${preparation.done}${preparation.total ? ` / ${preparation.total}` : ''}`}
+      </div>}
+      {ready && !pause && !finishing && (
         <button className="btn btn-sm" style={{ position: 'absolute', top: 48, right: 12 }} onClick={() => togglePause(gameRef.current)}>
           ⏸ Pause
         </button>
       )}
-      {watching && !pause && !finishing && (
+      {ready && watching && !pause && !finishing && (
         <div className="row" style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', gap: 6 }}>
           {WATCH_SPEEDS.map((value) => (
             <button key={value} className={`btn btn-sm${speed === value ? ' btn-primary' : ''}`} onClick={() => changeSpeed(gameRef.current, value)}>

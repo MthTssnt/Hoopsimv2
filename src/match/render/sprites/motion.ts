@@ -20,7 +20,7 @@ export const MOTIONS = [
 ] as const;
 export type MotionId = (typeof MOTIONS)[number]['id'];
 export interface Point { x: number; y: number }
-export interface MotionPose { height: number; ball: Point | null; palm: Point | null; contact: boolean }
+export interface MotionPose { height: number; ball: (Point & { behind?: boolean }) | null; palm: Point | null; contact: boolean }
 
 /** Phase libre du rebond, entre le dernier contact descendant et la reprise dans la paume. */
 export function dribbleFlightY(frame: number, releaseY: number, catchY: number, floorY: number): number | null {

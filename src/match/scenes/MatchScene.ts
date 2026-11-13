@@ -20,10 +20,12 @@ import { CAMERA_TUNING, targetFraming } from '../render/camera';
 import { drawGauge, GAUGE, gaugeView, GRADE_TAGS } from '../render/hud/gauge';
 import { createControlRing, createTag, POSITION_SHORT, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
 import type { Point } from '../render/pixelDraw';
-import { blendBall, blockGesture, dunkLift, frameIndex, headingFor, heldBallPoint, nextHeading, PLAYER_VIEW_TUNING, spriteStateFor, type BodyView, type JumpKind, type SpriteState } from '../render/playerView';
+import { blendBall, dunkLift, frameIndex, heldBallPoint, PLAYER_VIEW_TUNING, type SpriteState } from '../render/playerView';
 import { depthOf, MATCH_PROJECTION, project } from '../render/projection';
 import { appearanceFor, type Appearance } from '../render/sprites/appearance';
-import { bakePlayer, bakeShadow, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
+import { bakeShadow, installPlayer, playerSources, preloadPlayers, type BakedPlayer } from '../render/sprites/bake';
+import { PlayerComposer } from '../render/sprites/composer';
+import { MatchAudio } from '../audio/MatchAudio';
 import type { Heading } from '../render/sprites/views';
 import { sheetIndexIn } from '../render/sprites/layout';
 import { dribbleBallAt } from '../render/sprites/motion';
@@ -32,8 +34,8 @@ import { buildBoxView, type BoxView } from '../boxView';
 import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
-import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type PassFlight, type PlayKind, type ShotRecord, type WorldInput } from '../world/MatchWorld';
-import { STEAL_FLOW } from '../world/steal';
+import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
+import { GestureTracker } from '../render/gestureTracker';
 import { attacksRight, formatClock, FULL_COURT, periodLabel } from '../world/fullCourt';
 import { defaultTarget } from '../world/halfCourt';
 import { HUD_KEYS, type HudBanner, type HudDebug } from './HudScene';
@@ -120,32 +122,11 @@ const LEVELS: readonly CourtLevel[] = ['pro', 'college'];
 /** Ton équipe dans le monde (l'autre est l'IA). */
 const USER_TEAM = 0;
 /** Distance (m) sous laquelle un saut sans ballon près d'un tireur en l'air est un contre. */
-const BLOCK_RANGE = 3;
 
 /**
  * Ce que la scène suit pour chaque corps afin de choisir son geste (`spriteStateFor`), tiré du
  * monde à chaque image : temps de vol, geste du saut, lâcher, atterrissage, passe, réception, lancer.
  */
-interface BodyClocks {
-  airborne: boolean;
-  /** Temps de vol du saut en cours (s). */
-  air: number;
-  /** Geste du saut en cours (tir, layup, dunk), gardé jusqu'à l'atterrissage. */
-  play: PlayKind | null;
-  /** Saut sans ballon : contre, rebond ou entre-deux, décidé au décollage. */
-  jumpKind: JumpKind | null;
-  /** Temps depuis le lâcher pendant ce saut, l'atterrissage, la passe, la prise, le lâcher d'un lancer (s), ou null. */
-  release: number | null;
-  landing: number | null;
-  pass: number | null;
-  lob: boolean;
-  caught: number | null;
-  catching: boolean;
-  freeThrow: number | null;
-}
-
-const newClocks = (): BodyClocks => ({ airborne: false, air: 0, play: null, jumpKind: null, release: null, landing: null, pass: null, lob: false, caught: null, catching: false, freeThrow: null });
-const tick = (t: number | null, dt: number) => (t === null ? null : t + dt);
 /**
  * Messages des événements, au-dessus du joueur concerné : vols et passes coupées (au-dessus du
  * défenseur ; la faute de main reprend FAUTE), violations (au-dessus du fautif).
@@ -270,7 +251,10 @@ function createShotMarker(scene: Phaser.Scene, key: string): void {
 export class MatchScene extends Phaser.Scene {
   private settings!: MatchSettings;
   private seed = 0;
-  private playerDesigns = [new Map<string, number>(), new Map<string, number>()];
+  private ready = false;
+  private disposed = false;
+  private composer: PlayerComposer | null = null;
+  private audio!: MatchAudio;
   private rng!: Rng;
   private perTeam = 3;
   private target: number = defaultTarget(3);
@@ -292,18 +276,14 @@ export class MatchScene extends Phaser.Scene {
   private homeCast: CastMember[] = [];
   private awayCast: CastMember[] = [];
   /**
-   * Terrain entier : joueurs déjà cuits. Les dix du départ le sont à la création de la scène, le
-   * banc chargé à la demande ; un remplaçant est préparé à son
-   * entrée (`lastBakeMs`).
+   * Effectifs complets préparés avant le premier pas ; aucune composition à une substitution.
    */
   private castCache = new Map<string, CastMember>();
   private lastBakeMs = 0;
   /** Mesures publiques (debug H et captures) : cuisson moyenne d'un titulaire et chargement des dix (ms). */
-  bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0 };
+  bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0, prepared: 0, preparationMs: 0, mode: 'main' as 'main' | 'worker' };
   /** Durées des images récentes, pour la plus longue des 5 dernières secondes. */
   private frameTimes: { at: number; ms: number }[] = [];
-  private homeLook!: TeamLook;
-  private awayLook!: TeamLook;
   /** Carte du joueur contrôlé déjà publiée (énergie et stats changent pendant le match). */
   private cardKey = '';
   /** Menu pause ouvert : le monde ne fait plus aucun pas. */
@@ -323,11 +303,21 @@ export class MatchScene extends Phaser.Scene {
   private shownControlled = -1;
   private ringBlink = 0;
   /** Temps suivis par joueur pour choisir son geste (vol, lâcher, passe, réception…), et dernière passe déjà vue. */
-  private clocks: BodyClocks[] = [];
-  private gestureClock = 0;
-  private seenPass: object | null = null;
-  /** Passe en vol à l'image précédente (réception). */
-  private flyingPass: PassFlight | null = null;
+  private tracker!: GestureTracker;
+  private get clocks() { return this.tracker.clocks; }
+  private stepNumber = 0;
+  private lastHolder: number | null = null;
+  private lastReleaseShot: ShotRecord | null = null;
+  private releaseAt = 0;
+  private inspectorEnabled = false;
+  private inspectorPaused = false;
+  private inspectorMarks = true;
+  private inspectedPlayer = 0;
+  private inspectorPublished = 0;
+  private inspectorGraphics!: Phaser.GameObjects.Graphics;
+  private inputTrace: WorldInput[][] = [];
+  private netCounts = { left: 0, right: 0 };
+  private lastNet = 0;
   /** Dernier lancer annoncé (série, numéro). */
   private seenFreeThrow: { series: object; taken: number } | null = null;
   private accumulator = 0;
@@ -338,7 +328,6 @@ export class MatchScene extends Phaser.Scene {
   private anchorY = 0;
   private bodies: BodySprite[] = [];
   /** Ballon dessiné : dans la main du porteur ou à sa position physique, raccord au changement. */
-  private ballOwner: number | null = 0;
   private ballDrawn: Point = { x: 0, y: 0 };
   private blendFrom: Point | null = null;
   private blendClock = 0;
@@ -378,9 +367,15 @@ export class MatchScene extends Phaser.Scene {
   }
 
   init() {
-    this.playerDesigns.forEach((designs) => designs.clear());
+    this.ready = false;
+    this.disposed = false;
     this.nets = [];
-    this.gestureClock = 0;
+    this.stepNumber = 0;
+    this.inspectorEnabled = new URLSearchParams(location.search).has('atelier');
+    this.inspectorPaused = this.inspectorEnabled;
+    this.inputTrace = [];
+    this.netCounts = { left: 0, right: 0 }; this.lastNet = 0;
+    this.lastReleaseShot = null;
     const param = new URLSearchParams(window.location.search).get('seed');
     this.seed = param ? Number(param) >>> 0 : randomSeed();
     this.rng = new Rng(this.seed);
@@ -430,15 +425,12 @@ export class MatchScene extends Phaser.Scene {
     this.pendingSteal = false;
     this.shownControlled = -1;
     this.ringBlink = 0;
-    this.clocks = [];
-    this.seenPass = null;
-    this.flyingPass = null;
     this.seenFreeThrow = null;
     this.homeCast = [];
     this.awayCast = [];
     this.castCache = new Map();
     this.lastBakeMs = 0;
-    this.bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0 };
+    this.bakeStats = { starterMs: 0, startersMs: 0, syncEntries: 0, prepared: 0, preparationMs: 0, mode: 'main' as 'main' | 'worker' };
     this.frameTimes = [];
     this.cardKey = '';
     this.paused = false;
@@ -450,7 +442,6 @@ export class MatchScene extends Phaser.Scene {
     this.accumulator = 0;
     this.debugKey = '';
     this.debugVisible = false;
-    this.ballOwner = 0;
     this.blendFrom = null;
     this.blendClock = 0;
     this.gaugeShot = null;
@@ -475,6 +466,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   create() {
+    this.audio = new MatchAudio(this.settings);
+    this.events.once('shutdown', () => { this.disposed = true; this.composer?.close(); this.audio.close(); });
+    void this.prepareMatch().catch((error: unknown) => {
+      if (!this.disposed) this.game.events.emit('preparation-error', error instanceof Error ? error.message : String(error));
+    });
+  }
+
+  private async prepareMatch() {
     // Arène aux couleurs de ton équipe ; l'IA porte la tenue d'une équipe qui tranche avec elle.
     // Page de test : ton équipe chez elle, l'adversaire dans des couleurs qui tranchent. Match du GM :
     // l'arène et le maillot du club qui reçoit ; l'équipe qui se déplace garde ses couleurs si elles
@@ -515,13 +514,32 @@ export class MatchScene extends Phaser.Scene {
     for (let total = 1; total <= 3; total++) {
       for (let n = 1; n <= total; n++) createTag(this, `tag-ft-${n}-${total}`, `LANCER ${n}/${total}`, PALETTE.chalk);
     }
-    this.homeLook = home;
-    this.awayLook = away;
+    // Prepare every eligible member before any simulation step, including the bench.
+    this.composer = new PlayerComposer(playerSources(this), !new URLSearchParams(location.search).has('sansWorker'));
+    await this.composer.init();
+    this.bakeStats.mode = this.composer.mode;
+    const roster = [...this.athletes.map((player) => ({ player, team: 0, look: home })), ...this.opponents.map((player) => ({ player, team: 1, look: away }))];
+    const started = performance.now();
+    try {
+      for (const [index, item] of roster.entries()) {
+        const key = this.castKey(item.team, item.player), look = appearanceFor(item.player);
+        const data = await this.composer.compose(look, item.team);
+        if (this.disposed) {
+          for (const image of [data.atlas, data.hands]) if (image instanceof ImageBitmap) image.close();
+          return;
+        }
+        const baked = installPlayer(this, key, data);
+        this.castCache.set(key, this.castMember(item.player, item.look, look, baked));
+        this.bakeStats.prepared++;
+        this.game.events.emit('preparation-progress', { done: index + 1, total: roster.length, mode: this.composer.mode });
+      }
+    } finally { this.composer.close(); this.composer = null; }
+    this.bakeStats.preparationMs = performance.now() - started;
     // Demi-terrain : tout le monde est cuit au départ. Terrain entier : les dix sur le terrain, les
     // remplaçants à leur première entrée.
     if (this.perTeam !== 5) {
-      this.homeCast = this.athletes.map((player, i) => this.bakeCastMember(player, `player-${i}`, home));
-      this.awayCast = this.opponents.map((player, i) => this.bakeCastMember(player, `rival-${i}`, away));
+      this.homeCast = this.athletes.map((player) => this.castFor(0, player));
+      this.awayCast = this.opponents.map((player) => this.castFor(1, player));
     }
 
     const court = makeCourt(this.settings.level);
@@ -539,7 +557,7 @@ export class MatchScene extends Phaser.Scene {
     const n = this.perTeam;
     const settings = { mode: this.settings.shotMode, speed: this.settings.shotSpeed };
     this.world = new MatchWorld(court, this.athletes[0], { x: 0, y: 0, z: 0 }, settings, this.rng);
-    this.world.autoRestart = !setup;
+    this.world.autoRestart = !setup && !this.inspectorEnabled;
     if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
     else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     // En 1 contre 1, un seul joueur de chaque côté (les autres servent aux touches 1-3).
@@ -560,7 +578,9 @@ export class MatchScene extends Phaser.Scene {
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
 
     this.ais = this.world.players.map((_, i) => new PlayerAi(i, new Rng(hashSeed(`ia-${this.seed}-${i}`))));
-    this.clocks = this.world.players.map(newClocks);
+    this.tracker = new GestureTracker(this.world);
+    this.lastHolder = this.world.holder;
+    this.inspectorGraphics = this.add.graphics().setDepth(990);
 
     const keyboard = this.input.keyboard!;
     this.controls = new KeyboardInput(keyboard, this.settings.bindings);
@@ -602,19 +622,24 @@ export class MatchScene extends Phaser.Scene {
     this.registry.set(HUD_KEYS.debugVisible, false);
     this.renderWorld(0);
     this.scene.launch('Hud');
+    this.ready = true;
+    this.registry.set('matchReady', true);
+    this.game.events.emit('match-ready');
   }
 
   update(_time: number, deltaMs: number) {
+    if (!this.ready) return;
     this.trackFrame(deltaMs);
     // « Simuler la fin » : le monde avance à l'IA par tranches, sans entrées, jusqu'à la fin.
     if (this.finishing) {
       const start = performance.now();
       let over = false;
-      while (!over && performance.now() - start < FINISH_BUDGET_MS) over = runToEnd(this.world, this.ais, FINISH_CHUNK);
+      while (!over && performance.now() - start < FINISH_BUDGET_MS) over = runToEnd(this.world, this.ais, FINISH_CHUNK, (inputs) => this.afterWorldStep(inputs));
       this.renderWorld(deltaMs);
       this.reportMatchOver();
       return;
     }
+    if (this.inspectorPaused) return;
     const input = this.blocked || this.watching ? NO_INPUT : this.controls.read();
     // Appui et relâche sont gardés jusqu'au prochain pas de simulation (rien de perdu à haute
     // fréquence) ; un appui bref passe donc par un saut puis un lâcher immédiat.
@@ -651,6 +676,7 @@ export class MatchScene extends Phaser.Scene {
         return i === controlled && !this.watching ? controlledInput(mine, thought, defending, untouched) : thought;
       });
       this.world.step(WORLD_DT, inputs);
+      this.afterWorldStep(inputs);
       this.pendingJump = false;
       this.pendingRelease = false;
       this.pendingPass = false;
@@ -661,6 +687,121 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Match du GM fini (après le bandeau) : le résultat part au GM, une seule fois. */
+  private afterWorldStep(inputs?: readonly WorldInput[]) {
+    this.tracker.advance(WORLD_DT);
+    this.syncCast();
+    this.audio.observe(this.world);
+    this.stepNumber++;
+    if (this.inspectorEnabled && inputs && this.inputTrace.length < 200_000) this.inputTrace.push(inputs.map((input) => ({ ...input })));
+    for (const passage of this.world.netPassages) if (passage.id > this.lastNet) {
+      this.netCounts[passage.side]++; this.lastNet = passage.id;
+    }
+    const previous = this.lastHolder, owner = this.world.holder;
+    if (owner !== previous) {
+      this.blendFrom = null;
+      const shot = this.world.lastShot;
+      const shotRelease = shot !== this.lastReleaseShot && shot && shot.shooter === previous;
+      const passing = this.world.pass?.passer === previous;
+      if (previous !== null && owner === null && (shotRelease || passing)) {
+        const state = this.tracker.states[previous], member = this.bodies[previous].member;
+        const motion = shotRelease ? (shot.kind === 'jump' ? 'jumpShot' : shot.kind === 'lancer' ? 'freeThrow' : shot.kind) : this.clocks[previous].lob ? 'lobPass' : 'pass';
+        const frame = frameIndex({ kind: 'frame', gesture: motion, step: motion === 'freeThrow' ? 1 : 2, facing: state.facing, heading: state.heading }, member.baked.layout);
+        const anchor = member.baked.anchors[frame], pos = this.world.players[previous].pos;
+        const origin = anchor ? heldBallPoint(project(pos.x, pos.y, pos.z), anchor) : null;
+        const ball = shotRelease ? shot.start : this.world.ball.pos;
+        const start = project(ball.x, ball.y, ball.z);
+        if (origin && motion !== 'dunk' && Math.hypot(origin.x - start.x, origin.y - start.y) <= 36) {
+          this.blendFrom = { x: origin.x - start.x, y: origin.y - start.y };
+          this.releaseAt = this.world.clock;
+        }
+      }
+    }
+    this.lastReleaseShot = this.world.lastShot;
+    this.lastHolder = owner;
+  }
+
+  /** Development inspector: one real physics step, with the normal AI or exact replay inputs. */
+  inspectorStep(inputs?: readonly WorldInput[]) {
+    if (!this.ready || !this.inspectorEnabled || this.paused) return;
+    this.inspectorPaused = true;
+    const thoughts = this.ais.map((ai) => ai.think(this.world, WORLD_DT));
+    const list = inputs ?? thoughts;
+    this.world.step(WORLD_DT, list);
+    this.afterWorldStep(list);
+    this.renderWorld(0);
+  }
+
+  inspectorPlay(play: boolean) {
+    this.inspectorPaused = !play;
+    this.accumulator = 0;
+    this.controls.reset(); this.shotButton.reset();
+    this.pendingJump = this.pendingRelease = this.pendingPass = this.pendingSteal = false;
+    if (this.ready) this.renderWorld(0);
+  }
+
+  inspectorOptions(player: number, marks: boolean) {
+    this.inspectedPlayer = Math.max(0, Math.min(this.bodies.length - 1, player));
+    this.inspectorMarks = marks;
+    if (this.ready) this.drawInspector();
+  }
+
+  inspect() {
+    return {
+      seed: this.seed, step: this.stepNumber, clock: this.world.clock,
+      paused: this.inspectorPaused, phase: this.world.full?.phase ?? 'demi-terrain',
+      score: [...this.world.points],
+      holder: this.world.holder, controlled: this.world.controlled, matchOver: this.world.matchOver,
+      lineupVersion: this.world.lineupVersion, netPassages: { ...this.netCounts },
+      boxPoints: this.world.squads?.map((squad) => squad.members.reduce((sum, member) => sum + member.line.pts, 0)),
+      playersUsed: this.world.squads?.map((squad) => squad.members.filter((member) => member.line.gp > 0).length),
+      preparation: { ...this.bakeStats },
+      audio: this.audio.status(),
+      performance: { actualFps: this.game.loop.actualFps, worstFrameMs: this.worstFrameMs },
+      ball: { physical: { ...this.world.ball.pos }, drawn: { ...this.ballDrawn } },
+      players: this.bodies.map((view, i) => ({
+        id: view.member.player.id, variant: view.member.look.variant,
+        position: { ...this.world.players[i].pos }, state: this.tracker.states[i],
+        frame: Number(view.sprite.frame.name), anchor: view.member.baked.anchors[Number(view.sprite.frame.name)],
+        palm: view.member.baked.palms[Number(view.sprite.frame.name)],
+      })),
+    };
+  }
+
+  inspectorRecording() {
+    return { seed: this.seed, dt: WORLD_DT, format: this.perTeam, setup: this.setup, settings: this.settings,
+      quarterMinutes: quarterFromUrl(this.settings.quarterMinutes), truncated: this.inputTrace.length !== this.stepNumber, steps: this.inputTrace };
+  }
+
+  /** Bounded sequence inspection, preserving every physics callback; not an FPS benchmark. */
+  inspectorAdvance(count: number) {
+    if (!this.ready || !this.inspectorEnabled || this.paused) return;
+    this.inspectorPaused = true;
+    const steps = Number.isFinite(count) ? Math.min(3600, Math.max(0, Math.floor(count))) : 0;
+    for (let k = 0; k < steps && !this.world.matchOver; k++) {
+      const inputs = this.ais.map((ai) => ai.think(this.world, WORLD_DT));
+      this.world.step(WORLD_DT, inputs); this.afterWorldStep(inputs);
+    }
+    this.renderWorld(0);
+  }
+
+  private drawInspector() {
+    this.inspectorGraphics.clear();
+    if (!this.inspectorEnabled) return;
+    if (this.inspectorMarks) {
+      const view = this.bodies[this.inspectedPlayer], frame = Number(view.sprite.frame.name);
+      const point = (p: Point, color: number) => this.inspectorGraphics.lineStyle(0.5, color).strokeCircle(p.x, p.y, 3);
+      point(view.feet, 0x79edb9);
+      const anchor = view.member.baked.anchors[frame], palm = view.member.baked.palms[frame];
+      if (anchor) point(heldBallPoint(view.feet, anchor), 0xffc65b);
+      if (palm) point(heldBallPoint(view.feet, palm), 0xff7ad9);
+      point(project(this.world.ball.pos.x, this.world.ball.pos.y, this.world.ball.pos.z), 0x69e8ff);
+    }
+    if (this.inspectorPaused || performance.now() - this.inspectorPublished > 100) {
+      this.inspectorPublished = performance.now();
+      this.game.events.emit('inspector-snapshot', this.inspect());
+    }
+  }
+
   private reportMatchOver() {
     if (!this.setup || this.reported || !this.world.matchOver) return;
     this.reported = true;
@@ -677,12 +818,7 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private bakeCastMember(player: Player, key: string, team: TeamLook): CastMember {
-    const side = key.startsWith('rival') ? 1 : 0;
-    const designs = this.playerDesigns[side];
-    if (!designs.has(player.id)) designs.set(player.id, designs.size % 5);
-    const look = appearanceFor(player, designs.get(player.id));
-    const baked = bakePlayer(this, key, look, side);
+  private castMember(player: Player, team: TeamLook, look: Appearance, baked: BakedPlayer): CastMember {
     const shadowWidth = look.heavy ? 26 : 20;
     const shadow = `player-shadow-${shadowWidth}`;
     bakeShadow(this, shadow, shadowWidth);
@@ -707,18 +843,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
-   * Terrain entier : joueur cuit (sprites, ombre). Un remplaçant encore en file (ou
-   * jamais vu) est fini d'un trait à son entrée : le seul cas d'à-coup, mesuré dans `lastBakeMs`.
+   * Terrain entier : récupère un joueur préparé ; une entrée imprévue est une erreur explicite.
    */
   private castFor(team: number, player: Player): CastMember {
     const key = this.castKey(team, player);
-    let member = this.castCache.get(key);
+    const member = this.castCache.get(key);
     if (!member) {
-      const start = performance.now();
-      member = this.bakeCastMember(player, key, team === USER_TEAM ? this.homeLook : this.awayLook);
-      this.lastBakeMs = performance.now() - start;
-      if (this.bodies.length > 0) this.bakeStats.syncEntries++;
-      this.castCache.set(key, member);
+      this.bakeStats.syncEntries++;
+      throw new Error(`Joueur non préparé avant le match : ${key}`);
     }
     return member;
   }
@@ -782,6 +914,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Menu pause : le monde s'arrête et le box score part au panneau React ; à la reprise, les touches repartent de zéro. */
   private setPaused(paused: boolean) {
+    if (!this.ready) return;
     if (paused === this.paused) return;
     this.paused = paused;
     if (paused) {
@@ -803,6 +936,7 @@ export class MatchScene extends Phaser.Scene {
   private applySettings(next: MatchSettings) {
     const prev = this.settings;
     this.settings = next;
+    this.audio?.configure(next);
     if (prev.bindings !== next.bindings) this.controls.bind(next.bindings);
     if (prev.level !== next.level) {
       this.world.court = makeCourt(next.level);
@@ -890,9 +1024,6 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private renderWorld(deltaMs: number) {
-    const gestureDt = Math.max(0, this.world.clock - this.gestureClock);
-    this.gestureClock = this.world.clock;
-    this.trackGestures(gestureDt);
     this.syncCast();
     this.world.players.forEach((_, i) => this.renderBody(i));
     this.updateControl(deltaMs);
@@ -912,29 +1043,12 @@ export class MatchScene extends Phaser.Scene {
       anchor = dribbleBallAt(this.world.dribblePhase, anchors, FRAME.groundY - 5);
     }
     const target = holder && anchor ? heldBallPoint(holder.feet, anchor) : project(ball.x, ball.y, ball.z);
-    if (owner !== this.ballOwner) {
-      const previous = this.ballOwner;
-      this.blendFrom = null;
-      if (owner === null && previous !== null && deltaMs > 0) {
-        const view = this.bodies[previous], shot = this.world.lastShot;
-        const shotRelease = shot?.shooter === previous && !this.world.pass && (this.world.followThrough[previous] || this.world.shot?.dunk?.slammed || this.clocks[previous].freeThrow !== null);
-        const motion = shotRelease ? (shot!.kind === 'jump' ? 'jumpShot' : shot!.kind === 'lancer' ? 'freeThrow' : shot!.kind) : 'pass';
-        const release = frameIndex({ kind: 'frame', gesture: motion, step: motion === 'freeThrow' ? 1 : 2, facing: this.world.players[previous].facing < 0 ? 'left' : 'right', heading: view.heading }, view.member.baked.layout);
-        const hand = view.member.baked.anchors[release];
-        const origin = hand ? heldBallPoint(view.feet, hand) : this.ballDrawn;
-        const start = shotRelease ? project(shot!.start.x, shot!.start.y, shot!.start.z) : target;
-        // Corriger la trajectoire par un décalage décroissant : le ballon avance dès le lâcher.
-        // Un gros écart (téléportation/remise/dunk) ne doit jamais traverser le joueur en fondu.
-        if (Math.hypot(origin.x - start.x, origin.y - start.y) <= 36 && motion !== 'dunk') this.blendFrom = { x: origin.x - start.x, y: origin.y - start.y };
-      }
-      this.ballOwner = owner;
-      this.blendClock = 0;
-    }
+    this.blendClock = (this.world.clock - this.releaseAt) * 1000;
     let drawn = target;
     if (this.blendFrom && owner === null) {
       const offset = blendBall(this.blendFrom, { x: 0, y: 0 }, this.blendClock);
       drawn = { x: target.x + offset.x, y: target.y + offset.y };
-      this.blendClock += gestureDt * 1000;
+
       if (this.blendClock >= PLAYER_VIEW_TUNING.ballBlendMs) this.blendFrom = null;
     }
     this.ballDrawn = drawn;
@@ -962,6 +1076,7 @@ export class MatchScene extends Phaser.Scene {
     this.updateScore();
     this.updateCamera(me, rounded(drawn), deltaMs);
     this.updateDebug();
+    this.drawInspector();
   }
 
   /**
@@ -969,67 +1084,6 @@ export class MatchScene extends Phaser.Scene {
    * ou contre, rebond, entre-deux sans ballon), lâcher, atterrissage, passe (lobée si longue),
    * réception d'une passe, lâcher d'un lancer franc.
    */
-  private trackGestures(dt: number) {
-    const world = this.world;
-    while (this.clocks.length < world.players.length) this.clocks.push(newClocks());
-    // Passe : le passeur prend la pose ; elle est lobée au-delà de `lobDistance`.
-    const pass = world.pass;
-    if (pass && pass !== this.seenPass) {
-      this.seenPass = pass;
-      const from = world.players[pass.passer].pos;
-      const c = this.clocks[pass.passer];
-      c.pass = 0;
-      c.lob = Math.hypot(pass.target.x - from.x, pass.target.y - from.y) > PLAYER_VIEW_TUNING.lobDistance;
-    }
-    world.players.forEach((body, i) => {
-      const c = this.clocks[i];
-      c.pass = tick(c.pass, dt);
-      c.landing = tick(c.landing, dt);
-      c.caught = tick(c.caught, dt);
-      c.freeThrow = tick(c.freeThrow, dt);
-      if (c.freeThrow !== null && c.freeThrow * 1000 >= PLAYER_VIEW_TUNING.freeThrowHoldMs) c.freeThrow = null;
-      // Réception : la passe arrive bientôt dans ses mains, ou vient d'y arriver.
-      if (this.flyingPass && this.flyingPass.receiver === i && !pass && world.holder === i) c.caught = 0;
-      const arriving = pass !== null && pass.receiver === i && (pass.time - pass.elapsed) * 1000 < PLAYER_VIEW_TUNING.catchMs;
-      c.catching = !body.airborne && (arriving || (c.caught !== null && c.caught * 1000 < PLAYER_VIEW_TUNING.catchMs));
-      if (body.airborne && !c.airborne) {
-        // Décollage : tir, layup, dunk ; sinon entre-deux, contre près d'un tireur adverse en l'air, ou rebond.
-        c.air = 0;
-        c.release = null;
-        c.landing = null;
-        c.play = world.shot?.shooter === i ? world.shot.kind : null;
-        c.jumpKind = c.play ? null : this.jumpKindFor(i);
-      } else if (body.airborne) {
-        c.air += dt;
-        if (world.shot?.shooter === i) c.play = world.shot.kind;
-      }
-      if (body.airborne && (world.followThrough[i] ?? false)) c.release = c.release === null ? 0 : c.release + dt;
-      if (!body.airborne && c.airborne) {
-        c.landing = 0;
-        c.play = null;
-        c.jumpKind = null;
-        c.release = null;
-      }
-      c.airborne = body.airborne;
-    });
-    this.flyingPass = pass;
-  }
-
-  /** Saut sans ballon : entre-deux, contre (de la main en face de la main de tir adverse), ou rebond. */
-  private jumpKindFor(index: number): JumpKind {
-    const world = this.world;
-    if (world.full?.phase === 'entre-deux') return 'tipoff';
-    const me = world.players[index].pos;
-    for (let j = 0; j < world.players.length; j++) {
-      const other = world.players[j];
-      if (world.team[j] === world.team[index] || !other.airborne || !this.clocks[j]?.play) continue;
-      if (Math.hypot(other.pos.x - me.x, other.pos.y - me.y) > BLOCK_RANGE) continue;
-      const hand = (k: number) => this.bodies[k].member.look.dominantHand;
-      return blockGesture(hand(j), hand(index));
-    }
-    return 'rebound';
-  }
-
   /** Sprite et ombre d'un corps ; vue et image selon son état. */
   private renderBody(index: number) {
     const body = this.world.players[index];
@@ -1046,51 +1100,9 @@ export class MatchScene extends Phaser.Scene {
     }
     view.feet = { x: lifted.x, y: lifted.y - lift };
     view.ground = rounded(project(pos.x, pos.y));
-    const speed = Math.hypot(body.vel.x, body.vel.y);
-    // Le tireur fait face au panier, dans la vue du secteur de la direction du cercle.
-    const towardRim = (rim: { x: number; y: number }) => ({ x: rim.x - pos.x, y: rim.y - pos.y });
-    view.heading = nextHeading(view.heading, body.vel, body.airborne, shot ? towardRim(shot.hoop.rim) : null);
-    const clock = this.clocks[index];
+    const state = this.tracker.states[index];
     const holding = this.world.holder === index;
-    // Lancer franc : le tireur fait face au cercle (mise en place, visée, lâcher).
-    const ft = this.world.full?.phase === 'lancers' ? this.world.full.freeThrows : null;
-    let freeThrow: BodyView['freeThrow'] = null;
-    if (ft && ft.shooter === index && holding) freeThrow = { stage: ft.aim !== null ? 'aim' : 'setup' };
-    else if (clock.freeThrow !== null && !body.airborne && !holding) freeThrow = { stage: 'after', since: clock.freeThrow };
-    if (freeThrow) view.heading = headingFor(towardRim(this.world.hoopFor(index).rim), view.heading);
-    // Passe et vol : tourné vers le receveur ou vers le ballon.
-    const reachStart = (this.world.reachUntil[index] ?? 0) - STEAL_FLOW.gesture;
-    const sinceReach = this.world.clock >= reachStart && this.world.clock < reachStart + STEAL_FLOW.gesture ? this.world.clock - reachStart : null;
-    const passing = clock.pass !== null && clock.pass * 1000 < PLAYER_VIEW_TUNING.passMs;
-    let facingSign: number = body.facing;
-    if (!body.airborne && !holding && (passing || sinceReach !== null)) {
-      const last = this.world.lastPass;
-      const target = sinceReach !== null ? this.world.ball.pos : last && last.passer === index ? this.world.players[last.receiver].pos : null;
-      const toward = target ? { x: target.x - pos.x, y: target.y - pos.y } : { x: body.facing, y: 0 };
-      view.heading = headingFor(toward, view.heading);
-      facingSign = Math.sign(toward.x) || body.facing;
-    }
-    const state = spriteStateFor({
-      airborne: body.airborne,
-      speed,
-      holding,
-      facing: facingSign,
-      heading: view.heading,
-      shot: shot?.kind ?? clock.play,
-      followThrough: this.world.followThrough[index] ?? false,
-      air: body.airborne ? { time: clock.air, rising: body.vel.z > 0, progress: pos.z / Math.max(0.1, shot?.dunk?.apex ?? body.jumpHeight) } : null,
-      sinceRelease: clock.release,
-      jumpKind: clock.jumpKind,
-      freeThrow,
-      sincePass: clock.pass,
-      lob: clock.lob,
-      catching: clock.catching,
-      sinceCatch: clock.caught,
-      motionPhase: (this.world.clock * 1.5) % 1,
-      sinceLanding: clock.landing,
-      sinceReach,
-      offBalance: (this.world.offBalance[index] ?? 0) > 0,
-    });
+    view.heading = state.heading;
     this.applySprite(view.sprite, view.member.baked, state, (body.strideDistance / PLAYER_VIEW_TUNING.strideMeters) % 1);
     // Les déplacements, et non une horloge minimale, font avancer les appuis.
     view.sprite.setPosition(view.feet.x, view.feet.y + 1).setDepth(depthOf(pos.y));
@@ -1165,7 +1177,6 @@ export class MatchScene extends Phaser.Scene {
     const last = this.world.lastShot;
     if (last && last !== this.seenShot) {
       this.seenShot = last;
-      if (last.kind === 'lancer' && this.clocks[last.shooter]) this.clocks[last.shooter].freeThrow = 0;
       if (!last.demo && last.grade && last.shooter === controlled) {
         this.tag.setTexture(`grade-${last.grade}`);
         this.tagOwner = controlled;

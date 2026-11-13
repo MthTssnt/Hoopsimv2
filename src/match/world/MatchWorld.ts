@@ -308,6 +308,9 @@ export class MatchWorld {
   readonly events: MatchEvent[] = [];
   /** Franchissements physiques uniquement, y compris hors score : jamais depuis onBasket/goaltending. */
   readonly netPassages: { id: number; side: 'left' | 'right'; time: number; dunk: boolean }[] = [];
+  /** Bounded observation stream for audio; never feeds rules, RNG or scoring. */
+  readonly ballImpacts: { id: number; time: number; kind: 'floor' | 'rim' | 'board' | 'net'; strength: number }[] = [];
+  private ballImpactId = 0;
   private netPassageId = 0;
   eventCount = 0;
   /** Terrain entier : rotation, énergie, fautes et stats de chaque équipe (null ailleurs). */
@@ -632,6 +635,10 @@ export class MatchWorld {
         if (this.pass.elapsed > PASS_FLOW.maxFlight) this.pass = null;
       }
       for (const event of stepBall(this.ball, this.court, dt)) {
+        if (event.type !== 'wall') {
+          this.ballImpacts.push({ id: ++this.ballImpactId, time: this.clock, kind: event.type === 'score' ? 'net' : event.type, strength: event.type === 'floor' ? event.speed : 1 });
+          if (this.ballImpacts.length > 64) this.ballImpacts.shift();
+        }
         if (event.type === 'score') {
           const shot = this.lastShot;
           const dunk = shot?.kind === 'dunk' && shot.hoop === event.hoop && shot.live === null && !shot.scored && !this.pass;

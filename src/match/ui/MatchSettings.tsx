@@ -87,6 +87,10 @@ export function MatchSettingsPanel({ settings, onChange, open, onOpenChange }: P
         </button>
       </div>
 
+      <Section title="Son" hint="Les sons démarrent après une touche ou un clic.">
+        <label style={row}>Volume <input aria-label="Volume du match" type="range" min={0} max={1} step={0.05} value={settings.audioVolume} onChange={(e) => set('audioVolume', Number(e.target.value))} /></label>
+        <label style={row}><input type="checkbox" checked={settings.audioMuted} onChange={(e) => set('audioMuted', e.target.checked)} /> Couper le son</label>
+      </Section>
       <Section title="Touches" hint="Clique sur une touche puis appuie sur la nouvelle. Échap pour annuler.">
         {ACTIONS.map((action) => (
           <div key={action} style={row}>

@@ -7,6 +7,7 @@ import { paintMotion } from '../match/render/sprites/motionArt';
 import { MOTIONS, dribbleBallAt, type MotionId } from '../match/render/sprites/motion';
 import { FRAME, SPRITE_DETAIL, type Facing, type Heading } from '../match/render/sprites/views';
 import './animationLab.css';
+import { previewPose } from '../match/render/previewPose';
 
 const LocomotionWitness = lazy(() => import('./LocomotionWitness'));
 
@@ -21,6 +22,7 @@ export default function AnimationLab({ embedded = false }: { embedded?: boolean 
   const [failed, setFailed] = useState(false);
   const [section, setSection] = useState<'designs' | 'animations' | 'court' | 'witness'>(() => !embedded && new URLSearchParams(location.search).has('poses') ? 'witness' : !embedded && new URLSearchParams(location.search).has('style') ? 'designs' : 'animations');
   const [motion, setMotion] = useState<MotionId>('dribble');
+  const [matchPhases, setMatchPhases] = useState(true);
   const [team, setTeam] = useState(0), [variant, setVariant] = useState(0);
   const [direction, setDirection] = useState('down:right');
   const [playing, setPlaying] = useState(true), [speed, setSpeed] = useState(0.5);
@@ -33,7 +35,8 @@ export default function AnimationLab({ embedded = false }: { embedded?: boolean 
     const tick = (now: number) => { const dt = Math.min(80, now - previous); previous = now; setTime((t) => t + dt * speed); request = requestAnimationFrame(tick); };
     request = requestAnimationFrame(tick); return () => cancelAnimationFrame(request);
   }, [playing, speed]);
-  const def = MOTIONS.find((m) => m.id === motion)!;
+  const sourceDef = MOTIONS.find((m) => m.id === motion)!;
+  const def = { ...sourceDef, ms: matchPhases && ['jumpShot', 'layup', 'dunk'].includes(motion) ? 1200 : sourceDef.ms };
   const index = Math.floor((time % def.ms) / def.ms * def.count);
   const [heading, facing] = direction.split(':') as [Heading, Facing];
   const look = useMemo(() => ({ ...appearanceFor({ id: `atelier-${team}-${variant}`, heightCm: height, weightKg: heavy ? 130 : 90, number: 23 }, variant), heavy }), [team, variant, height, heavy]);
@@ -53,12 +56,13 @@ export default function AnimationLab({ embedded = false }: { embedded?: boolean 
           <aside className="lab-motion-list" aria-label="Liste des animations">{MOTIONS.map((m) => <button key={m.id} aria-pressed={motion === m.id} onClick={() => { setMotion(m.id); setTime(0); }}><span>{m.label}</span><small>{m.count} images</small></button>)}</aside>
           <div className="lab-workbench">
             <div className="lab-toolbar">
+              <label>Vue<select aria-label="Vue des animations" value={matchPhases ? 'match' : 'source'} onChange={(e) => { setMatchPhases(e.target.value === 'match'); setTime(0); }}><option value="match">Phases du match</option><option value="source">Planches sources</option></select></label>
               <label>Tenue<select aria-label="Tenue" value={team} onChange={(e) => setTeam(Number(e.target.value))}><option value={0}>Bleu & blanc</option><option value={1}>Ivoire & bordeaux</option></select></label>
               <label>Joueur<select aria-label="Joueur" value={variant} onChange={(e) => setVariant(Number(e.target.value))}>{COURT_DESIGNS[team].map((d, i) => <option key={d.name} value={i}>{d.name}</option>)}</select></label>
               <label>Orientation<select aria-label="Orientation" value={direction} onChange={(e) => setDirection(e.target.value)}><option value="down:right">Face · droite</option><option value="down:left">Face · gauche</option><option value="up:right">Dos · droite</option><option value="up:left">Dos · gauche</option></select></label>
             </div>
             <div className="lab-stage">
-              <MotionCanvas images={images} look={look} team={team} motion={motion} frame={index} heading={heading} facing={facing} zoom={4} marks={marks} phase={(time % def.ms) / def.ms} />
+              <MotionCanvas images={images} look={look} team={team} motion={motion} frame={index} heading={heading} facing={facing} zoom={4} marks={marks} phase={(time % def.ms) / def.ms} matchPhases={matchPhases} />
               <div className="lab-stage-info"><span className="lab-eyebrow">{def.loop ? 'CYCLE' : 'GESTE'}</span><h2>{def.label}</h2><p>{def.count} images · {(def.ms / 1000).toFixed(2).replace('.', ',')} s</p><p className="lab-frame-counter" aria-live="off">{String(index + 1).padStart(2, '0')}<span> / {String(def.count).padStart(2, '0')}</span></p><label className="lab-check"><input type="checkbox" checked={marks} onChange={(e) => setMarks(e.target.checked)} /> Points de contact & cadre</label><p className="lab-explanation">Lecture à vitesse réelle ou ralentie, puis image par image.</p><figure className="lab-reference"><figcaption>Référence validée</figcaption><ReferenceCanvas images={images} look={look} team={team} /></figure></div>
             </div>
             <div className="lab-playback"><button onClick={() => setPlaying((p) => !p)}>{playing ? 'Pause' : 'Lire'}</button><button onClick={() => selectFrame((index + def.count - 1) % def.count)} aria-label="Image précédente">←</button><button onClick={() => selectFrame((index + 1) % def.count)} aria-label="Image suivante">→</button><label>Vitesse<select aria-label="Vitesse" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}><option value={0.25}>×0,25</option><option value={0.5}>×0,5</option><option value={1}>×1</option><option value={2}>×2</option></select></label><input aria-label="Image de l’animation" type="range" min={1} max={def.count} value={index + 1} onChange={(e) => selectFrame(Number(e.target.value) - 1)} /></div>
@@ -77,7 +81,9 @@ export function paintBall(ctx: CanvasRenderingContext2D, source: HTMLImageElemen
   const cx = source.width * [0.1875, 0.5, 0.8125][spin % 3], cy = source.height * (spin < 3 ? 0.275 : 0.75), r = source.width * 0.1;
   ctx.save(); ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(source, cx - r, cy - r, r * 2, r * 2, Math.round(x - 5), Math.round(y - 5), 10, 10); ctx.restore();
 }
-function MotionCanvas({ images, look, team, motion, frame, heading, facing, zoom, marks, phase }: { images: HTMLImageElement[]; look: Appearance; team: number; motion: MotionId; frame: number; heading: Heading; facing: Facing; zoom: number; marks: boolean; phase?: number }) {
+function MotionCanvas({ images, look, team, motion: requestedMotion, frame: requestedFrame, heading, facing, zoom, marks, phase, matchPhases = false }: { images: HTMLImageElement[]; look: Appearance; team: number; motion: MotionId; frame: number; heading: Heading; facing: Facing; zoom: number; marks: boolean; phase?: number; matchPhases?: boolean }) {
+  const selected = matchPhases ? previewPose(requestedMotion, phase ?? 0, heading, facing === 'left' ? -1 : 1) : null;
+  const motion = selected?.motion ?? requestedMotion, frame = selected?.frame ?? requestedFrame;
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const ctx = ref.current?.getContext('2d'); if (!ctx) return;

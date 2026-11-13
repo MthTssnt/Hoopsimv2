@@ -172,8 +172,8 @@ function groundGesture(body: BodyView): Pick | null {
   }
   if (body.sinceReach != null && body.sinceReach * 1000 < t.stealMs) return ['steal', Math.min(3, Math.floor(body.sinceReach * 1000 / t.stealMs * 4))];
   if (body.offBalance) return ['offBalance', Math.min(3, Math.floor((body.motionPhase ?? 0) * 4))];
-  if (body.sincePass != null && body.sincePass * 1000 < t.passMs) return [body.lob ? 'lobPass' : 'pass', body.sincePass < 0.08 ? 2 : 3];
-  if (body.catching) return ['catch', body.sinceCatch == null ? 0 : Math.min(3, 1 + Math.floor(body.sinceCatch * 1000 / t.catchMs * 3))];
+  if (!body.holding && body.sincePass != null && body.sincePass * 1000 < t.passMs && (body.speed < 1.2 || body.sincePass < 0.08)) return [body.lob ? 'lobPass' : 'pass', body.sincePass < 0.08 ? 2 : 3];
+  if (body.catching && (!body.holding || body.speed < 1.2)) return ['catch', body.sinceCatch == null ? 0 : Math.min(3, 1 + Math.floor(body.sinceCatch * 1000 / t.catchMs * 3))];
   if (!body.holding && body.speed < 1.2 && body.sinceLanding != null && body.sinceLanding * 1000 < t.landingMs) return ['landing', Math.min(3, Math.floor(body.sinceLanding * 1000 / t.landingMs * 4))];
   return null;
 }

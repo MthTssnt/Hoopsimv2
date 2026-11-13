@@ -3,6 +3,11 @@ import { DEFAULT_BINDINGS, keyLabel, rebind } from './input/bindings';
 import { DEFAULT_SETTINGS, parseSettings } from './settings';
 
 describe('paramètres du match', () => {
+  it('préserve les anciennes sauvegardes et borne les nouveaux réglages audio', () => {
+    expect(parseSettings('{}').audioVolume).toBe(0.35);
+    expect(parseSettings('{"audioVolume":4,"audioMuted":true}')).toMatchObject({ audioVolume: 1, audioMuted: true });
+    expect(parseSettings('{"audioVolume":-4,"audioMuted":"oui"}')).toMatchObject({ audioVolume: 0, audioMuted: false });
+  });
   it('reprend les valeurs par défaut si rien n’est sauvegardé ou si la sauvegarde est illisible', () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('{pas du json')).toEqual(DEFAULT_SETTINGS);

@@ -9,6 +9,11 @@ import { FRAME } from './sprites/views';
 const ground = { airborne: false, speed: 0, holding: false, facing: 1, heading: 'down' as const };
 
 describe('image du joueur selon l’état du monde', () => {
+  it('interrompt les raccords au sol quand le porteur repart ou déclenche un saut', () => {
+    expect(spriteStateFor({ ...ground, speed: 4, holding: true, catching: true, sinceCatch: 0.02, sincePass: 0.1 })).toMatchObject({ kind: 'anim', name: 'dribble' });
+    expect(spriteStateFor({ ...ground, speed: 4, sincePass: 0.12 })).toMatchObject({ kind: 'anim', name: 'run' });
+    expect(spriteStateFor({ ...ground, airborne: true, holding: true, shot: 'jump', catching: true, sinceCatch: 0.02 })).toMatchObject({ kind: 'frame', gesture: 'jumpShot' });
+  });
   it('au sol : arrêt, course, dribble à l’arrêt, dribble en course', () => {
     expect(spriteStateFor(ground)).toEqual({ kind: 'anim', name: 'idle', facing: 'right', heading: 'down' });
     expect(spriteStateFor({ ...ground, speed: 4 })).toMatchObject({ kind: 'anim', name: 'run' });

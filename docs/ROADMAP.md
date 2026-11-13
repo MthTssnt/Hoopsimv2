@@ -2,6 +2,25 @@
 
 Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu jouable et déployable.
 
+## Reconstruction autorisée du 13 novembre 2026 🔄
+
+La récupération des anciens commits n'est plus un préalable. Audit et distinction
+entre code conservé et nouvelles implémentations : `RECONSTRUCTION.md`.
+
+- ✅ Préparation de tout l'effectif avant match, compositeur worker/repli commun,
+  identités tirées de l'identifiant, absence de composition aux substitutions.
+- ✅ Données explicites des 1 680 poses et 525 masques de doigts reconstruits depuis
+  le rendu présent ; aucune affirmation de récupération des annotations perdues.
+- ✅ Suivi des gestes à chaque pas physique, raccords interruptibles, direction de
+  passe capturée au lâcher ; priorité aux sauts et à la reprise de possession.
+- ✅ Inspecteur `atelier`, pause initiale, avance de 1/60 s (deux pas physiques), repères
+  et export/rejeu des entrées ; atelier de poses utilisant le même sélecteur.
+- ✅ Premiers sons de ballon/fer/planche/filet/appuis et réglages volume/coupure.
+- 🔄 Validation navigateur, parité de composition, rejeu et match complet : résultats
+  nouveaux dans `MATCH_VISUAL_VALIDATION.md`, distincts des preuves historiques.
+- ⬜ Suite artistique : affiner l'appui des poses témoins, les intégrer aux trajectoires,
+  décliner aux dix designs, puis compléter public/banc, transitions et décor selon diagnostic.
+
 ## Reprise du 13 novembre 2026 — planches témoins 🔄
 
 - État retrouvé : branche `work` sur `a9f1291`, checkout propre avant intervention.
@@ -18,8 +37,8 @@ Légende : ✅ fait · 🔄 en cours · ⬜ à faire. Chaque phase laisse le jeu
 - 🔄 Contrôle artistique : identité reconnaissable et défense distincte de la course.
   Appui du pivot, glissement et ancrage du torse à affiner en trajectoire ; pas d'activation
   dans le vrai match ni de déclinaison annoncée comme validée sur les dix designs.
-- ⬜ Récupérer les trois lots manquants depuis l'ancienne session ou un bundle/patch,
-  conserver ce lot témoin, puis reprendre l'intégration sans perdre leurs priorités de gestes.
+- La demande initiale de récupérer les trois lots a été remplacée par l'autorisation
+  de les reconstruire : voir la section ci-dessus. Le lot témoin reste conservé.
 - Les résultats de cette reprise et les limites des preuves figurent dans
   `MATCH_VISUAL_VALIDATION.md`, section « Planches témoins du 13 novembre 2026 ».
 

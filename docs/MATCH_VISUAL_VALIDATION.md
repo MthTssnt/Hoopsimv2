@@ -1,5 +1,54 @@
 # Validation du rendu en match — graine 8126
 
+## Reconstruction vérifiée du 13 novembre 2026
+
+L'absence des anciens commits ne bloque plus l'implémentation. Les capacités sont
+**reconstruites**, pas récupérées à l'identique : audit détaillé dans `RECONSTRUCTION.md`.
+Cette section remplace le préalable de récupération cité dans le bilan du lot témoin.
+
+- **355 tests dans 39 fichiers**, lint et build réussis. Les nouveaux tests vérifient
+  les données explicites, les miroirs des repères, les raccords interruptibles,
+  la direction des passes, le changement d'identité d'un corps et l'absence d'effet
+  du suivi visuel sur la physique et les résultats.
+- Chromium : **13 440 poses** contenues dans le cadre (dix designs, quatre orientations,
+  180/220 cm et deux corpulences), 3 200 paires de repères symétriques, 6 720 paires
+  de masques dont l'alpha est exactement symétrique. Il s'agit de contrôles structurels,
+  pas d'une appréciation artistique exhaustive.
+- Parité raster du compositeur worker et principal sur le témoin 220 cm corpulent :
+  **zéro octet différent** dans l'atlas et les doigts.
+- Préparation des **20 membres éligibles** de la graine 8126 avant le premier pas,
+  worker et repli `sansWorker` réellement exécutés. Temps observé ~13–15 s en worker,
+  ~12 s en repli sur cette machine ; l'interface affiche la progression.
+- Rejeu de **600 pas à 1/120 s**, entrées identiques : mêmes positions, poses,
+  possession, score, événements de filet et box score entre worker et repli.
+  Le bouton de 1/60 s a été vérifié comme deux pas physiques.
+- Match complet **4 × 3 min**, graine 8126, exécuté par l'inspecteur en blocs de pas :
+  **126 279 pas**, 1 052,325 s simulées, **106–74**, box score **106–74** ;
+  dix joueurs utilisés par équipe, 48 versions de cinq et **zéro cuisson à l'entrée**.
+  Traversées physiques : 57 à gauche et 57 à droite (indépendantes des paniers accordés).
+  Ce parcours accéléré est une validation fonctionnelle, pas une preuve de fluidité.
+- Essais réellement affichés à ×1/×2/×4 sur les graines **31 et 919**, essai clavier
+  sur 8126, vues 1280×720 et 1920×1080, atelier « Phases du match » et « Planches sources ».
+  Aucun événement JavaScript `pageerror` dans le parcours.
+- Audio : contexte initialement verrouillé, activé après clic ; nœuds de sons ballon,
+  appuis, fer, planche et filet lancés pendant le jeu. Coupure vérifiée sans nouvelle
+  émission ; réglages sauvegardés compatibles avec les anciennes sauvegardes.
+  Le caractère sonore reste à écouter et affiner, sans validation artistique revendiquée.
+- Mesures Phaser en jeu affiché headless : ~**50,6 et 54,4 FPS**, plus longue image
+  récente ~30 et 31,7 ms. **60 FPS stables ne sont pas démontrés.**
+
+Preuves nouvelles sous `/workspace/hoopsim-evidence/reconstruction/` :
+`validation.json`, `art-validation.json`, `inputs-8126.json`, captures du match et
+de l'atelier ; scripts `validate.py` et `validate_art.py`. Les anciennes captures
+ne sont pas utilisées comme preuve des reconstructions.
+
+Pour tester : ouvrir `?court&seed=8126&watch&atelier`, lire puis figer, avancer de
+1/60 s, choisir le joueur et afficher les repères. Exporter les entrées pour une
+comparaison au même pas. Ajouter `&sansWorker` pour vérifier le repli. Dans `?anims`,
+comparer « Phases du match » à « Planches sources ». Dans Paramètres, essayer volume
+et coupure après un clic. Les nouvelles poses témoins restent accessibles via
+`?anims&poses`, sans activation en match.
+
 ## Planches témoins du 13 novembre 2026
 
 Reprise réelle sur `work` à partir de `a9f1291`, et non `e101c11` : les trois commits

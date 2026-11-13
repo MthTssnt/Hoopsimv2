@@ -1,5 +1,12 @@
 # Planches de personnages complets
 
+`contacts.json` a été reconstruit le 13 novembre 2026 à partir des repères et du
+rendu conservés : 1 680 entrées (ballon, paume, contact, occultation), 525 masques
+de doigts décrits par lignes de pixels dans le rectangle source. Le rendu lit ces
+données explicites et applique au masque la même échelle et le même miroir qu'au
+personnage entier. Les mentions de mesure automatique ci-dessous décrivent la
+base historique utilisée pour cette reconstruction, pas une redétection en match.
+
 20 atlas : deux vues (face/dos) pour chacun des cinq designs des deux tenues. Chaque atlas
 contient les 84 images de `MOTIONS`, dans l'ordre de `MOTION_FRAMES` : arrêt 4, course 8,
 dribble 8, dribble sur place 8, puis 14 gestes de 4 images. Ne pas supposer une grille régulière.

@@ -13,6 +13,8 @@ export interface MatchSettings {
   camera: CameraMode;
   /** Durée d'un quart-temps sur terrain entier (min de chrono réel). */
   quarterMinutes: number;
+  audioVolume: number;
+  audioMuted: boolean;
 }
 
 /** Durées de quart-temps proposées (min). */
@@ -25,6 +27,8 @@ export const DEFAULT_SETTINGS: MatchSettings = {
   level: 'pro',
   camera: 'free',
   quarterMinutes: 3,
+  audioVolume: 0.35,
+  audioMuted: false,
 };
 
 const STORAGE_KEY = 'hoopsim.match.settings.v1';
@@ -55,6 +59,8 @@ export function parseSettings(raw: string | null): MatchSettings {
     level: pick(data.level, ['pro', 'college'], DEFAULT_SETTINGS.level),
     camera: pick(data.camera, ['free', 'steps'], DEFAULT_SETTINGS.camera),
     quarterMinutes: (QUARTER_MINUTES as readonly unknown[]).includes(data.quarterMinutes) ? (data.quarterMinutes as number) : DEFAULT_SETTINGS.quarterMinutes,
+    audioVolume: typeof data.audioVolume === 'number' && Number.isFinite(data.audioVolume) ? Math.min(1, Math.max(0, data.audioVolume)) : DEFAULT_SETTINGS.audioVolume,
+    audioMuted: typeof data.audioMuted === 'boolean' ? data.audioMuted : DEFAULT_SETTINGS.audioMuted,
   };
 }
 

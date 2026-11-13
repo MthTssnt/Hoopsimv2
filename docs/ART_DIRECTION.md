@@ -12,6 +12,12 @@ Cette technique et ses pièces ne sont plus utilisées.
 
 ## Animations validées
 
+Reconstruction du 13 novembre 2026 : les PNG et poses validés sont conservés.
+Les centres, paumes, occultations et masques de doigts sont désormais explicites
+dans `painted/contacts.json`, remesurés depuis le rendu présent ; aucune annotation
+de l'ancien commit n'est annoncée comme récupérée. Les transformations natives et
+miroirs sont partagés entre dessins et masques. Voir `RECONSTRUCTION.md`.
+
 Les nouvelles poses sont des **personnages entiers dessinés**, dans le style des références,
 stockés dans `src/assets/players/painted/`. Aucune articulation ou tête n'est reconstruite en
 code. Chaque design possède 84 images de face et 84 de dos : 4 pour l'arrêt et chacun des
