@@ -614,6 +614,7 @@ export class MatchScene extends Phaser.Scene {
     this.scene.launch('Hud');
     this.ready = true;
     this.registry.set('matchReady', true);
+    this.registry.set('canFinish', this.world.full !== null);
     this.game.events.emit('match-ready');
   }
 

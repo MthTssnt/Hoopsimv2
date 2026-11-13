@@ -211,6 +211,26 @@ describe('natural gameplay: rules, actions and team decisions', () => {
     defender.vel.z = 0.3; defender.look = { x: -1, y: 0 }; w.gestures.advance(0); w.gestures.clocks[2].air = 0.1;
     w.step(WORLD_DT, []); expect(w.lastShot?.block?.blocker).toBe(2); expect(w.lastShot?.goaltend).toBe(false);
   });
+  it('G20: a dunk can be blocked during gather, before the smash', () => {
+    let blocked = false;
+    for (let seed = 1; seed <= 30 && !blocked; seed++) {
+      const w = fixture(false, seed), shooter = w.players[0];
+      shooter.athlete = { ...shooter.athlete, attrs: { ...shooter.athlete.attrs, standingDunk: 99, drivingDunk: 99 } };
+      shooter.pos = { x: court.hoops.right.rim.x - 0.8, y: court.hoops.right.rim.y, z: 0 };
+      w.step(WORLD_DT, [{ ...idle, jump: true }]);
+      for (let k = 0; k < 30 && w.shot && w.shot.airTime < 0.25; k++) w.step(WORLD_DT, []);
+      const ball = w.ball.pos, defender = w.players[2];
+      defender.pos = { x: ball.x + 0.6, y: ball.y, z: Math.max(0.05, ball.z - defender.athlete.heightCm / 100 * 0.82 - 0.7) };
+      defender.airborne = true; defender.vel.z = 0.3; defender.look = { x: -1, y: 0 };
+      w.gestures.advance(0); w.gestures.clocks[2].air = 0.1;
+      w.step(WORLD_DT, []);
+      if (w.lastShot?.block?.success) {
+        expect(w.lastShot.kind).toBe('dunk'); expect(w.lastShot.block.blocker).toBe(2);
+        expect(w.lastShot.live).toBe(false); expect(w.holder).toBeNull(); blocked = true;
+      }
+    }
+    expect(blocked).toBe(true);
+  });
   it('G28/G34: defensive facing produces backpedal footwork and independent idle phases', () => {
     const w = fixture(), body = w.players[0]; body.vel.x = -3;
     stepPlayer(body, { x: -1, y: 0, jump: false, face: { x: 1, y: 0 } }, WORLD_DT, court);

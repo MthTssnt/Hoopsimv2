@@ -42,6 +42,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
   const watching = match ? match.mode === 'regarder' : new URLSearchParams(window.location.search).has('watch');
   const [speed, setSpeed] = useState(1);
   const [finishing, setFinishing] = useState(false);
+  const [canFinish, setCanFinish] = useState(false);
   const [preparation, setPreparation] = useState({ done: 0, total: 0 });
   const [ready, setReady] = useState(false);
   const [preparationError, setPreparationError] = useState<string | null>(null);
@@ -81,6 +82,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     let inspectorApi: InspectorApi | undefined;
     game.events.on('match-ready', () => {
       setReady(true);
+      setCanFinish(game.registry.get('canFinish') === true);
       if (new URLSearchParams(location.search).has('atelier')) {
         const scene = game.scene.getScene('Match') as MatchScene;
         inspectorApi = { snapshot: () => scene.inspect(), step: (inputs) => scene.inspectorStep(inputs), play: (play) => scene.inspectorPlay(play), recording: () => scene.inspectorRecording(), advance: (count) => scene.inspectorAdvance(count) };
@@ -174,9 +176,9 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
               ×{value}
             </button>
           ))}
-          <button className="btn btn-sm" onClick={onFinish}>
+          {canFinish && <button className="btn btn-sm" onClick={onFinish}>
             Simuler la fin
-          </button>
+          </button>}
         </div>
       )}
       <MatchSettingsPanel settings={settings} onChange={onChange} open={panelOpen} onOpenChange={setPanelOpen} />
