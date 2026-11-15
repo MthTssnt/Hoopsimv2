@@ -1,10 +1,9 @@
 import { downloadSave } from './saveBackup';
 import { budget } from '../engine/management/economy';
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import {
   ROUND_NAMES,
   daysUntilNextUserGame,
-  nextUserGame,
   seasonDays,
   userGameToday,
   type League,
@@ -12,13 +11,15 @@ import {
 } from '../engine';
 import { store, useStore } from '../state/store';
 import { GameViewer } from './GameViewer';
-import { MatchButtons } from './MatchButtons';
 import { NewGameScreen } from './NewGameScreen';
 import { PlayerModal } from './PlayerModal';
 import { TeamModal } from './TeamModal';
 import { TeamLogo, teamFullName } from './common';
 import { DevelopmentTab } from './tabs/DevelopmentTab';
-import { Dashboard } from './tabs/Dashboard';
+import { ManagementHome } from './ManagementHome';
+import { HoopSimLogo } from './branding/HoopSimLogo';
+import { Modal } from './common';
+import { CoachingEditor } from './tabs/CoachingEditor';
 import { HistoryTab } from './tabs/HistoryTab';
 import { PlayoffsTab } from './tabs/PlayoffsTab';
 import { MarketTab } from './tabs/MarketTab';
@@ -34,10 +35,13 @@ const PhaserGame = lazy(() => import('../match/PhaserGame'));
 const AnimationLab = lazy(() => import('./AnimationLab'));
 
 const TABS = [
-  { id: 'accueil', label: 'Accueil' },
+  { id: 'accueil', label: 'Bureau' },
+  { id: 'preparation', label: 'Préparer le match' },
+  { id: 'rotation', label: 'Rotation' },
   { id: 'effectif', label: 'Effectif' },
   { id: 'tactiques', label: 'Tactiques' },
-  { id: 'marche', label: 'Marché' },
+  { id: 'marche', label: 'Recrutement' },
+  { id: 'draft', label: 'Draft et intersaison' },
   { id: 'developpement', label: 'Développement' },
   { id: 'calendrier', label: 'Calendrier' },
   { id: 'classement', label: 'Classement' },
@@ -52,15 +56,9 @@ type TabId = (typeof TABS)[number]['id'];
 export default function App() {
   const state = useStore();
   const [tab, setTab] = useState<TabId>('accueil');
+  const navigate = (id: TabId) => { if (id === tab) return; if (window.dispatchEvent(new Event('hoopsim:before-navigate', { cancelable: true }))) setTab(id); };
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
-  const navRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const revealActiveTab = () => navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    revealActiveTab(); window.addEventListener('resize', revealActiveTab);
-    return () => window.removeEventListener('resize', revealActiveTab);
-  }, [tab, Boolean(state.league), Boolean(state.liveMatch)]);
-
   const ui = useMemo(
     () => ({ openPlayer: (id: string) => setPlayerId(id), openTeam: (id: string) => setTeamId(id) }),
     [],
@@ -85,25 +83,22 @@ export default function App() {
   return (
     <UiContext.Provider value={ui}>
       <div className="app">
-        <TopBar league={league} userTeam={userTeam} onDevelopment={() => setTab('developpement')} />
-        <nav className="nav" ref={navRef}>
-          <div className="nav-inner">
-            {TABS.map((t) => (
-              <button key={t.id} aria-current={tab === t.id ? 'page' : undefined} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <main className="app-main">
+        <a className="skip-link" href="#management-content">Aller au contenu</a><TopBar league={league} userTeam={userTeam} onDevelopment={() => navigate('developpement')} onPrepare={() => navigate('preparation')} onTools={() => navigate('animations')} />
+        <nav className="nav" aria-label="Espaces de management"><div className="nav-inner">
+          {([{label:'Bureau', ids:['accueil','preparation']}, {label:'Équipe',ids:['effectif','rotation','tactiques','developpement']}, {label:'Marché',ids:['marche','draft']}, {label:'Ligue',ids:['calendrier','classement','stats','playoffs','ligue']}] as const).map(group => <button key={group.label} aria-current={(group.ids as readonly string[]).includes(tab) ? 'page' : undefined} className={(group.ids as readonly string[]).includes(tab)?'active':''} onClick={() => navigate(group.ids[0])}>{group.label}</button>)}
+        </div></nav>
+        <main className="app-main" id="management-content">
+          <nav className="subnav" aria-label="Rubriques">{TABS.filter(t => tab === 'animations' ? t.id === 'animations' : ['accueil','preparation'].includes(tab) ? ['accueil','preparation'].includes(t.id) : ['effectif','rotation','tactiques','developpement'].includes(tab) ? ['effectif','rotation','tactiques','developpement'].includes(t.id) : ['marche','draft'].includes(tab) ? ['marche','draft'].includes(t.id) : ['calendrier','classement','stats','playoffs','ligue'].includes(t.id)).map(t => <button className="btn btn-sm" aria-current={tab===t.id?'page':undefined} key={t.id} onClick={() => navigate(t.id)}>{t.label}</button>)}</nav>
+          <div className="page-heading"><div><div className="eyebrow">HoopSim / Club management</div><h1>{TABS.find(t=>t.id===tab)?.label}</h1><p>{tab==='accueil' ? 'Un rendez-vous, une décision. Le reste peut attendre.' : tab==='tactiques' ? 'Choisissez vos intentions de jeu. Affinez seulement ce qui compte.' : tab==='marche' ? 'Trouvez le bon joueur, vérifiez l’offre, puis décidez.' : 'Votre franchise, vos choix. Les détails restent à portée de main.'}</p></div><span className="pill">Saison {league.season} · {userTeam.abbr}</span></div>
           {state.saveError && <div className="panel" role="alert"><p>{state.saveError}</p><div className="row" style={{ flexWrap: 'wrap' }}><button className="btn" onClick={() => downloadSave(league)}>Exporter la partie</button><button className="btn" onClick={() => store.retrySave()}>Réessayer la sauvegarde</button></div></div>}
           {state.loadError && <p role="alert">{state.loadError}</p>}
           {state.actionError && <p role="alert">{state.actionError}</p>}
-          {league.phase === 'offseason' && !league.offseason && <p className="panel" role="status">{budget(league, userTeam).expiringIds.length} contrat(s) sans prolongation arrivent à expiration. <button className="btn btn-sm" onClick={() => setTab('marche')}>Négocier avant la draft</button></p>}
-          {tab === 'accueil' && <Dashboard league={league} team={userTeam} onNavigate={setTab} />}
-          {league.offseason && <p className="panel" role="status">{league.offseason.stage === 'draft' ? 'Draft en cours : votre prochain choix attend dans Développement.' : 'Draft terminée : complétez votre effectif dans Marché puis lancez la saison.'} <button className="btn btn-sm" onClick={() => setTab('developpement')}>Voir l’intersaison</button></p>}
+          {league.phase === 'offseason' && !league.offseason && <p className="panel" role="status">{budget(league, userTeam).expiringIds.length} contrat(s) sans prolongation arrivent à expiration. <button className="btn btn-sm" onClick={() => navigate('marche')}>Négocier avant la draft</button></p>}
+          {(tab === 'accueil' || tab === 'preparation') && <ManagementHome league={league} team={userTeam} preparing={tab === 'preparation'} onNavigate={navigate} />}
+          {tab === 'rotation' && <CoachingEditor key={JSON.stringify(userTeam.gamePlan)} league={league} team={userTeam} />}
+          {league.offseason && <p className="panel" role="status">{league.offseason.stage === 'draft' ? 'Draft en cours : votre prochain choix attend dans Développement.' : 'Draft terminée : complétez votre effectif dans Marché puis lancez la saison.'} <button className="btn btn-sm" onClick={() => navigate('developpement')}>Voir l’intersaison</button></p>}
           {tab === 'developpement' && <DevelopmentTab key={`${league.phase}:${league.offseason?.stage ?? 'none'}`} league={league} team={userTeam} />}
+          {tab === 'draft' && <DevelopmentTab initialTab="draft" key={`draft:${league.phase}:${league.offseason?.stage ?? 'none'}`} league={league} team={userTeam} />}
           {tab === 'marche' && <MarketTab league={league} team={userTeam} />}
           {tab === 'tactiques' && (userTeam.gamePlan ? <TacticsTab key={JSON.stringify(userTeam.gamePlan)} league={league} team={userTeam} /> : <p role="alert">Au moins cinq joueurs aptes sont nécessaires pour préparer un plan tactique.</p>)}
           {tab === 'effectif' && <RosterTab league={league} team={userTeam} />}
@@ -125,119 +120,22 @@ export default function App() {
   );
 }
 
-function TopBar({ league, userTeam, onDevelopment }: { league: League; userTeam: Team; onDevelopment: () => void }) {
-  const [confirmNew, setConfirmNew] = useState(false);
-  const upcoming = nextUserGame(league);
-  const isGameDay = upcoming?.day === league.day;
+function TopBar({ league, userTeam, onDevelopment, onPrepare, onTools }: { league: League; userTeam: Team; onDevelopment: () => void; onPrepare: () => void; onTools: () => void }) {
+  const [menu, setMenu] = useState(false);
+  const [advance, setAdvance] = useState(false);
+  const days = daysUntilNextUserGame(league);
   const today = userGameToday(league);
-  const daysOff = daysUntilNextUserGame(league);
-  const totalDays = seasonDays(league);
-
-  const phaseLabel = (() => {
-    if (league.phase === 'offseason') return 'Intersaison';
-    if (league.phase === 'playoffs') {
-      const round = league.playoffs?.round ?? 0;
-      return `Playoffs · ${ROUND_NAMES[round]}`;
-    }
-    return `Journée ${league.day + 1} / ${totalDays}`;
-  })();
-
-  return (
-    <header className="topbar">
-      <div className="topbar-inner">
-        <div className="topbar-team">
-          <TeamLogo team={userTeam} size={38} />
-          <div style={{ minWidth: 0 }}>
-            <div className="topbar-title">{teamFullName(userTeam)}</div>
-            <div className="topbar-sub">
-              Saison {league.season} · {userTeam.wins}-{userTeam.losses} · {phaseLabel}
-            </div>
-          </div>
-        </div>
-
-        <div className="topbar-actions">
-          {league.phase === 'regular' && (
-            <>
-              {isGameDay ? (
-                <MatchButtons />
-              ) : (
-                <button className="btn btn-primary" onClick={() => store.simulateToNextUserGame()}>
-                  {daysOff <= 1 ? 'Passer au match suivant' : `Avancer de ${daysOff} jours`}
-                </button>
-              )}
-              <button className="btn" onClick={() => store.advanceOneDay(false)}>
-                Journée suivante
-              </button>
-              <button className="btn" onClick={() => store.simulateDays(7)}>
-                +7 jours
-              </button>
-              <button className="btn" onClick={() => store.simulateRestOfSeason()}>
-                Fin de saison
-              </button>
-            </>
-          )}
-
-          {league.phase === 'playoffs' && (
-            <>
-              {today ? (
-                <MatchButtons />
-              ) : (
-                <button className="btn btn-primary" onClick={() => store.advanceOneDay(true)}>
-                  Soirée suivante
-                </button>
-              )}
-              <button className="btn" onClick={() => store.simulateRestOfSeason()}>
-                Simuler les playoffs
-              </button>
-            </>
-          )}
-
-          {league.phase === 'offseason' && (
-            <button className="btn btn-primary" onClick={onDevelopment}>
-              {league.offseason ? 'Reprendre l’intersaison' : 'Préparer la draft'}
-            </button>
-          )}
-
-          <button className="btn" onClick={() => setConfirmNew(true)} title="Nouvelle partie">
-            Menu
-          </button>
-        </div>
-      </div>
-
-      {confirmNew && (
-        <div className="modal-backdrop" onClick={() => setConfirmNew(false)} role="presentation">
-          <div className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>Menu</strong>
-            </div>
-            <div className="modal-body">
-              <p className="muted small" style={{ marginTop: 0 }}>
-                La partie est sauvegardée automatiquement dans ce navigateur après chaque action.
-              </p>
-              <div className="row" style={{ flexWrap: 'wrap' }}>
-                <button className="btn" onClick={() => { if (store.retrySave()) setConfirmNew(false); }}>
-                  Sauvegarder maintenant
-                </button>
-                <button className="btn" onClick={() => downloadSave(league)}>Exporter la partie</button>
-                <button
-                  className="btn"
-                  onClick={() => {
-                    if (confirm('Abandonner la partie en cours et en démarrer une nouvelle ?')) {
-                      store.deleteSave();
-                      setConfirmNew(false);
-                    }
-                  }}
-                >
-                  Nouvelle partie
-                </button>
-                <button className="btn" onClick={() => setConfirmNew(false)}>
-                  Fermer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </header>
-  );
+  const phase = league.phase === 'offseason' ? 'Intersaison' : league.phase === 'playoffs' ? `Playoffs · ${ROUND_NAMES[league.playoffs?.round ?? 0]}` : `Journée ${league.day+1} / ${seasonDays(league)}`;
+  const jump = (label: string, run: () => void) => { if (confirm(`${label} : les matchs seront simulés et la progression sera sauvegardée. Cette action ne peut pas être annulée. Continuer ?`)) { run(); setAdvance(false); } };
+  return <header className="topbar"><div className="topbar-inner"><HoopSimLogo width={160}/><div className="topbar-team"><TeamLogo team={userTeam} size={48}/><div><div className="topbar-title">{teamFullName(userTeam)}</div><div className="topbar-sub">Saison {league.season} · {userTeam.wins}–{userTeam.losses} · {phase}</div></div></div><div className="topbar-actions">
+    <button className="btn btn-primary" onClick={league.phase === 'offseason' ? onDevelopment : onPrepare}>{league.phase==='offseason' ? 'Reprendre l’intersaison' : 'Préparer le match'}</button>
+    <button className="btn" onClick={() => setAdvance(true)}>Avancer…</button><button className="btn" onClick={() => setMenu(true)}>Menu</button>
+  </div></div>
+  {advance && <Modal title="Avancer le calendrier" onClose={() => setAdvance(false)}><p>Les journées jouées sont enregistrées immédiatement. Les grands sauts peuvent passer des fenêtres de négociation.</p><div className="grid">
+    {league.phase==='regular' && <><button className="btn" onClick={() => {store.simulateToNextUserGame();setAdvance(false);}}>Passer au match suivant · {days} jour(s)</button><button className="btn" onClick={() => {store.advanceOneDay(false);setAdvance(false);}}>Journée suivante</button><button className="btn" onClick={() => jump('+7 jours',()=>store.simulateDays(7))}>+7 jours</button><button className="btn" onClick={() => jump('Fin de saison',()=>store.simulateRestOfSeason())}>Fin de saison</button></>}
+    {league.phase==='playoffs' && <><button className="btn" onClick={() => {setAdvance(false); if(today) onPrepare(); else store.advanceOneDay(true);}}>Soirée suivante</button><button className="btn" onClick={() => jump('Simuler les playoffs',()=>store.simulateRestOfSeason())}>Simuler les playoffs</button></>}
+    {league.phase==='offseason' && <button className="btn" onClick={() => {setAdvance(false);onDevelopment();}}>Préparer la draft</button>}
+  </div></Modal>}
+  {menu && <Modal title="Menu • Votre partie" onClose={() => setMenu(false)}><p>La partie est sauvegardée automatiquement après chaque action.</p><div className="grid"><button className="btn" onClick={() => {if(store.retrySave())setMenu(false);}}>Sauvegarder maintenant</button><button className="btn" onClick={() => downloadSave(league)}>Exporter la partie</button><details><summary>Outils</summary><button className="btn" onClick={() => {setMenu(false);onTools();}}>Animations</button> <a className="btn" href="?style">Designs des joueurs</a> <a className="btn" href="?branding">Galerie des franchises</a></details><details><summary>Comprendre les chiffres</summary><p>Note : synthèse des attributs, pas une garantie de performance. Potentiel : marge de développement. Minutes : cibles sur 48 minutes ; le temps réel dépend du match. Poids : fréquence relative d’un système. M€ : budget fictif en millions d’euros.</p></details><button className="btn" onClick={() => {if(confirm('Abandonner cette carrière et supprimer sa sauvegarde ? Exportez une copie avant de continuer.'))store.deleteSave();}}>Nouvelle partie</button></div></Modal>}
+  </header>;
 }

@@ -18,7 +18,7 @@ export function HistoryTab({ league }: { league: League }) {
             Aucune saison terminée pour l'instant.
           </p>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
             <table>
               <thead>
                 <tr>
@@ -60,7 +60,7 @@ export function HistoryTab({ league }: { league: League }) {
         <div className="panel-title" style={{ marginTop: 22 }}>
           Hiérarchie des effectifs
         </div>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
           <table>
             <thead>
               <tr>
@@ -99,7 +99,7 @@ export function HistoryTab({ league }: { league: League }) {
 
       <div className="panel">
         <div className="panel-title">Meilleurs joueurs de la ligue</div>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
           <table>
             <thead>
               <tr>

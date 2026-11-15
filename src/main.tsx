@@ -8,7 +8,8 @@ import './styles.css';
 const PhaserGame = lazy(() => import('./match/PhaserGame'));
 const PlayerDesigns = lazy(() => import('./ui/PlayerDesigns'));
 const params = new URLSearchParams(window.location.search);
-const TestScreen = params.has('style') || params.has('anims') ? PlayerDesigns : params.has('court') ? PhaserGame : null;
+const BrandGallery = lazy(() => import('./ui/branding/BrandGallery'));
+const TestScreen = params.has('branding') ? BrandGallery : params.has('style') || params.has('anims') ? PlayerDesigns : params.has('court') ? PhaserGame : null;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

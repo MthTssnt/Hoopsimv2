@@ -24,13 +24,13 @@ export function ScheduleTab({ league, team }: { league: League; team: Team }) {
         {scope === 'league' && (
           <>
             <div className="spacer" />
-            <button className="btn btn-sm" onClick={() => setDay((d) => Math.max(0, d - 1))} disabled={day === 0}>
+            <button className="btn btn-sm" aria-label="Journée précédente" onClick={() => setDay((d) => Math.max(0, d - 1))} disabled={day === 0}>
               ←
             </button>
             <span className="mono small">Journée {day + 1}</span>
             <button
               className="btn btn-sm"
-              onClick={() => setDay((d) => Math.min(maxDay, d + 1))}
+              aria-label="Journée suivante du calendrier" onClick={() => setDay((d) => Math.min(maxDay, d + 1))}
               disabled={day >= maxDay}
             >
               →
@@ -39,7 +39,7 @@ export function ScheduleTab({ league, team }: { league: League; team: Team }) {
         )}
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
         <table>
           <thead>
             <tr>
@@ -76,7 +76,7 @@ function GameRow({ league, game, perspective }: { league: League; game: Game; pe
     const won = own !== null && other !== null && own > other;
 
     return (
-      <tr className={hasBox ? 'clickable' : ''} onClick={() => hasBox && store.showBoxScore(game)}>
+      <tr tabIndex={hasBox?0:undefined} onKeyDown={e=>{if(e.key==='Enter' && hasBox)store.showBoxScore(game);}} className={hasBox ? 'clickable' : ''} onClick={() => hasBox && store.showBoxScore(game)}>
         <td className="left faint mono">{game.day + 1}</td>
         <td className="left">
           <span className="row" style={{ gap: 8 }}>
@@ -103,7 +103,7 @@ function GameRow({ league, game, perspective }: { league: League; game: Game; pe
   }
 
   return (
-    <tr className={hasBox ? 'clickable' : ''} onClick={() => hasBox && store.showBoxScore(game)}>
+    <tr tabIndex={hasBox?0:undefined} onKeyDown={e=>{if(e.key==='Enter' && hasBox)store.showBoxScore(game);}} className={hasBox ? 'clickable' : ''} onClick={() => hasBox && store.showBoxScore(game)}>
       <td className="left faint mono">{game.day + 1}</td>
       <td className="left">
         <span className="row" style={{ gap: 8 }}>

@@ -1,3 +1,4 @@
+import { HoopSimLogo } from './branding/HoopSimLogo';
 import { useMemo, useState } from 'react';
 import { createNewGame, randomSeed, teamStrength, type League } from '../engine';
 import { store } from '../state/store';
@@ -25,7 +26,7 @@ export function NewGameScreen({ onLoad, hasSave, error }: { onLoad: () => void; 
     <div className="start">
       <div className="start-inner">
         <div className="start-title">
-          Hoop<span>Sim</span>
+          <HoopSimLogo width={350} />
         </div>
         <p className="muted" style={{ marginTop: 0, maxWidth: 640 }}>
           Prenez les commandes d'une franchise : composez votre rotation, simulez la saison match par

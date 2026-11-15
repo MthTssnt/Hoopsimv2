@@ -61,7 +61,7 @@ export function TeamModal({ league, teamId, onClose }: { league: League; teamId:
         </div>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
         <table>
           <thead>
             <tr>

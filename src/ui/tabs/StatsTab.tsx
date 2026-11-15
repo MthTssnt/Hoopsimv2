@@ -27,6 +27,7 @@ type SortKey = 'pts' | 'reb' | 'ast' | 'stl' | 'blk' | 'min' | 'fg' | 'tp' | 'ef
 
 export function StatsTab({ league }: { league: League }) {
   const ui = useUi();
+  const [complete,setComplete]=useState(false);
   const [category, setCategory] = useState<PerGameKey>('pts');
   const [playoffs, setPlayoffs] = useState(false);
   const [sort, setSort] = useState<SortKey>('pts');
@@ -94,7 +95,7 @@ export function StatsTab({ league }: { league: League }) {
               key={row.player.id}
               className="row clickable"
               style={{ padding: '5px 0', cursor: 'pointer' }}
-              onClick={() => ui.openPlayer(row.player.id)}
+              onClick={() => ui.openPlayer(row.player.id)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')ui.openPlayer(row.player.id);}}
             >
               <span className="faint mono" style={{ width: 18 }}>
                 {i + 1}
@@ -118,13 +119,14 @@ export function StatsTab({ league }: { league: League }) {
           <div className="spacer" />
           <input
             className="input"
-            placeholder="Rechercher un joueur…"
+            aria-label="Rechercher dans les statistiques" placeholder="Rechercher un joueur…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="table-wrap">
-          <table>
+        <button className="btn btn-sm" aria-pressed={complete} onClick={()=>setComplete(!complete)}>{complete ? 'Vue essentielle' : 'Toutes les statistiques'}</button><p className="small faint">Moyennes par match · {usePlayoffs ? 'Playoffs' : 'Saison régulière'}. Note : synthèse des attributs. — : aucun tir tenté.</p>{rows.length===0 && <p role="status">Aucune statistique pour cette période. Jouez ou simulez un match pour commencer.</p>}
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
+          <table className={complete?undefined:"stats-compact"}>
             <thead>
               <tr>
                 <th className="left">Joueur</th>
@@ -146,7 +148,7 @@ export function StatsTab({ league }: { league: League }) {
               {rows.map((r) => (
                 <tr key={r.player.id} className="clickable" onClick={() => ui.openPlayer(r.player.id)}>
                   <td className="left" style={{ fontWeight: 600 }}>
-                    {playerName(r.player)}
+                    <button className="player-name" onClick={e=>{e.stopPropagation();ui.openPlayer(r.player.id);}}>{playerName(r.player)}</button>
                     <span className="faint small" style={{ marginLeft: 6 }}>
                       {r.player.pos}
                     </span>
@@ -189,8 +191,8 @@ function Th({
   onSort: (k: SortKey) => void;
 }) {
   return (
-    <th className={`sortable${sort === k ? ' sorted' : ''}`} onClick={() => onSort(k)}>
-      {label}
+    <th aria-sort={sort===k?'descending':'none'} className={`sortable${sort === k ? ' sorted' : ''}`} onClick={() => onSort(k)}>
+      <button className="sort-button" onClick={e=>{e.stopPropagation();onSort(k);}}>{label}{sort===k ? " ↓" : " ↕"}</button>
     </th>
   );
 }

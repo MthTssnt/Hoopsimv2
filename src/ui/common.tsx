@@ -1,21 +1,10 @@
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { brandFor } from './branding/franchiseBrand';
 import type { Player, Team } from '../engine';
 
-export function TeamLogo({ team, size = 30 }: { team: { abbr: string; colors: { primary: string; secondary: string } }; size?: number }) {
-  return (
-    <span
-      className="logo"
-      style={{
-        width: size,
-        height: size,
-        background: team.colors.primary,
-        color: team.colors.secondary,
-        fontSize: size * 0.36,
-      }}
-    >
-      {team.abbr}
-    </span>
-  );
+export function TeamLogo({ team, size = 32 }: { team: { id?: string; abbr: string; colors: { primary: string; secondary: string } }; size?: number }) {
+  const brand = brandFor(team);
+  return brand?.logo ? <img className="team-emblem" src={brand.logo} width={size} height={size} alt={brand.name} style={{ objectFit: 'contain', imageRendering: 'pixelated', flexShrink: 0 }} /> : <span className="logo" aria-label={team.abbr} style={{ width: size, height: size, background: team.colors.primary, color: '#f6f1de', fontSize: size * .3 }}>{team.abbr}</span>;
 }
 
 export function teamFullName(team: Team): string {
@@ -75,17 +64,36 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
+  const dialog = useRef<HTMLDivElement>(null);
+  const label = useId();
+  const close = useRef(onClose); close.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const root = dialog.current;
+    const controls = () => Array.from(root?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea, [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
+    controls()[0]?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close.current(); }
+      if (e.key === 'Tab') {
+        const list = controls(), first = list[0], last = list.at(-1);
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    root?.addEventListener('keydown', key);
+    return () => { root?.removeEventListener('keydown', key); previous?.focus(); };
+  }, []);
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
-        className="modal"
+        className="modal" ref={dialog} aria-labelledby={label}
         style={wide ? { maxWidth: 1040 } : undefined}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
         <div className="modal-head">
-          <div style={{ flex: 1, minWidth: 0 }}>{title}</div>
+          <div id={label} style={{ flex: 1, minWidth: 0 }}>{title}</div>
           <button className="close-btn" onClick={onClose} aria-label="Fermer">
             ×
           </button>

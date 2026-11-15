@@ -1,3 +1,4 @@
+import { PlayerIdentity } from './PlayerIdentity';
 import { contractSeason, expectedSalary, playerValue, tradeStatus, DIRECTION_LABELS } from '../engine/management/economy';
 import { PLAYER_ROLE_LABELS } from '../engine/gamePlan';
 import {
@@ -75,6 +76,7 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
 
   return (
     <Modal title={title} onClose={onClose} wide>
+      <PlayerIdentity player={player} />
       {player.injuryGames > 0 && (
         <p className="pill pill-injury" style={{ marginTop: 0 }}>
           Blessure : {player.injuryLabel} — absent {player.injuryGames} match(s)
@@ -96,15 +98,15 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
         </div>
       </div>
 
-      <div className="panel" style={{ marginBottom: 16 }}>
+      <details className="panel" style={{ marginBottom: 16 }}><summary>Contrat, rôle et historique des transactions</summary>
         <p>Valeur de marché estimée : {playerValue(player, team?.frontOffice?.direction).toFixed(1)} · projet {DIRECTION_LABELS[team?.frontOffice?.direction ?? 'compete']}.</p>
         <p>{player.teamId ? `Statut : ${{ normal: 'à l’écoute', listed: 'liste des transferts', core: 'noyau dur', unavailable: 'indisponible' }[tradeStatus(league, player)]}` : `Agent libre · demande indicative ${expectedSalary(player).toFixed(1)} M€ par saison.`}</p>
         {player.extension && <p>Prolongation signée à partir de {contractSeason(league) + 1} : {player.extension.salary.toFixed(1)} M€ × {player.extension.years} an(s).</p>}
         <p>Rôle promis : {player.promisedRole ? PLAYER_ROLE_LABELS[player.promisedRole] : 'aucun'} · rôle actuel : {team?.gamePlan?.rolesByPlayerId[player.id] ? PLAYER_ROLE_LABELS[team.gamePlan.rolesByPlayerId[player.id]] : 'hors rotation'} · minutes cibles : {team?.gamePlan?.rotation.minutesByPlayerId[player.id] ?? 0}.</p>
         {player.minimumException && <p className="faint small">Contrat minimal de secours pour préserver l’effectif réglementaire.</p>}
         {(league.management?.transactions ?? []).filter(e => e.playerIds.includes(player.id)).slice(-6).map(e => <p className="faint small" key={e.id}>Saison {e.season}, jour {e.day + 1} : {e.description}</p>)}
-      </div>
-      <div className="panel-title">Statistiques</div>
+      </details>
+      <details><summary>Statistiques • saison, playoffs et carrière</summary><div className="panel-title">Statistiques</div>
       <div className="table-wrap" style={{ marginBottom: 18 }}>
         <table>
           <thead>
@@ -138,7 +140,7 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
         </p>
       )}
 
-      <div className="panel-title">Attributs</div>
+      </details><details><summary>Attributs détaillés • attaque, défense et physique</summary><div className="panel-title">Attributs</div>
       <div className="grid grid-3">
         {ATTRIBUTE_GROUPS.map((group) => (
           <div key={group.title}>
@@ -162,6 +164,7 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
         <span>Mi-distance : {pctShort(player.tendencies.mid)} %</span>
         <span>3 points : {pctShort(player.tendencies.three)} %</span>
       </div>
+      </details>
     </Modal>
   );
 }

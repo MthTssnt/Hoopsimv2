@@ -7,9 +7,9 @@ import { playerName, POSITIONS, type League, type Team } from '../../engine/type
 import { store } from '../../state/store';
 import { useUi } from '../uiContext';
 
-export function DevelopmentTab({ league, team }: { league: League; team: Team }) {
+export function DevelopmentTab({ league, team, initialTab }: { league: League; team: Team; initialTab?: 'training' | 'draft' | 'reviews' }) {
   const ui = useUi();
-  const [tab, setTab] = useState<'training' | 'draft' | 'reviews'>(league.phase === 'offseason' ? 'draft' : 'training');
+  const [tab, setTab] = useState<'training' | 'draft' | 'reviews'>(initialTab ?? (league.phase === 'offseason' ? 'draft' : 'training'));
   const [message, setMessage] = useState(''), [position, setPosition] = useState('');
   const [reviewSeason, setReviewSeason] = useState<number | null>(null);
   const d = league.offseason, pick = d?.picks[d.cursor];
@@ -33,7 +33,7 @@ export function DevelopmentTab({ league, team }: { league: League; team: Team })
       </tr>)}</tbody></table></div>
       <p className="faint small">{TRAINING_FOCI.filter(f => f !== 'balanced').map(f => `${TRAINING_LABELS[f]} : ${TRAINING_ATTRIBUTES[f].length} attributs ciblés`).join(' · ')}. Les bilans montrent les évolutions observées, sans les attribuer entièrement au focus.</p>
     </section>}
-    {tab === 'draft' && <section className="panel"><h3 className="panel-title">Draft {league.season + 1}</h3>
+    {tab === 'draft' && <section className="panel"><h3 className="panel-title">Draft {league.season + 1}</h3><ol className="stepper" aria-label="Étapes de l’intersaison"><li aria-current={!d?'step':undefined}>1. Prolongations</li><li aria-current={d?.stage==='draft'?'step':undefined}>2. Draft</li><li aria-current={d?.stage==='ready'?'step':undefined}>3. Effectif et saison</li></ol>
       <p>Budget : {finances.payroll.toFixed(1)} / {finances.cap.toFixed(1)} M€ · effectif {team.roster.length}/15 · engagements futurs {finances.commitments.slice(1).map(v => v.toFixed(1)).join(' / ')} M€.</p>
       <p className="faint small">Deux tours, ordre inverse des bilans avec loterie des quatre derniers. Les choix appartiennent au club d’origine et ne sont pas échangeables. Le scouting donne une estimation fixe, avec sa marge d’incertitude ; la note actuelle et les attributs sont observés.</p>
       {!d && (league.phase === 'offseason' ? <><p>Dernière fenêtre de prolongation : négociez dans Marché avant la préparation. Préparer applique une seule fois progression, retraites et expirations, puis génère les 60 prospects. Vous pourrez les consulter avant de faire avancer les choix CPU.</p><button className="btn btn-primary" onClick={() => respond(store.prepareDraft(), 'Les 60 prospects sont consultables ; faites ensuite avancer les choix CPU.')}>Préparer la draft</button></> : <p>Les prospects seront disponibles à l’intersaison, après les playoffs.</p>)}
@@ -41,8 +41,8 @@ export function DevelopmentTab({ league, team }: { league: League; team: Team })
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}><label>Poste <select aria-label="Poste du prospect" value={position} onChange={e => setPosition(e.target.value)}><option value="">Tous</option>{POSITIONS.map(pos => <option key={pos}>{pos}</option>)}</select></label>
           {!yourPick && <button className="btn btn-primary" onClick={() => respond(store.advanceDraft(pick.id), 'Les CPU ont avancé jusqu’à votre prochain choix.')}>Faire avancer les choix CPU</button>}
           {recommendation && <button className="btn" onClick={() => respond(store.selectRookie(pick.id, recommendation.player.id), 'Choix conseillé sélectionné ; les CPU ont avancé.')}>Sélectionner le choix conseillé : {playerName(recommendation.player)}</button>}
-          {yourPick && <><button className="btn" onClick={() => respond(store.selectRookie(pick.id, null), 'Choix passé ; les CPU ont avancé.')}>Passer mon choix</button>
-          <button className="btn" onClick={() => respond(store.delegateDraft(pick.id), 'Vos choix restants ont été délégués ; draft terminée.')}>Déléguer mes choix restants</button></>}
+          {yourPick && <><button className="btn" onClick={() => {if(confirm('Passer ce choix sans sélectionner de joueur ?'))respond(store.selectRookie(pick.id, null), 'Choix passé ; les CPU ont avancé.');}}>Passer mon choix</button>
+          <button className="btn" onClick={() => {if(confirm('Déléguer tous vos choix restants à l’ordinateur et terminer la draft ?'))respond(store.delegateDraft(pick.id), 'Vos choix restants ont été délégués ; draft terminée.');}}>Déléguer mes choix restants</button></>}
         </div>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau de développement"><table><thead><tr><th className="left">Prospect</th><th>Poste/âge</th><th>Note</th><th>Potentiel estimé</th><th>Profil observé</th><th>Contrat rookie</th><th>Décision</th></tr></thead><tbody>{Object.values(d.prospects).filter(p => !position || p.player.pos === position).sort((a, b) => b.estimatedPotential + b.player.overall - a.estimatedPotential - a.player.overall || a.player.id.localeCompare(b.player.id)).map(({ player: p, estimatedPotential, uncertainty }) => {
           const errors = draftDecision(league, pick.id, p.id);

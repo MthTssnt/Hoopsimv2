@@ -17,7 +17,8 @@ with sync_playwright() as p:
  for width in [1280,768,390]:
   page.set_viewport_size({'width':width,'height':900})
   for tab in ['Effectif','Tactiques','Marché','Développement']:
-   page.get_by_role('button',name=tab,exact=True).click()
+   page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Marché' if tab=='Marché' else 'Équipe',exact=True).click()
+   if tab!='Marché':page.get_by_role('navigation',name='Rubriques').get_by_role('button',name=tab,exact=True).click()
    dimensions=page.evaluate('({width:innerWidth,body:document.documentElement.scrollWidth})')
    assert dimensions['body']<=width+1,(tab,width,dimensions)
    active=page.locator('.nav button[aria-current=page]').bounding_box()
@@ -48,8 +49,8 @@ with sync_playwright() as p:
  assert saved()==exported
  print('Quota réel signalé, ancienne sauvegarde préservée, export mémoire et réessai: OK',flush=True)
  # Draft at narrow width, reached through genuine season/playoff controls.
- page.get_by_role('button',name='Fin de saison',exact=True).click();page.get_by_role('button',name='Simuler les playoffs',exact=True).click()
- page.get_by_role('banner').get_by_role('button',name='Préparer la draft',exact=True).click();page.get_by_role('main').get_by_role('button',name='Préparer la draft',exact=True).click()
+ page.get_by_role('button',name='Avancer…',exact=True).click();page.once('dialog',lambda d:d.accept());page.get_by_role('button',name='Fin de saison',exact=True).click();page.get_by_role('button',name='Avancer…',exact=True).click();page.once('dialog',lambda d:d.accept());page.get_by_role('button',name='Simuler les playoffs',exact=True).click()
+ page.get_by_role('banner').get_by_role('button',name='Reprendre l’intersaison',exact=True).click();page.get_by_role('main').get_by_role('button',name='Préparer la draft',exact=True).click()
  page.set_viewport_size({'width':390,'height':900})
  assert page.evaluate('document.documentElement.scrollWidth')<=391
  assert len(saved()['offseason']['prospects'])==60
@@ -67,7 +68,8 @@ with sync_playwright() as p:
  # Same real career, real GM Jouer, native keyboard events and physical finish.
  context=b.new_context(viewport={'width':1440,'height':1000});page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
  load_fixture('http://127.0.0.1:5173/?qt=1&atelier')
- if page.get_by_role('button',name='Jouer',exact=True).count()==0:page.get_by_role('button',name='Passer au match suivant',exact=False).first.click()
+ page.get_by_role('banner').get_by_role('button',name='Préparer le match',exact=True).click()
+ if page.get_by_role('button',name='Avancer jusqu’au match',exact=True).count():page.get_by_role('button',name='Avancer jusqu’au match',exact=True).click()
  page.get_by_role('button',name='Jouer',exact=True).first.click()
  page.wait_for_function('window.__hoopsim !== undefined',timeout=120000)
  for _ in range(15):

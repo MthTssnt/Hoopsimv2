@@ -14,21 +14,21 @@ with sync_playwright() as p:
  page.evaluate('(x)=>localStorage.setItem("hoopsim.save.v1",JSON.stringify(x))',fixture)
  page.reload(wait_until='networkidle');page.get_by_role('button',name='Reprendre',exact=False).first.click()
  def saved():return page.evaluate("JSON.parse(localStorage.getItem('hoopsim.save.v1'))")
- page.get_by_role('button',name='Développement',exact=True).click()
+ page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Équipe',exact=True).click();page.get_by_role('navigation',name='Rubriques').get_by_role('button',name='Développement',exact=True).click()
  focus=page.get_by_label('Focus ',exact=False).first
  player_id=next(t for t in fixture['teams'] if t['id']=='bos')['roster'][0]
  initial_attrs=fixture['players'][player_id]['attrs']
  focus.select_option('shooting');focus.select_option('defense');focus.select_option('shooting')
  assert saved()['players'][player_id]['attrs']==initial_attrs
  assert saved()['players'][player_id]['training']['days']=={}
- page.get_by_role('button',name='+7 jours',exact=True).click()
+ page.get_by_role('button',name='Avancer…',exact=True).click();page.once('dialog',lambda d:d.accept());page.get_by_role('button',name='+7 jours',exact=True).click()
  assert saved()['players'][player_id]['training']['days']['shooting']>0
  assert saved()['players'][player_id]['attrs']==initial_attrs
  print('Focus réel enregistré, aucune progression au clic ; exposition après sept journées: OK',flush=True)
  # Complete actual seasons through the existing controls, never forge phase, wins or results.
- page.get_by_role('button',name='Fin de saison',exact=True).click()
- page.get_by_role('button',name='Simuler les playoffs',exact=True).click()
- page.get_by_role('button',name='Préparer la draft',exact=True).first.click()
+ page.get_by_role('button',name='Avancer…',exact=True).click();page.once('dialog',lambda d:d.accept());page.get_by_role('button',name='Fin de saison',exact=True).click()
+ page.get_by_role('button',name='Avancer…',exact=True).click();page.once('dialog',lambda d:d.accept());page.get_by_role('button',name='Simuler les playoffs',exact=True).click()
+ page.get_by_role('banner').get_by_role('button',name='Reprendre l’intersaison',exact=True).click()
  page.get_by_role('button',name='Préparer la draft',exact=True).last.click()
  preview=saved()['offseason'];assert len(preview['prospects'])==60 and preview['cursor']==0
  page.screenshot(path='/tmp/hoopsim-evidence/development-prospects.png')
@@ -38,7 +38,7 @@ with sync_playwright() as p:
  page.wait_for_timeout(250);page.screenshot(path='/tmp/hoopsim-evidence/development-draft.png',full_page=True)
  age=saved()['players'][player_id]['age'] if player_id in saved()['players'] else None
  page.reload(wait_until='networkidle');page.get_by_role('button',name='Reprendre',exact=False).first.click()
- page.get_by_role('button',name='Reprendre l’intersaison',exact=True).click()
+ page.get_by_role('banner').get_by_role('button',name='Reprendre l’intersaison',exact=True).click()
  assert saved()['offseason']['cursor']==d['cursor']
  if age is not None:assert saved()['players'][player_id]['age']==age
  print('Vraie saison/playoffs terminés ; draft suspendue et rechargée sans rejeu: OK',flush=True)
@@ -55,9 +55,9 @@ with sync_playwright() as p:
   else:page.get_by_role('button',name='Passer mon choix',exact=True).click()
  assert len(choices)==2,choices
  assert saved()['offseason']['cursor']==60
- page.get_by_role('button',name='Marché',exact=True).click()
+ page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Marché',exact=True).click()
  assert 'agents libres' in page.locator('body').inner_text().lower()
- page.get_by_role('button',name='Développement',exact=True).click()
+ page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Équipe',exact=True).click();page.get_by_role('navigation',name='Rubriques').get_by_role('button',name='Développement',exact=True).click()
  page.get_by_role('button',name='Lancer la saison 2027',exact=True).click()
  final=saved();assert final['season']==2027 and final['phase']=='regular' and 'offseason' not in final
  assert final['seasonReviews'][-1]['draft']

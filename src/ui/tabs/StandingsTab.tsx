@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { buildStandings, type Conference, type League } from '../../engine';
 import { TeamLogo, num, signed } from '../common';
 import { useUi } from '../uiContext';
@@ -13,13 +14,14 @@ export function StandingsTab({ league }: { league: League }) {
 
 function ConferenceTable({ league, conference }: { league: League; conference: Conference }) {
   const ui = useUi();
+  const [complete,setComplete]=useState(false);
   const rows = buildStandings(league, conference);
 
   return (
     <div className="panel">
-      <div className="panel-title">Conférence {conference}</div>
-      <div className="table-wrap">
-        <table>
+      <div className="panel-title">Conférence {conference}</div><button className="btn btn-sm" aria-pressed={complete} onClick={()=>setComplete(!complete)}>{complete ? "Vue essentielle" : "Classement complet"}</button><p className="small faint">V : victoires · D : défaites. Ouvrez une équipe pour consulter ses joueurs.</p>
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
+        <table className={complete?undefined:"standings-compact"}>
           <thead>
             <tr>
               <th className="left">#</th>
@@ -36,7 +38,7 @@ function ConferenceTable({ league, conference }: { league: League; conference: C
           <tbody>
             {rows.map((row) => (
               <tr
-                key={row.team.id}
+                key={row.team.id} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')ui.openTeam(row.team.id);}}
                 className={`clickable${row.team.id === league.userTeamId ? ' highlight' : ''}`}
                 onClick={() => ui.openTeam(row.team.id)}
                 style={row.rank === 8 ? { borderBottom: '2px solid var(--border)' } : undefined}

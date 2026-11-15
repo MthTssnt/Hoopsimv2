@@ -183,7 +183,7 @@ function BoxScoreTable({ league, box, teamId }: { league: League; box: GameBox; 
         <TeamLogo team={team} size={22} />
         <strong>{team.city} {team.name}</strong>
       </div>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
         <table>
           <thead>
             <tr>

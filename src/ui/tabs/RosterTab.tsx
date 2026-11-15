@@ -9,8 +9,7 @@ import {
   type Player,
   type Team,
 } from '../../engine';
-import { eligibleIds } from '../../engine/gamePlan';
-import { CoachingEditor } from './CoachingEditor';
+import { PlayerIdentity } from '../PlayerIdentity';
 import { Rating, num, pctShort } from '../common';
 import { useUi } from '../uiContext';
 
@@ -18,6 +17,8 @@ type SortKey = 'overall' | 'pts' | 'reb' | 'ast' | 'min' | 'age' | 'pos';
 
 export function RosterTab({ league, team }: { league: League; team: Team }) {
   const ui = useUi();
+  const [search, setSearch] = useState('');
+  const [position, setPosition] = useState('');
   const [sort, setSort] = useState<SortKey>('overall');
 
   const roster = team.roster.map((id) => league.players[id]).filter(Boolean);
@@ -43,9 +44,10 @@ export function RosterTab({ league, team }: { league: League; team: Team }) {
   return (
     <div className="grid" style={{ gap: 16 }}>
       {team.coachingWarnings?.map(warning => <p role="status" key={warning}>{warning}</p>)}
-      {eligibleIds(team, league.players).length >= 5 ? <CoachingEditor key={JSON.stringify(team.gamePlan)} league={league} team={team} /> : <p role="alert">Moins de cinq joueurs aptes : le plan est conservé. Attendez leur retour pour modifier le coaching ou lancer un match GM.</p>}
 
-      <div className="panel">
+
+      <section className="panel"><h2 className="panel-title">Les joueurs de votre franchise</h2><p>Consultez une fiche. Pour changer le cinq, les minutes ou les rôles, ouvrez Rotation juste au-dessus.</p><div className="toolbar"><input className="input" aria-label="Rechercher dans l’effectif" placeholder="Rechercher un joueur" value={search} onChange={e=>setSearch(e.target.value)}/><select className="select" aria-label="Filtrer le poste" value={position} onChange={e=>setPosition(e.target.value)}><option value="">Tous les postes</option>{['PG','SG','SF','PF','C'].map(p=><option key={p}>{p}</option>)}</select></div><div className="player-cards">{sorted.filter(p=>(!position || p.pos===position) && playerName(p).toLocaleLowerCase('fr').includes(search.toLocaleLowerCase('fr'))).map(p=><article className="player-card" key={p.id}><PlayerIdentity player={p} onOpen={()=>ui.openPlayer(p.id)}/><p>{p.injuryGames>0 ? `Blessé • ${p.injuryGames} match(s)` : team.gamePlan?.rotation.starterIds.includes(p.id) ? 'Cinq majeur' : (team.gamePlan?.rotation.minutesByPlayerId[p.id]??0)>0 ? 'Remplaçant' : 'Hors rotation'} · {team.gamePlan?.rotation.minutesByPlayerId[p.id]??0} min prévues</p><div className="row small"><span>Énergie {Math.round(p.energy)} %</span><span>Potentiel {p.potential}</span><span>{num(p.contract.salary)} M€</span></div></article>)}</div></section>
+      <details className="panel"><summary>Tableau complet • toutes les statistiques et les tris</summary><div>
         <div className="row" style={{ marginBottom: 8 }}>
           <div className="panel-title" style={{ margin: 0 }}>
             Effectif — {roster.length} joueurs
@@ -53,7 +55,7 @@ export function RosterTab({ league, team }: { league: League; team: Team }) {
           <div className="spacer" />
           <span className="faint small mono">masse salariale {num(payroll(league, team.id))} M€</span>
         </div>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant">
           <table>
             <thead>
               <tr>
@@ -81,7 +83,7 @@ export function RosterTab({ league, team }: { league: League; team: Team }) {
             </tbody>
           </table>
         </div>
-      </div>
+      </div></details>
     </div>
   );
 }
@@ -105,7 +107,7 @@ function Th({
       className={`sortable${className ? ` ${className}` : ''}${sort === k ? ' sorted' : ''}`}
       onClick={() => onSort(k)}
     >
-      {label}
+      <button className="sort-button" onClick={e=>{e.stopPropagation();onSort(k);}}>{label}{sort===k ? " ↓" : " ↕"}</button>
     </th>
   );
 }
@@ -116,7 +118,7 @@ function PlayerRow({ player, onOpen }: { player: Player; onOpen: () => void }) {
   return (
     <tr className="clickable" onClick={onOpen}>
       <td className="left">
-        <span style={{ fontWeight: 600 }}>{playerName(player)}</span>
+        <button className="player-name" onClick={e=>{e.stopPropagation();onOpen();}}>{playerName(player)}</button>
         {player.injuryGames > 0 && (
           <span className="pill pill-injury" style={{ marginLeft: 6 }}>
             {player.injuryGames} m.
