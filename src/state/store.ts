@@ -48,6 +48,8 @@ class GameStore {
   liveMatch: MatchSetup | null = null;
   busy = false;
   actionError: string | null = null;
+  saveError: string | null = null;
+  loadError: string | null = null;
 
   private version = 0;
   private listeners = new Set<() => void>();
@@ -74,25 +76,36 @@ class GameStore {
     }
   }
 
-  save(): void {
-    if (!this.league) return;
+  save(): boolean {
+    if (!this.league) return false;
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(this.league));
+      this.saveError = null;
+      return true;
     } catch (err) {
+      this.saveError = 'Sauvegarde impossible. La partie en cours reste en mémoire ; exportez une copie avant de fermer cette page, puis réessayez.';
       console.warn('Sauvegarde impossible', err);
+      return false;
     }
   }
 
+  retrySave(): boolean { const saved = this.save(); this.emit(); return saved; }
+
   load(): boolean {
+    if (this.liveMatch || this.busy) return false;
     try {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return false;
       this.league = migrateLeague(JSON.parse(raw) as League);
       this.watched = null;
+      this.loadError = null;
+      this.saveError = null;
       this.emit();
       return true;
     } catch (err) {
+      this.loadError = `Chargement impossible : ${err instanceof Error ? err.message : 'sauvegarde illisible'}. La sauvegarde conservée dans ce navigateur n’a pas été effacée.`;
       console.warn('Chargement impossible', err);
+      this.emit();
       return false;
     }
   }
@@ -113,6 +126,7 @@ class GameStore {
   newGame(teamId: string, seed?: number): void {
     this.league = seed === undefined ? createNewGame(teamId) : createNewGame(teamId, seed);
     this.watched = null;
+    this.loadError = null;
     this.save();
     this.emit();
   }

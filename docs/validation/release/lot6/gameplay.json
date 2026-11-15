@@ -1,0 +1,6089 @@
+[
+  {
+    "seed": 8126,
+    "shots": [
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.35020190298949,
+        "probability": 0.7553799158242115,
+        "forced": false,
+        "contest": {
+          "distance": 1.2831411547082017,
+          "facing": 0
+        },
+        "at": 6.533333333333448
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.550975054499677,
+        "probability": 0.2528484408351237,
+        "forced": false,
+        "contest": {
+          "distance": 1.2876339488085184,
+          "facing": 0.9782532275184268
+        },
+        "at": 13.083333333333231
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.239455389876529,
+        "probability": 0.2993653535065693,
+        "forced": false,
+        "contest": {
+          "distance": 0.9503123266888236,
+          "facing": 0.9706134125518083
+        },
+        "at": 17.133333333333002
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 20.541666666666142
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.7804499999999993,
+        "forced": false,
+        "contest": null,
+        "at": 23.74166666666596
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.10980842144464,
+        "probability": 0.25704169745901806,
+        "forced": false,
+        "contest": {
+          "distance": 0.8474754033577998,
+          "facing": 0.6019496354550175
+        },
+        "at": 30.758333333332228
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.245144195215288,
+        "probability": 0.3347402355292439,
+        "forced": false,
+        "contest": {
+          "distance": 1.4209218991380446,
+          "facing": 0.9961113436822162
+        },
+        "at": 33.98333333333205
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.527095904924726,
+        "probability": 0.40876088990260934,
+        "forced": false,
+        "contest": {
+          "distance": 1.4843316040960604,
+          "facing": 0
+        },
+        "at": 39.92499999999838
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.684588461828888,
+        "probability": 0.3164782698310535,
+        "forced": false,
+        "contest": {
+          "distance": 1.216236837134139,
+          "facing": 0.9691536238194646
+        },
+        "at": 54.12499999999757
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3587513579743202,
+        "probability": 0.6265274618535404,
+        "forced": false,
+        "contest": {
+          "distance": 1.1533013681961686,
+          "facing": 0
+        },
+        "at": 64.11666666666376
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 0.3497311549353155,
+        "probability": 0.544935060506135,
+        "forced": false,
+        "contest": {
+          "distance": 0.8166478395837395,
+          "facing": 0.9117775975107277
+        },
+        "at": 66.09999999999867
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.7804500000000024,
+        "forced": false,
+        "contest": null,
+        "at": 68.66666666666738
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.9685750000000017,
+        "forced": false,
+        "contest": null,
+        "at": 71.65833333333643
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.421767447663591,
+        "probability": 0.9391094340039513,
+        "forced": false,
+        "contest": {
+          "distance": 1.8566683508629593,
+          "facing": 0
+        },
+        "at": 83.00000000001212
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.657692901199305,
+        "probability": 0.3172249444889272,
+        "forced": false,
+        "contest": {
+          "distance": 1.2292940839339521,
+          "facing": 0.964967876176857
+        },
+        "at": 89.26666666668378
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.454547385691911,
+        "probability": 0.26253358307053937,
+        "forced": false,
+        "contest": {
+          "distance": 1.291910614306837,
+          "facing": 0.9912519835717685
+        },
+        "at": 99.24166666669171
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.0607515580992135,
+        "probability": 0.8597105117793511,
+        "forced": false,
+        "contest": {
+          "distance": 1.302284437013029,
+          "facing": 0.674190526107732
+        },
+        "at": 106.4333333333641
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3797008816414396,
+        "probability": 0.82,
+        "forced": false,
+        "contest": {
+          "distance": 1.6799531349596781,
+          "facing": 0
+        },
+        "at": 114.80000000003743
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.381063167361262,
+        "probability": 0.6294574673682892,
+        "forced": false,
+        "contest": {
+          "distance": 1.1359509912684502,
+          "facing": 0
+        },
+        "at": 127.80000000004777
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.6695451746545915,
+        "probability": 0.4136190249479948,
+        "forced": false,
+        "contest": {
+          "distance": 1.205346228849755,
+          "facing": 0.9732737815450953
+        },
+        "at": 136.4750000000402
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.4508357609932379,
+        "probability": 0.7957822556220111,
+        "forced": false,
+        "contest": {
+          "distance": 1.6610869480400055,
+          "facing": 0
+        },
+        "at": 147.09166666669722
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.851537571677201,
+        "probability": 0.30049162749002883,
+        "forced": false,
+        "contest": {
+          "distance": 1.0886393422218328,
+          "facing": 0.9779994606227457
+        },
+        "at": 155.28333333335644
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.650968025124771,
+        "probability": 0.18304081892093893,
+        "forced": false,
+        "contest": {
+          "distance": 0.7577970169226234,
+          "facing": 0.9783327788477575
+        },
+        "at": 159.33333333335275
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.5768831131788961,
+        "probability": 0.7723345175060047,
+        "forced": false,
+        "contest": {
+          "distance": 0.9527060067127752,
+          "facing": 0.6574654647846134
+        },
+        "at": 161.07500000001784
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.410414562804297,
+        "probability": 0.3567486527200816,
+        "forced": false,
+        "contest": {
+          "distance": 1.3989852960931373,
+          "facing": 0.9848969563961055
+        },
+        "at": 167.6333333333452
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.336822884390505,
+        "probability": 0.2854811609706461,
+        "forced": false,
+        "contest": {
+          "distance": 1.5245194697427402,
+          "facing": 0.9971723591406036
+        },
+        "at": 176.44166666667053
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 0.4430529825903977,
+        "probability": 0.6120398412862249,
+        "forced": false,
+        "contest": {
+          "distance": 0.7719961383839834,
+          "facing": 0.9817858574643972
+        },
+        "at": 178.6000000000019
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.5406194444444442,
+        "forced": false,
+        "contest": null,
+        "at": 181.61666666666582
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.6804661538620635,
+        "probability": 0.4169819709682231,
+        "forced": false,
+        "contest": {
+          "distance": 1.1635554936254644,
+          "facing": 0.9955899556845283
+        },
+        "at": 188.758333333326
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.429241625198671,
+        "probability": 0.20812234072491068,
+        "forced": false,
+        "contest": {
+          "distance": 0.874865943786399,
+          "facing": 0.9682076651917576
+        },
+        "at": 207.95833333330853
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.0679110627791348,
+        "probability": 0.9582998345999993,
+        "forced": false,
+        "contest": {
+          "distance": 1.0679433899194644,
+          "facing": 0.11677949964501921
+        },
+        "at": 210.07499999997327
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.314634172508948,
+        "probability": 0.261950454684935,
+        "forced": false,
+        "contest": {
+          "distance": 1.995965789000613,
+          "facing": 0.9938312108115331
+        },
+        "at": 219.2749999999649
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3657866125140514,
+        "probability": 0.7920237772425189,
+        "forced": false,
+        "contest": {
+          "distance": 1.4519841513205758,
+          "facing": 0
+        },
+        "at": 227.0999999999578
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.394725081853593,
+        "probability": 0.6223351021735262,
+        "forced": false,
+        "contest": {
+          "distance": 1.000388714303895,
+          "facing": 0.9889092827896484
+        },
+        "at": 237.12499999994867
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3988121498334207,
+        "probability": 0.6888288400954413,
+        "forced": false,
+        "contest": {
+          "distance": 1.2627639564039266,
+          "facing": 0
+        },
+        "at": 245.75833333327415
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.700047983032675,
+        "probability": 0.2718476924022404,
+        "forced": false,
+        "contest": {
+          "distance": 1.1749950726267144,
+          "facing": 0.971718296780929
+        },
+        "at": 253.5749999999337
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.893325000000002,
+        "forced": false,
+        "contest": null,
+        "at": 256.7666666665975
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 6.109650308726027,
+        "probability": 0.25600525663557244,
+        "forced": false,
+        "contest": {
+          "distance": 0.9177325247901651,
+          "facing": 0.9563938406260483
+        },
+        "at": 266.39999999992204
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.586937238783696,
+        "probability": 0.20632909018753848,
+        "forced": false,
+        "contest": {
+          "distance": 1.2413441813470374,
+          "facing": 0.9805855176360511
+        },
+        "at": 272.7916666665829
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3873597523143055,
+        "probability": 0.700682349400631,
+        "forced": false,
+        "contest": {
+          "distance": 0.9598618883379879,
+          "facing": 0
+        },
+        "at": 277.4583333332453
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.399139281409379,
+        "probability": 0.9539945343999936,
+        "forced": false,
+        "contest": {
+          "distance": 2.045588783272526,
+          "facing": 0
+        },
+        "at": 288.6416666665685
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.410453028265342,
+        "probability": 0.951685580799992,
+        "forced": false,
+        "contest": {
+          "distance": 2.1823356241382195,
+          "facing": 0
+        },
+        "at": 298.98333333322574
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.765711308508148,
+        "probability": 0.09173636873900633,
+        "forced": false,
+        "contest": {
+          "distance": 1.1200593771100644,
+          "facing": 0.979511992099164
+        },
+        "at": 304.34999999988753
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.982075685849899,
+        "probability": 0.4114527033973101,
+        "forced": false,
+        "contest": {
+          "distance": 1.6007179870632033,
+          "facing": 0
+        },
+        "at": 313.06666666654627
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.995365033909694,
+        "probability": 0.768452254576853,
+        "forced": false,
+        "contest": {
+          "distance": 1.7848835835836974,
+          "facing": 0.21361066712430848
+        },
+        "at": 323.9749999998697
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.38540118358325,
+        "probability": 0.7041257158498531,
+        "forced": false,
+        "contest": {
+          "distance": 1.1314895485096275,
+          "facing": 0.6398607666332633
+        },
+        "at": 331.9166666665291
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.575554951030064,
+        "probability": 0.3184613302844339,
+        "forced": false,
+        "contest": {
+          "distance": 1.1682500268125535,
+          "facing": 0.9956080568019702
+        },
+        "at": 338.5166666665231
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.4189379330120255,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 2.0758304069772224,
+          "facing": 0
+        },
+        "at": 352.7083333331769
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.366724312745638,
+        "probability": 0.3162626362132972,
+        "forced": false,
+        "contest": {
+          "distance": 1.332087611343,
+          "facing": 0.9721799891383425
+        },
+        "at": 358.87499999983794
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.396749293089108,
+        "probability": 0.35803488522758276,
+        "forced": false,
+        "contest": {
+          "distance": 1.472608400355702,
+          "facing": 0.9999873496856485
+        },
+        "at": 362.72499999983444
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3853816025862082,
+        "probability": 0.7511503667139132,
+        "forced": false,
+        "contest": {
+          "distance": 1.269910149052011,
+          "facing": 0.5425772781578855
+        },
+        "at": 370.541666666494
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.38162405881543,
+        "probability": 0.8148481652156431,
+        "forced": false,
+        "contest": {
+          "distance": 1.9642156370914567,
+          "facing": 0
+        },
+        "at": 381.0333333331511
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3776787202269962,
+        "probability": 0.8046652072429353,
+        "forced": false,
+        "contest": {
+          "distance": 1.5032178089670298,
+          "facing": 0
+        },
+        "at": 388.4416666664777
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.337583748582645,
+        "probability": 0.3445783545395753,
+        "forced": false,
+        "contest": {
+          "distance": 1.3991908745000137,
+          "facing": 0.9988948921743948
+        },
+        "at": 392.8416666664737
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.582248558595499,
+        "probability": 0.22304435051198543,
+        "forced": false,
+        "contest": {
+          "distance": 0.9916486056343355,
+          "facing": 0.975599320862234
+        },
+        "at": 399.0499999998014
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.5218588462045354,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 1.5566714367321965,
+          "facing": 0.9259527067638309
+        },
+        "at": 401.09999999979954
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 13.06799656772775,
+        "probability": 0.14508139839002396,
+        "forced": false,
+        "contest": {
+          "distance": 1.236657325146396,
+          "facing": 0
+        },
+        "at": 405.1999999997958
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.46319233613678,
+        "probability": 0.928497910788491,
+        "forced": false,
+        "contest": {
+          "distance": 1.0414283523764396,
+          "facing": 0
+        },
+        "at": 417.1333333331183
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.4614316150567435,
+        "probability": 0.9599737621599974,
+        "forced": false,
+        "contest": {
+          "distance": 2.1535199439914,
+          "facing": 0
+        },
+        "at": 428.31666666644145
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.974163925909659,
+        "probability": 0.2040103480705404,
+        "forced": false,
+        "contest": {
+          "distance": 0.9734484033316623,
+          "facing": 0.5930249624951807
+        },
+        "at": 438.18333333309914
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3917402186780707,
+        "probability": 0.82,
+        "forced": false,
+        "contest": {
+          "distance": 1.7145105036529866,
+          "facing": 0
+        },
+        "at": 444.0583333330938
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.320623561223684,
+        "probability": 0.33321394202082916,
+        "forced": false,
+        "contest": {
+          "distance": 1.3879211448924509,
+          "facing": 0.8517237619922949
+        },
+        "at": 458.64166666641387
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.387913799732094,
+        "probability": 0.4012100616372975,
+        "forced": false,
+        "contest": {
+          "distance": 1.4040986129236126,
+          "facing": 0.9927262923691514
+        },
+        "at": 467.8749999997388
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.541988851132699,
+        "probability": 0.357537646893772,
+        "forced": false,
+        "contest": {
+          "distance": 1.6294947072496848,
+          "facing": 0.9136476326749581
+        },
+        "at": 476.0583333330647
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.7243745715490455,
+        "probability": 0.23662610775508605,
+        "forced": false,
+        "contest": {
+          "distance": 1.0840670016481513,
+          "facing": 0.9298258771801545
+        },
+        "at": 495.26666666638056
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.5950001952595727,
+        "probability": 0.9102355532481401,
+        "forced": false,
+        "contest": {
+          "distance": 0.9402409401630362,
+          "facing": 0.4256329265369549
+        },
+        "at": 504.308333333039
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.0588130807577696,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 1.1884730663741607,
+          "facing": 0.3149144543136225
+        },
+        "at": 510.4249999997001
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.745333143870056,
+        "probability": 0.34118910696659477,
+        "forced": false,
+        "contest": {
+          "distance": 1.024266662360358,
+          "facing": 0.9997176539044081
+        },
+        "at": 521.4666666663568
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.259673082465591,
+        "probability": 0.37950897982006876,
+        "forced": false,
+        "contest": {
+          "distance": 1.3547352499380299,
+          "facing": 0.6605553138829929
+        },
+        "at": 529.708333333016
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.379682403857923,
+        "probability": 0.680100341930607,
+        "forced": false,
+        "contest": {
+          "distance": 1.7406426519228355,
+          "facing": 0
+        },
+        "at": 535.8416666663437
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.295617020923511,
+        "probability": 0.41904489119585653,
+        "forced": false,
+        "contest": {
+          "distance": 1.4190813519709753,
+          "facing": 0.9996290489993497
+        },
+        "at": 539.0083333330075
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.390542742598186,
+        "probability": 0.435111819650938,
+        "forced": false,
+        "contest": {
+          "distance": 1.1829466094862817,
+          "facing": 0
+        },
+        "at": 544.2833333330027
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3991764796589674,
+        "probability": 0.5262345130954676,
+        "forced": false,
+        "contest": {
+          "distance": 1.3204406197428022,
+          "facing": 0.14284380823777082
+        },
+        "at": 551.1166666663298
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.211167831976723,
+        "probability": 0.3917919489494796,
+        "forced": false,
+        "contest": {
+          "distance": 0.9932667526502867,
+          "facing": 0
+        },
+        "at": 558.0166666663235
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.375671496574008,
+        "probability": 0.6762507027972605,
+        "forced": false,
+        "contest": {
+          "distance": 0.9627206963777833,
+          "facing": 0
+        },
+        "at": 564.9249999996506
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.308065822038962,
+        "probability": 0.3065298959829643,
+        "forced": false,
+        "contest": {
+          "distance": 1.41228818794989,
+          "facing": 0.9996618115900886
+        },
+        "at": 567.4916666663149
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3824090303135876,
+        "probability": 0.5175701204194563,
+        "forced": false,
+        "contest": {
+          "distance": 1.2567060092316304,
+          "facing": 0
+        },
+        "at": 580.1916666663034
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.005620374759821,
+        "probability": 0.0714948631088026,
+        "forced": false,
+        "contest": {
+          "distance": 1.386060805758779,
+          "facing": 0.9993834918620857
+        },
+        "at": 583.6083333329669
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.551302606980112,
+        "probability": 0.3534666640843502,
+        "forced": false,
+        "contest": {
+          "distance": 1.2785546921843858,
+          "facing": 0.9815908062608822
+        },
+        "at": 591.8416666662928
+      },
+      {
+        "kind": "jump",
+        "zone": "rim",
+        "distance": 0.6030026451410879,
+        "probability": 0.5376412134212748,
+        "forced": false,
+        "contest": {
+          "distance": 0.8338711248890728,
+          "facing": 0
+        },
+        "at": 594.0333333329575
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.582501610688803,
+        "probability": 0.5004087527770348,
+        "forced": false,
+        "contest": {
+          "distance": 1.55896869381416,
+          "facing": 0.5797032030536823
+        },
+        "at": 606.299999999613
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.8180327558169065,
+        "probability": 0.3948794045383427,
+        "forced": false,
+        "contest": {
+          "distance": 1.111080434632769,
+          "facing": 0.16263136005684037
+        },
+        "at": 612.6999999996071
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3662040112785645,
+        "probability": 0.632409489271523,
+        "forced": false,
+        "contest": {
+          "distance": 1.2036371874172713,
+          "facing": 0
+        },
+        "at": 618.4416666662686
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.581925830680266,
+        "probability": 0.8945352723298718,
+        "forced": false,
+        "contest": {
+          "distance": 1.2846396602892136,
+          "facing": 0
+        },
+        "at": 626.5833333329279
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.000303295435033,
+        "probability": 0.24625477132080492,
+        "forced": false,
+        "contest": {
+          "distance": 0.9233592841021968,
+          "facing": 0.9013005067008169
+        },
+        "at": 631.8249999995897
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.342075159607253,
+        "probability": 0.7798367404736625,
+        "forced": false,
+        "contest": {
+          "distance": 1.614015705564314,
+          "facing": 0.5129412561780432
+        },
+        "at": 637.5916666662512
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 640.6999999995817
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 643.7833333329122
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.706647893721031,
+        "probability": 0.3080754042762995,
+        "forced": false,
+        "contest": {
+          "distance": 1.028620398978986,
+          "facing": 0.9999091710414014
+        },
+        "at": 654.5749999995691
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.357774190131128,
+        "probability": 0.7532221380748951,
+        "forced": false,
+        "contest": {
+          "distance": 1.3817790565487824,
+          "facing": 0.024989583493262593
+        },
+        "at": 662.1833333328955
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.778787216541218,
+        "probability": 0.2933926830045365,
+        "forced": false,
+        "contest": {
+          "distance": 1.1148546329214397,
+          "facing": 0.9734928452893902
+        },
+        "at": 671.174999999554
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3823048743053494,
+        "probability": 0.5334789277248038,
+        "forced": false,
+        "contest": {
+          "distance": 1.124610474007281,
+          "facing": 0
+        },
+        "at": 679.7749999995461
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.491400000000002,
+        "probability": 0.7058756944444468,
+        "forced": false,
+        "contest": null,
+        "at": 682.4999999995437
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.491400000000002,
+        "probability": 0.9203965277777795,
+        "forced": false,
+        "contest": null,
+        "at": 685.733333332874
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.5800248286930607,
+        "probability": 0.778131100484109,
+        "forced": false,
+        "contest": {
+          "distance": 0.8692422681805645,
+          "facing": 0.8683519079931284
+        },
+        "at": 694.608333332866
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.9575916666666657,
+        "forced": false,
+        "contest": null,
+        "at": 696.8249999995306
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.004659163457577,
+        "probability": 0.33951850223116725,
+        "forced": false,
+        "contest": {
+          "distance": 1.2140375219470356,
+          "facing": 0.9979764351354321
+        },
+        "at": 705.9249999995224
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.370376420344878,
+        "probability": 0.5187905323620009,
+        "forced": false,
+        "contest": {
+          "distance": 1.0435617997365676,
+          "facing": 0
+        },
+        "at": 711.7416666661837
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.755694379122719,
+        "probability": 0.296902129554258,
+        "forced": false,
+        "contest": {
+          "distance": 1.153650137859836,
+          "facing": 0.9557307849970638
+        },
+        "at": 718.1083333328446
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.380080383581192,
+        "probability": 0.3545825327730613,
+        "forced": false,
+        "contest": {
+          "distance": 1.6198770379707583,
+          "facing": 0.8782823812085362
+        },
+        "at": 724.8249999995052
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.553654949755887,
+        "probability": 0.32540895190581864,
+        "forced": false,
+        "contest": {
+          "distance": 1.2276324883121443,
+          "facing": 0.9869619101184626
+        },
+        "at": 728.4833333328352
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.300862551807122,
+        "probability": 0.20589098393949584,
+        "forced": false,
+        "contest": {
+          "distance": 1.389599059742052,
+          "facing": 0.9997754469841313
+        },
+        "at": 732.5249999994982
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.319164849055337,
+        "probability": 0.29280175125131985,
+        "forced": false,
+        "contest": {
+          "distance": 1.4007821640453075,
+          "facing": 0.9997237578549802
+        },
+        "at": 740.8416666661573
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3923114453566225,
+        "probability": 0.6651571551528573,
+        "forced": false,
+        "contest": {
+          "distance": 1.469348249478218,
+          "facing": 0
+        },
+        "at": 749.2166666661496
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.367960589016658,
+        "probability": 0.7330210336558152,
+        "forced": false,
+        "contest": {
+          "distance": 1.1830491514861383,
+          "facing": 0
+        },
+        "at": 758.0999999994749
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.86891882420011,
+        "probability": 0.278154305176049,
+        "forced": false,
+        "contest": {
+          "distance": 1.1055511823148703,
+          "facing": 0.7982536665922517
+        },
+        "at": 763.908333332803
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.6286906343048235,
+        "probability": 0.2820581522961289,
+        "forced": false,
+        "contest": {
+          "distance": 1.1084264797377081,
+          "facing": 0.999652515310611
+        },
+        "at": 765.1499999994685
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.658906637461248,
+        "probability": 0.3358707619279727,
+        "forced": false,
+        "contest": {
+          "distance": 1.1225952715356229,
+          "facing": 0.9980070845007264
+        },
+        "at": 766.3749999994674
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.4240838071258795,
+        "probability": 0.6992172720118233,
+        "forced": false,
+        "contest": {
+          "distance": 0.7357236013596036,
+          "facing": 0.8522786797684433
+        },
+        "at": 769.383333332798
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.380826030347118,
+        "probability": 0.7075731759303594,
+        "forced": false,
+        "contest": {
+          "distance": 0.949428963540006,
+          "facing": 0
+        },
+        "at": 778.9333333327893
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 13.573960506214634,
+        "probability": 0.060018435950021536,
+        "forced": false,
+        "contest": {
+          "distance": 1.1460973705575517,
+          "facing": 0.9997907792746458
+        },
+        "at": 800.4416666661031
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.041685802444626,
+        "probability": 0.3740585725781232,
+        "forced": false,
+        "contest": {
+          "distance": 1.035031052937244,
+          "facing": 0.23960164950444043
+        },
+        "at": 805.6916666660983
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 12.361644728437577,
+        "probability": 0.1732271270101726,
+        "forced": false,
+        "contest": {
+          "distance": 1.0642523912018071,
+          "facing": 0.9979656101043527
+        },
+        "at": 813.7249999994243
+      }
+    ],
+    "passes": 183,
+    "possessions": 114,
+    "emptyReboundJumps": 0,
+    "actualJumps": {
+      "tip": 2,
+      "loose-ball": 204,
+      "shot": 102,
+      "contest": 102
+    },
+    "rebounds": {
+      "air": 45,
+      "ground": 1
+    },
+    "collisions": {
+      "calls": 6734,
+      "corrections": 10746,
+      "airCorrections": 76,
+      "maxAirZ": 0.7775764704233521,
+      "stationaryCorrections": 87,
+      "maxCorrection": 0.02958095408513074
+    },
+    "targetChanges": 0,
+    "bigTargetChanges": 0,
+    "teleports": [
+      {
+        "at": 19.158333333332887,
+        "from": "mort",
+        "to": "lancers",
+        "period": 1,
+        "meters": 10.901079117473497
+      },
+      {
+        "at": 25.449999999999196,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 7.445405209604269
+      },
+      {
+        "at": 41.71666666666494,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.09971500028907
+      },
+      {
+        "at": 48.78333333333121,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.9207283177557257
+      },
+      {
+        "at": 67.29166666666629,
+        "from": "mort",
+        "to": "lancers",
+        "period": 1,
+        "meters": 13.074809015823373
+      },
+      {
+        "at": 73.90833333333822,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.863044851385371
+      },
+      {
+        "at": 83.8500000000128,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.1346223460605485
+      },
+      {
+        "at": 91.40833333335215,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.049829208904309
+      },
+      {
+        "at": 101.38333333336008,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 7.130417252264767
+      },
+      {
+        "at": 107.28333333336478,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 5.067722011659597
+      },
+      {
+        "at": 109.44166666669983,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.63320260235397
+      },
+      {
+        "at": 116.24166666670524,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.512005734379485
+      },
+      {
+        "at": 129.1916666667135,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.641287200584823
+      },
+      {
+        "at": 138.36666666670516,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.428396045481679
+      },
+      {
+        "at": 148.1166666666963,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.231561248660851
+      },
+      {
+        "at": 161.92500000001706,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.124178151733417
+      },
+      {
+        "at": 169.74166666667662,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.511248301012934
+      },
+      {
+        "at": 180.2166666666671,
+        "from": "mort",
+        "to": "lancers",
+        "period": 1,
+        "meters": 12.557127543821913
+      },
+      {
+        "at": 183.33333333333093,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.763799144842263
+      },
+      {
+        "at": 190.94166666665734,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.9035637013986686
+      },
+      {
+        "at": 193.92499999998796,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.864035347811332
+      },
+      {
+        "at": 210.9249999999725,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.07706403522026
+      },
+      {
+        "at": 213.71666666663663,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 1,
+        "meters": 18.29205704011401
+      },
+      {
+        "at": 228.5583333332898,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.044656131895971
+      },
+      {
+        "at": 247.3249999999394,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.739135857880356
+      },
+      {
+        "at": 255.6416666665985,
+        "from": "mort",
+        "to": "lancers",
+        "period": 2,
+        "meters": 12.925706882973683
+      },
+      {
+        "at": 258.53333333326253,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.233180874503086
+      },
+      {
+        "at": 278.908333333244,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.013483955542587
+      },
+      {
+        "at": 289.4916666665677,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.6514034142522296
+      },
+      {
+        "at": 291.77499999989897,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.877966505852794
+      },
+      {
+        "at": 299.83333333322497,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.3376958232454985
+      },
+      {
+        "at": 315.2833333332109,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.609394463111728
+      },
+      {
+        "at": 333.4583333331944,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.4914754117472513
+      },
+      {
+        "at": 345.03333333318386,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.208804354426071
+      },
+      {
+        "at": 353.5583333331761,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.4836659599299473
+      },
+      {
+        "at": 371.98333333315935,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.384497741954252
+      },
+      {
+        "at": 382.3249999998166,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.879824394467652
+      },
+      {
+        "at": 389.80833333314314,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 2.7224220478145917
+      },
+      {
+        "at": 401.94999999979876,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.8029834248805847
+      },
+      {
+        "at": 412.0583333331229,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 2,
+        "meters": 19.38727820649674
+      },
+      {
+        "at": 417.9833333331175,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.440462372361062
+      },
+      {
+        "at": 429.1666666664407,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 5.414650376997224
+      },
+      {
+        "at": 445.4166666664259,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.8925580295399014
+      },
+      {
+        "at": 469.95833333307024,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 5.413179319178046
+      },
+      {
+        "at": 478.21666666639607,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 7.5720803028797645
+      },
+      {
+        "at": 485.36666666638956,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.905674651797096
+      },
+      {
+        "at": 491.466666666384,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 5.334264481375093
+      },
+      {
+        "at": 505.15833333303823,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 4.196084923375348
+      },
+      {
+        "at": 511.27499999969933,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 4.993180240607845
+      },
+      {
+        "at": 523.5666666663549,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 6.879522848513012
+      },
+      {
+        "at": 545.6583333330015,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.8925459239985205
+      },
+      {
+        "at": 552.5249999996619,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.4437242407236046
+      },
+      {
+        "at": 559.7916666663219,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.757222486720645
+      },
+      {
+        "at": 569.5749999996464,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.857622653153845
+      },
+      {
+        "at": 595.2333333329564,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 6.389221885890678
+      },
+      {
+        "at": 600.6749999996181,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 3,
+        "meters": 17.94636779533337
+      },
+      {
+        "at": 627.4333333329271,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.4431928003293475
+      },
+      {
+        "at": 639.0666666662498,
+        "from": "mort",
+        "to": "lancers",
+        "period": 4,
+        "meters": 10.674587748183113
+      },
+      {
+        "at": 645.5499999995773,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 6.962182766103722
+      },
+      {
+        "at": 656.799999999567,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.737246488478005
+      },
+      {
+        "at": 663.6249999995608,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 6.402587020105238
+      },
+      {
+        "at": 673.3666666662186,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.201974483604561
+      },
+      {
+        "at": 681.1916666662115,
+        "from": "mort",
+        "to": "lancers",
+        "period": 4,
+        "meters": 10.626307379533733
+      },
+      {
+        "at": 687.5083333328724,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 7.383389256107918
+      },
+      {
+        "at": 695.658333332865,
+        "from": "mort",
+        "to": "lancers",
+        "period": 4,
+        "meters": 10.76080168949511
+      },
+      {
+        "at": 698.5916666661957,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.006908912912574
+      },
+      {
+        "at": 713.1999999995157,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 4.7792074379847325
+      },
+      {
+        "at": 734.7583333328295,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.9558960754416317
+      },
+      {
+        "at": 751.3083333328144,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.9682349217886808
+      },
+      {
+        "at": 759.5249999994736,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.886603691705009
+      },
+      {
+        "at": 770.2333333327972,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 6.075086647359701
+      },
+      {
+        "at": 780.4749999994546,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.2728032882845115
+      },
+      {
+        "at": 807.808333332763,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.3615325770156748
+      }
+    ],
+    "events": {
+      "faute-tir": 7,
+      "changement": 158,
+      "retour en zone": 2,
+      "vol": 16,
+      "interception": 8,
+      "déviation": 5,
+      "sortie": 3,
+      "sirène": 4,
+      "faute-main": 2
+    },
+    "possessionPasses": [
+      1,
+      2,
+      2,
+      4,
+      2,
+      2,
+      1,
+      1,
+      4,
+      2,
+      3,
+      1,
+      0,
+      0,
+      2,
+      3,
+      1,
+      2,
+      0,
+      4,
+      3,
+      3,
+      1,
+      0,
+      1,
+      1,
+      0,
+      2,
+      0,
+      0,
+      3,
+      3,
+      2,
+      4,
+      1,
+      2,
+      4,
+      1,
+      0,
+      1,
+      0,
+      3,
+      0,
+      1,
+      0,
+      0,
+      1,
+      3,
+      0,
+      1,
+      1,
+      1,
+      3,
+      1,
+      4,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      2,
+      1,
+      3,
+      3,
+      1,
+      1,
+      2,
+      1,
+      2,
+      3,
+      2,
+      2,
+      1,
+      2,
+      1,
+      2,
+      1,
+      0,
+      1,
+      1,
+      2,
+      1,
+      2,
+      2,
+      3,
+      2,
+      1,
+      1,
+      1,
+      1,
+      3,
+      1,
+      2,
+      3,
+      1,
+      2,
+      1,
+      0,
+      2,
+      3,
+      3,
+      1,
+      2,
+      3,
+      3,
+      2,
+      3,
+      2,
+      3,
+      2,
+      1,
+      1
+    ],
+    "takeoverDelays": [],
+    "sameBallTargetChanges": 0,
+    "targetExamples": [],
+    "blockedByOtherDunk": 0,
+    "clock": 822.541666666083,
+    "score": [
+      73,
+      54
+    ],
+    "over": true,
+    "lineups": 47,
+    "trajectoryFallbacks": 1,
+    "boxPoints": [
+      73,
+      54
+    ],
+    "box": [
+      {
+        "pts": 73,
+        "fga": 56,
+        "fgm": 31,
+        "tpa": 23,
+        "tpm": 8,
+        "fta": 3,
+        "ftm": 3,
+        "pf": 6,
+        "oreb": 13,
+        "dreb": 12,
+        "ast": 22,
+        "tov": 10
+      },
+      {
+        "pts": 54,
+        "fga": 42,
+        "fgm": 21,
+        "tpa": 17,
+        "tpm": 5,
+        "fta": 8,
+        "ftm": 7,
+        "pf": 3,
+        "oreb": 9,
+        "dreb": 12,
+        "ast": 15,
+        "tov": 18
+      }
+    ]
+  },
+  {
+    "seed": 31,
+    "shots": [
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.944854324795414,
+        "probability": 0.3581869610267241,
+        "forced": false,
+        "contest": {
+          "distance": 1.0385648035868447,
+          "facing": 0
+        },
+        "at": 3.716666666666656
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.102265347600577,
+        "probability": 0.3096942910274425,
+        "forced": false,
+        "contest": {
+          "distance": 1.3975951677228693,
+          "facing": 0.9999774436866317
+        },
+        "at": 13.566666666666537
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.650603097724074,
+        "probability": 0.2374905924641279,
+        "forced": false,
+        "contest": {
+          "distance": 1.173931408278576,
+          "facing": 0.9897607046886291
+        },
+        "at": 19.208333333332885
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.055489017794753,
+        "probability": 0.3335725645369367,
+        "forced": false,
+        "contest": {
+          "distance": 1.0978532564123356,
+          "facing": 0.1903144436449248
+        },
+        "at": 24.924999999999226
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3841365238799264,
+        "probability": 0.5163446371988508,
+        "forced": false,
+        "contest": {
+          "distance": 1.52406938150656,
+          "facing": 0.8352844478999577
+        },
+        "at": 31.541666666665517
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.676750065524697,
+        "probability": 0.3398642146207961,
+        "forced": false,
+        "contest": {
+          "distance": 1.1619916468596745,
+          "facing": 0.999480344169725
+        },
+        "at": 39.99999999999837
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.3187290948042735,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 0.7511665367870871,
+          "facing": 0
+        },
+        "at": 41.8583333333316
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.750252386961756,
+        "probability": 0.30516159766817436,
+        "forced": false,
+        "contest": {
+          "distance": 2.3169672666392147,
+          "facing": 0.8255138233680138
+        },
+        "at": 49.95833333333114
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.902866592087854,
+        "probability": 0.41153409116414474,
+        "forced": false,
+        "contest": {
+          "distance": 2.2287238906590243,
+          "facing": 0.6728104292104375
+        },
+        "at": 55.366666666664166
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.328605967729426,
+        "probability": 0.2972298639581034,
+        "forced": false,
+        "contest": {
+          "distance": 1.3837935317001675,
+          "facing": 0.99940346219987
+        },
+        "at": 66.53333333333235
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.14843402648046805,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 1.030094131990407,
+          "facing": 0
+        },
+        "at": 73.70000000000472
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.4692018420474082,
+        "probability": 0.34129099549867176,
+        "forced": false,
+        "contest": {
+          "distance": 2.7384340134760743,
+          "facing": 0
+        },
+        "at": 86.30833333334809
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.1277469112825544,
+        "probability": 0.9335297590576178,
+        "forced": false,
+        "contest": {
+          "distance": 1.1139710523540287,
+          "facing": 0
+        },
+        "at": 87.49166666668236
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.891258333333335,
+        "forced": false,
+        "contest": null,
+        "at": 89.96666666668433
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.360313963895752,
+        "probability": 0.7317042810507961,
+        "forced": false,
+        "contest": {
+          "distance": 1.6174182513890418,
+          "facing": 0
+        },
+        "at": 100.18333333335913
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3877717033055936,
+        "probability": 0.82,
+        "forced": false,
+        "contest": {
+          "distance": 1.2547092317383979,
+          "facing": 0
+        },
+        "at": 109.68333333336669
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.369955019133458,
+        "probability": 0.7440479231021373,
+        "forced": false,
+        "contest": {
+          "distance": 1.040300059610392,
+          "facing": 0
+        },
+        "at": 117.72500000003976
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.395507949913788,
+        "probability": 0.6375933390640098,
+        "forced": false,
+        "contest": {
+          "distance": 0.7446247542048439,
+          "facing": 0.7612759690731814
+        },
+        "at": 133.19166666670986
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3644159069803194,
+        "probability": 0.5947117633225403,
+        "forced": false,
+        "contest": {
+          "distance": 1.2181126295712763,
+          "facing": 0
+        },
+        "at": 142.72500000003453
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.646436641993261,
+        "probability": 0.3027325978365141,
+        "forced": false,
+        "contest": {
+          "distance": 1.1911276992899007,
+          "facing": 0.9814767491975482
+        },
+        "at": 146.12500000003143
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.688047380214249,
+        "probability": 0.29164449898989137,
+        "forced": false,
+        "contest": {
+          "distance": 1.2204075492477025,
+          "facing": 0.9399923746336171
+        },
+        "at": 158.69166666668667
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.397273876744243,
+        "probability": 0.4506323646663325,
+        "forced": false,
+        "contest": {
+          "distance": 1.0518112364108272,
+          "facing": 0
+        },
+        "at": 165.92500000001343
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.8097954721524524,
+        "probability": 0.8303386404265845,
+        "forced": false,
+        "contest": {
+          "distance": 1.0433584257610633,
+          "facing": 0.3485374498413444
+        },
+        "at": 167.71666666667846
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.3876605906623203,
+        "probability": 0.5026673826692319,
+        "forced": false,
+        "contest": {
+          "distance": 1.545658835409954,
+          "facing": 0
+        },
+        "at": 173.04166666667362
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.297073026909309,
+        "probability": 0.28403646992169584,
+        "forced": false,
+        "contest": {
+          "distance": 2.027020998159056,
+          "facing": 0.9999988565107764
+        },
+        "at": 180.80833333333322
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.8138230793313745,
+        "probability": 0.23495194532659341,
+        "forced": false,
+        "contest": {
+          "distance": 1.0600656541605744,
+          "facing": 0.9979416070427978
+        },
+        "at": 187.8249999999935
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.8138230793313745,
+        "probability": 0.2349519453265922,
+        "forced": false,
+        "contest": {
+          "distance": 1.0600656541605744,
+          "facing": 0.9979416070427978
+        },
+        "at": 189.17499999999228
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.350740431744649,
+        "probability": 0.6128581569705595,
+        "forced": false,
+        "contest": {
+          "distance": 1.1258949969288243,
+          "facing": 0
+        },
+        "at": 202.40833333331358
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.375500356485327,
+        "probability": 0.7127666398027923,
+        "forced": false,
+        "contest": {
+          "distance": 1.7629720153773383,
+          "facing": 0
+        },
+        "at": 208.86666666664104
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.444132852817554,
+        "probability": 0.4470875557592543,
+        "forced": false,
+        "contest": {
+          "distance": 1.544625197198853,
+          "facing": 0
+        },
+        "at": 214.66666666663576
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.358690048856092,
+        "probability": 0.6206629348762751,
+        "forced": false,
+        "contest": {
+          "distance": 1.4243273178267057,
+          "facing": 0
+        },
+        "at": 225.46666666662594
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.361031909681893,
+        "probability": 0.6880636532003598,
+        "forced": false,
+        "contest": {
+          "distance": 1.3308417594085682,
+          "facing": 0
+        },
+        "at": 231.91666666662007
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.396138490603935,
+        "probability": 0.19213825659075234,
+        "forced": false,
+        "contest": {
+          "distance": 1.4373454588938315,
+          "facing": 0.9900752578385492
+        },
+        "at": 241.04166666661177
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3648575887480114,
+        "probability": 0.7999567923529283,
+        "forced": false,
+        "contest": {
+          "distance": 1.5938926373890727,
+          "facing": 0
+        },
+        "at": 255.23333333326553
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.886931057773116,
+        "probability": 0.2103918958630746,
+        "forced": false,
+        "contest": {
+          "distance": 1.3234803037760772,
+          "facing": 0.5644605084571239
+        },
+        "at": 260.9833333332603
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.3084329588186945,
+        "probability": 0.1251881256848713,
+        "forced": false,
+        "contest": {
+          "distance": 1.3577105943273766,
+          "facing": 0.9994208367562
+        },
+        "at": 264.5416666665904
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.30978037279394,
+        "probability": 0.3076178926544379,
+        "forced": false,
+        "contest": {
+          "distance": 1.4023917750622068,
+          "facing": 0.9999804209908363
+        },
+        "at": 274.891666666581
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.607539800857705,
+        "probability": 0.336161648518301,
+        "forced": false,
+        "contest": {
+          "distance": 1.2559788246608132,
+          "facing": 0.9749669874390736
+        },
+        "at": 283.4749999999065
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.36013386611447,
+        "probability": 0.4739456254769511,
+        "forced": false,
+        "contest": {
+          "distance": 0.9994046573181985,
+          "facing": 0.3867615876607002
+        },
+        "at": 291.92499999989883
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 294.45833333322986
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 297.7999999998935
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 6.345965858088234,
+        "probability": 0.2383799045385889,
+        "forced": false,
+        "contest": {
+          "distance": 1.0378052477286974,
+          "facing": 0.4715439784898583
+        },
+        "at": 307.4083333332181
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.331602616099702,
+        "probability": 0.3379917217780658,
+        "forced": false,
+        "contest": {
+          "distance": 2.291699954240038,
+          "facing": 0.9965891945648914
+        },
+        "at": 314.2999999998785
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.332112588006929,
+        "probability": 0.29759700682547924,
+        "forced": false,
+        "contest": {
+          "distance": 1.4103860564587827,
+          "facing": 0.998895154919835
+        },
+        "at": 323.4666666665368
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.34349839521777,
+        "probability": 0.2852421092556018,
+        "forced": false,
+        "contest": {
+          "distance": 1.442325591346312,
+          "facing": 0.995232829424147
+        },
+        "at": 332.70833333319507
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.901815450823186,
+        "probability": 0.34526461808017367,
+        "forced": false,
+        "contest": {
+          "distance": 1.4001635750441965,
+          "facing": 0.9304002935407101
+        },
+        "at": 345.983333333183
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.162940073326977,
+        "probability": 0.3162825883233235,
+        "forced": false,
+        "contest": {
+          "distance": 1.1682619471855236,
+          "facing": 0
+        },
+        "at": 351.1583333331783
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.623980610948194,
+        "probability": 0.2157370047974933,
+        "forced": false,
+        "contest": {
+          "distance": 1.2051502395279814,
+          "facing": 0.9807160386357507
+        },
+        "at": 359.3083333331709
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3563602585726566,
+        "probability": 0.6905141716539255,
+        "forced": false,
+        "contest": {
+          "distance": 1.442294450344107,
+          "facing": 0
+        },
+        "at": 365.7249999998317
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.029295060764459,
+        "probability": 0.30427415070611546,
+        "forced": false,
+        "contest": {
+          "distance": 1.2813671282939956,
+          "facing": 0.8621388348437256
+        },
+        "at": 378.45833333315346
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 12.329003937843906,
+        "probability": 0.08933378967448168,
+        "forced": false,
+        "contest": {
+          "distance": 2.9196000696101594,
+          "facing": 0.994775547172309
+        },
+        "at": 385.2333333331473
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.533060977468651,
+        "probability": 0.3339061734312234,
+        "forced": false,
+        "contest": {
+          "distance": 1.253312227762643,
+          "facing": 0.9859158302649355
+        },
+        "at": 396.4583333331371
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.321126363797913,
+        "probability": 0.216532494376743,
+        "forced": false,
+        "contest": {
+          "distance": 1.3599230541907004,
+          "facing": 0.9999235801281315
+        },
+        "at": 404.18333333313007
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.039922114080288,
+        "probability": 0.4154008826547446,
+        "forced": false,
+        "contest": {
+          "distance": 1.086814588687346,
+          "facing": 0.9988370017879811
+        },
+        "at": 410.8916666664573
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.261326111306927,
+        "probability": 0.18130241298105093,
+        "forced": false,
+        "contest": {
+          "distance": 1.9339140719941221,
+          "facing": 0.7370630742590244
+        },
+        "at": 413.9416666664545
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.914776604572943,
+        "probability": 0.3141314269983428,
+        "forced": false,
+        "contest": {
+          "distance": 2.060393584046928,
+          "facing": 0
+        },
+        "at": 418.80833333311676
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.096282580506756,
+        "probability": 0.2874359742365568,
+        "forced": false,
+        "contest": {
+          "distance": 0.804085427219054,
+          "facing": 0.5622272474267017
+        },
+        "at": 423.8749999997788
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.9155341841459075,
+        "probability": 0.336769386128019,
+        "forced": false,
+        "contest": {
+          "distance": 2.104972869722877,
+          "facing": 0.8127131958792171
+        },
+        "at": 429.38333333310715
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.512268317382695,
+        "probability": 0.23521021040193327,
+        "forced": false,
+        "contest": {
+          "distance": 1.621215128882514,
+          "facing": 0.9989677617633463
+        },
+        "at": 438.1666666664325
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.190967018972447,
+        "probability": 0.37049345189902505,
+        "forced": false,
+        "contest": {
+          "distance": 1.663297966993333,
+          "facing": 0
+        },
+        "at": 445.17499999975945
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 448.34166666642324
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.3155383877639855,
+        "probability": 0.2462452329732133,
+        "forced": false,
+        "contest": {
+          "distance": 1.3983188469477699,
+          "facing": 0.9990683690028269
+        },
+        "at": 453.758333333085
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.527176889688126,
+        "probability": 0.2662688314013493,
+        "forced": false,
+        "contest": {
+          "distance": 1.2510091695944472,
+          "facing": 0.9880821903334082
+        },
+        "at": 459.21666666641335
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.638299051525383,
+        "probability": 0.2061761929913128,
+        "forced": false,
+        "contest": {
+          "distance": 1.2007266370073815,
+          "facing": 0.9781190964455456
+        },
+        "at": 464.19999999974215
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.866104808933537,
+        "probability": 0.1358398863619773,
+        "forced": false,
+        "contest": {
+          "distance": 1.0642251223490806,
+          "facing": 0.9936582822312304
+        },
+        "at": 465.6499999997408
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.399348429326872,
+        "probability": 0.2733988392025823,
+        "forced": false,
+        "contest": {
+          "distance": 1.3964593905311888,
+          "facing": 0.9924611775461064
+        },
+        "at": 473.6333333330669
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.304418042220157,
+        "probability": 0.11850576357762668,
+        "forced": false,
+        "contest": {
+          "distance": 1.2123840551899756,
+          "facing": 0.8020783164038747
+        },
+        "at": 483.5666666663912
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3610691071719647,
+        "probability": 0.6929958130274904,
+        "forced": false,
+        "contest": {
+          "distance": 1.073995305994452,
+          "facing": 0.32476882302575455
+        },
+        "at": 494.29999999971477
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.846794482999328,
+        "probability": 0.3530245860327423,
+        "forced": false,
+        "contest": {
+          "distance": 1.3394384785965727,
+          "facing": 0.9385303143760031
+        },
+        "at": 503.7249999997062
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.31308523667223953,
+        "probability": 0.8181443276435558,
+        "forced": false,
+        "contest": {
+          "distance": 0.8592266793609645,
+          "facing": 0.8481963578765381
+        },
+        "at": 505.78333333303766
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3927802653616763,
+        "probability": 0.5166347140402662,
+        "forced": false,
+        "contest": {
+          "distance": 1.140584088487447,
+          "facing": 0
+        },
+        "at": 510.28333333303357
+      },
+      {
+        "kind": "jump",
+        "zone": "rim",
+        "distance": 0.040746763882505935,
+        "probability": 0.48231039316393515,
+        "forced": false,
+        "contest": {
+          "distance": 1.0685148749196964,
+          "facing": 0
+        },
+        "at": 516.6083333330279
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.223386860962374,
+        "probability": 0.3018247639894679,
+        "forced": false,
+        "contest": {
+          "distance": 1.374457074199134,
+          "facing": 0.9999985309811733
+        },
+        "at": 518.6499999996927
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.09016891929889,
+        "probability": 0.3345790738958423,
+        "forced": false,
+        "contest": {
+          "distance": 1.029714478357131,
+          "facing": 0
+        },
+        "at": 526.8666666663519
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 0.13805478164024587,
+        "probability": 0.6384589519636267,
+        "forced": false,
+        "contest": {
+          "distance": 0.9428503073211177,
+          "facing": 0.7296898629735314
+        },
+        "at": 535.2499999996776
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3625865021646346,
+        "probability": 0.6286857520796619,
+        "forced": false,
+        "contest": {
+          "distance": 1.036255192810452,
+          "facing": 0.5257925557510363
+        },
+        "at": 544.3999999996693
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.455475829423612,
+        "probability": 0.9481436776070794,
+        "forced": false,
+        "contest": {
+          "distance": 1.421573878209049,
+          "facing": 0
+        },
+        "at": 554.0666666663271
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.564611977299153,
+        "probability": 0.30177707607171256,
+        "forced": false,
+        "contest": {
+          "distance": 1.4170540677690808,
+          "facing": 0.9995944541188599
+        },
+        "at": 556.3083333329918
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 0.9411372209228581,
+        "probability": 0.5202083295949326,
+        "forced": false,
+        "contest": {
+          "distance": 1.2511082437458925,
+          "facing": 0
+        },
+        "at": 558.974999999656
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3761785413647627,
+        "probability": 0.806958296347411,
+        "forced": false,
+        "contest": {
+          "distance": 1.1048963616844814,
+          "facing": 0
+        },
+        "at": 563.5666666663185
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.319416122883539,
+        "probability": 0.07204203147822484,
+        "forced": false,
+        "contest": {
+          "distance": 1.370096789400826,
+          "facing": 0.985854590957125
+        },
+        "at": 572.2416666663106
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 12.70895052758604,
+        "probability": 0.10252612347010208,
+        "forced": false,
+        "contest": {
+          "distance": 1.2006916260852618,
+          "facing": 0
+        },
+        "at": 576.4166666663068
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3909771237136863,
+        "probability": 0.6535846451116221,
+        "forced": false,
+        "contest": {
+          "distance": 1.8515653333880913,
+          "facing": 0
+        },
+        "at": 585.1166666662989
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.380300115491098,
+        "probability": 0.6474035529332274,
+        "forced": false,
+        "contest": {
+          "distance": 1.9327017752761533,
+          "facing": 0
+        },
+        "at": 595.4249999996229
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.5852391492585385,
+        "probability": 0.20298619872603635,
+        "forced": false,
+        "contest": {
+          "distance": 1.2415834402837527,
+          "facing": 0.9800985991947155
+        },
+        "at": 606.7999999996125
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3753904150712084,
+        "probability": 0.7360788926368513,
+        "forced": false,
+        "contest": {
+          "distance": 1.1615116264461798,
+          "facing": 0
+        },
+        "at": 613.999999999606
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.621757111475678,
+        "probability": 0.3125233154138403,
+        "forced": false,
+        "contest": {
+          "distance": 1.0576941257708101,
+          "facing": 0.8872847111202138
+        },
+        "at": 617.991666666269
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.7092545692687295,
+        "probability": 0.2952783219198292,
+        "forced": false,
+        "contest": {
+          "distance": 1.1822682735350976,
+          "facing": 0.9564785731414952
+        },
+        "at": 624.4999999995964
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.4242406568327795,
+        "probability": 0.876671830913288,
+        "forced": false,
+        "contest": {
+          "distance": 1.9349088086711006,
+          "facing": 0.6550841426528116
+        },
+        "at": 634.2749999995875
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.636122760419145,
+        "probability": 0.2744408672617783,
+        "forced": false,
+        "contest": {
+          "distance": 1.1977307499669003,
+          "facing": 0.9803679447095497
+        },
+        "at": 641.5916666662475
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.035796970219273,
+        "probability": 0.22315188948478543,
+        "forced": false,
+        "contest": {
+          "distance": 0.8828809989345826,
+          "facing": 0.7784857484296487
+        },
+        "at": 651.733333332905
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.387578882634185,
+        "probability": 0.7271580180469209,
+        "forced": false,
+        "contest": {
+          "distance": 1.40986518894071,
+          "facing": 0
+        },
+        "at": 657.0916666662334
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3566368294978304,
+        "probability": 0.5552409126871842,
+        "forced": false,
+        "contest": {
+          "distance": 1.2559058774372176,
+          "facing": 0
+        },
+        "at": 664.7416666662265
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.26996165540668,
+        "probability": 0.11447472557501552,
+        "forced": false,
+        "contest": {
+          "distance": 1.4036474604748335,
+          "facing": 0.9999604983186013
+        },
+        "at": 667.2249999995576
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.400296636609258,
+        "probability": 0.27042660909455757,
+        "forced": false,
+        "contest": {
+          "distance": 1.320830636047929,
+          "facing": 0.9937243205969841
+        },
+        "at": 669.3499999995556
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.390477716501133,
+        "probability": 0.7739195765214959,
+        "forced": false,
+        "contest": {
+          "distance": 1.1390061013780322,
+          "facing": 0
+        },
+        "at": 678.8583333328803
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.633378531112964,
+        "probability": 0.308173586284879,
+        "forced": false,
+        "contest": {
+          "distance": 1.161793679708441,
+          "facing": 0.764894312292357
+        },
+        "at": 685.1749999995412
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3531873808396244,
+        "probability": 0.8125668784646848,
+        "forced": false,
+        "contest": {
+          "distance": 1.3660276422690567,
+          "facing": 0
+        },
+        "at": 698.4749999995291
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3639401669207065,
+        "probability": 0.7911394189764058,
+        "forced": false,
+        "contest": {
+          "distance": 1.512068420595582,
+          "facing": 0
+        },
+        "at": 704.4166666661904
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.686614714013622,
+        "probability": 0.25594364354260246,
+        "forced": false,
+        "contest": {
+          "distance": 1.192256439179721,
+          "facing": 0.9708739190180847
+        },
+        "at": 713.4916666661821
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.223705442972042,
+        "probability": 0.3085065249044706,
+        "forced": false,
+        "contest": {
+          "distance": 1.4178173573445134,
+          "facing": 0.9999565894989754
+        },
+        "at": 724.5249999995054
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.972048815233559,
+        "probability": 0.5342248214607247,
+        "forced": false,
+        "contest": {
+          "distance": 1.5377733121531216,
+          "facing": 0.49763740131627876
+        },
+        "at": 730.7999999994997
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3681296837471186,
+        "probability": 0.7322273542056946,
+        "forced": false,
+        "contest": {
+          "distance": 1.0880758247089652,
+          "facing": 0
+        },
+        "at": 736.9166666661608
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.0255104818533647,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 2.0980248803874653,
+          "facing": 0
+        },
+        "at": 745.5083333328197
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.399777126415898,
+        "probability": 0.4124887751446951,
+        "forced": false,
+        "contest": {
+          "distance": 1.020620782833492,
+          "facing": 0
+        },
+        "at": 752.6333333328132
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.7023520807167545,
+        "probability": 0.29385670442531503,
+        "forced": false,
+        "contest": {
+          "distance": 1.1598466161254941,
+          "facing": 0.9772872515384876
+        },
+        "at": 759.1666666661406
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.4583394452085408,
+        "probability": 0.9489106723058254,
+        "forced": false,
+        "contest": {
+          "distance": 1.7970947126636292,
+          "facing": 0
+        },
+        "at": 764.9749999994687
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.028352075338066,
+        "probability": 0.15929317518477326,
+        "forced": false,
+        "contest": {
+          "distance": 0.8202632358961711,
+          "facing": 0.8760702882742272
+        },
+        "at": 771.9333333327957
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.6824271251737223,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 1.0723391432373066,
+          "facing": 0.5804144265646537
+        },
+        "at": 774.7749999994597
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 12.931271157039829,
+        "probability": 0.11422987458431332,
+        "forced": false,
+        "contest": {
+          "distance": 1.394923257893359,
+          "facing": 0
+        },
+        "at": 779.3666666661222
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.3136971019546,
+        "probability": 0.264669936053396,
+        "forced": false,
+        "contest": {
+          "distance": 1.3891338008417375,
+          "facing": 0.9998793073909429
+        },
+        "at": 788.7833333327803
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.368349459894354,
+        "probability": 0.6828193937731959,
+        "forced": false,
+        "contest": {
+          "distance": 1.2736116411161391,
+          "facing": 0.9442042064773888
+        },
+        "at": 797.4416666661058
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.391200515835462,
+        "probability": 0.8013224682786497,
+        "forced": false,
+        "contest": {
+          "distance": 1.3281673041532274,
+          "facing": 0
+        },
+        "at": 805.1333333327655
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.782287509941539,
+        "probability": 0.3658485196345316,
+        "forced": false,
+        "contest": {
+          "distance": 1.3714073502019866,
+          "facing": 0.556174975774192
+        },
+        "at": 811.5083333327597
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.789835503107517,
+        "probability": 0.3606863319333805,
+        "forced": false,
+        "contest": {
+          "distance": 1.003505671069068,
+          "facing": 0.9924002418523395
+        },
+        "at": 821.1583333327509
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.5466551931456993,
+        "probability": 0.7792806652198636,
+        "forced": false,
+        "contest": {
+          "distance": 0.8514942700325446,
+          "facing": 0.9542847069255955
+        },
+        "at": 824.333333332748
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.370858521396722,
+        "probability": 0.7337171735375895,
+        "forced": false,
+        "contest": {
+          "distance": 1.2410467219678862,
+          "facing": 0
+        },
+        "at": 831.4833333327415
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.695229808330391,
+        "probability": 0.3041050697283328,
+        "forced": false,
+        "contest": {
+          "distance": 1.1620598437578156,
+          "facing": 0.976515179627096
+        },
+        "at": 838.941666666068
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.4266568388366823,
+        "probability": 0.9647814472005707,
+        "forced": false,
+        "contest": {
+          "distance": 1.4129600339860233,
+          "facing": 0
+        },
+        "at": 845.7833333327285
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.381255646627119,
+        "probability": 0.5967846195962937,
+        "forced": false,
+        "contest": {
+          "distance": 1.1165989930317521,
+          "facing": 0
+        },
+        "at": 852.9916666660553
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.863441921977836,
+        "probability": 0.47102947125713285,
+        "forced": false,
+        "contest": {
+          "distance": 1.5939973353131502,
+          "facing": 0.28930389176047955
+        },
+        "at": 860.5666666660484
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 9.22666148021309,
+        "probability": 0.19237692451350352,
+        "forced": false,
+        "contest": {
+          "distance": 0.9993407320540052,
+          "facing": 0.6546458268684051
+        },
+        "at": 865.8916666660435
+      },
+      {
+        "kind": "jump",
+        "zone": "rim",
+        "distance": 0.5733112072747824,
+        "probability": 0.4193031087426588,
+        "forced": false,
+        "contest": {
+          "distance": 0.8041860605462549,
+          "facing": 0.6665602631855921
+        },
+        "at": 868.1999999993748
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 13.450863063269912,
+        "probability": 0.03046868872664092,
+        "forced": false,
+        "contest": {
+          "distance": 1.0953539579468754,
+          "facing": 0.8054350431971283
+        },
+        "at": 873.1999999993702
+      }
+    ],
+    "passes": 208,
+    "possessions": 116,
+    "emptyReboundJumps": 0,
+    "actualJumps": {
+      "tip": 4,
+      "loose-ball": 314,
+      "shot": 120,
+      "contest": 114
+    },
+    "rebounds": {
+      "air": 67,
+      "ground": 6
+    },
+    "collisions": {
+      "calls": 8027,
+      "corrections": 12555,
+      "airCorrections": 117,
+      "maxAirZ": 0.7449315634646417,
+      "stationaryCorrections": 55,
+      "maxCorrection": 0.0373530863950335
+    },
+    "targetChanges": 0,
+    "bigTargetChanges": 0,
+    "teleports": [
+      {
+        "at": 8.691666666666814,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.122137749699362
+      },
+      {
+        "at": 57.633333333330704,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.9537360619541064
+      },
+      {
+        "at": 74.5500000000054,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.4978250941519407
+      },
+      {
+        "at": 81.33333333334413,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.217774849770076
+      },
+      {
+        "at": 88.5416666666832,
+        "from": "mort",
+        "to": "lancers",
+        "period": 1,
+        "meters": 10.705820563685604
+      },
+      {
+        "at": 91.75000000001909,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 7.3896644957166
+      },
+      {
+        "at": 101.4500000000268,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.8275717559240046
+      },
+      {
+        "at": 111.02500000003442,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 5.405542929779649
+      },
+      {
+        "at": 119.17500000004091,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.6758941023813945
+      },
+      {
+        "at": 123.89166666671133,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.6516291796022053
+      },
+      {
+        "at": 148.20833333336287,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.60330411493902
+      },
+      {
+        "at": 160.75833333335146,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.53241319527845
+      },
+      {
+        "at": 174.0666666666727,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.3326298701869463
+      },
+      {
+        "at": 196.27499999998582,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 1,
+        "meters": 15.85958073798187
+      },
+      {
+        "at": 203.71666666664572,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.152378437624933
+      },
+      {
+        "at": 210.13333333330655,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 6.504913567697076
+      },
+      {
+        "at": 226.93333333329127,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.0821312119572366
+      },
+      {
+        "at": 233.29999999995215,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.136110592333094
+      },
+      {
+        "at": 256.6416666665976,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.9718615682911533
+      },
+      {
+        "at": 293.233333333231,
+        "from": "mort",
+        "to": "lancers",
+        "period": 2,
+        "meters": 10.686615318693864
+      },
+      {
+        "at": 299.5916666665585,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 6.777520273363473
+      },
+      {
+        "at": 316.4749999998765,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.882452192457121
+      },
+      {
+        "at": 334.8583333331931,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.8098159623258194
+      },
+      {
+        "at": 353.3666666665096,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.122841405995118
+      },
+      {
+        "at": 367.0166666664972,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.085647238928905
+      },
+      {
+        "at": 390.8999999998088,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 2,
+        "meters": 21.977878782712377
+      },
+      {
+        "at": 447.04999999975774,
+        "from": "mort",
+        "to": "lancers",
+        "period": 3,
+        "meters": 10.82252450268146
+      },
+      {
+        "at": 450.0833333330883,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 6.866351829605712
+      },
+      {
+        "at": 495.74999999971345,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.741452482438782
+      },
+      {
+        "at": 529.0249999996832,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.945616229057514
+      },
+      {
+        "at": 545.9499999996679,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 7.210316818135792
+      },
+      {
+        "at": 564.9833333329839,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 5.090921872917301
+      },
+      {
+        "at": 580.1166666663034,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 3,
+        "meters": 23.26023778041066
+      },
+      {
+        "at": 586.474999999631,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.323377035860673
+      },
+      {
+        "at": 596.7916666662883,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.027083104155538
+      },
+      {
+        "at": 608.9833333329439,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.311881421232979
+      },
+      {
+        "at": 635.1249999995867,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.8129097480719247
+      },
+      {
+        "at": 658.4416666662322,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.9563807765314687
+      },
+      {
+        "at": 671.5749999995536,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 7.2227475350244195
+      },
+      {
+        "at": 680.2416666662124,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.6754781961213285
+      },
+      {
+        "at": 687.1249999995395,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.5137931762081918
+      },
+      {
+        "at": 693.9749999995332,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.9643151456007453
+      },
+      {
+        "at": 705.7999999995225,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.0829828476231964
+      },
+      {
+        "at": 715.7749999995134,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 6.491423052560013
+      },
+      {
+        "at": 732.2083333328318,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.6431122291550917
+      },
+      {
+        "at": 738.1916666661597,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.726404428698751
+      },
+      {
+        "at": 746.3583333328189,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.2958961447898645
+      },
+      {
+        "at": 754.0416666661453,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 4.582469516857191
+      },
+      {
+        "at": 765.8249999994679,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.8646392060872343
+      },
+      {
+        "at": 775.624999999459,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 4.2512303195540575
+      },
+      {
+        "at": 782.9499999994523,
+        "from": "fin-periode",
+        "to": "entre-deux",
+        "period": 4,
+        "meters": 14.90483784069561
+      },
+      {
+        "at": 798.8333333327712,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 3.409909193922133
+      },
+      {
+        "at": 806.4499999994309,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 5.579568443024575
+      },
+      {
+        "at": 825.1833333327472,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 3.675233044845109
+      },
+      {
+        "at": 832.8499999994069,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 3.883095410085588
+      },
+      {
+        "at": 846.6333333327277,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 3.381328404807429
+      },
+      {
+        "at": 854.366666666054,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 5.358924559009676
+      },
+      {
+        "at": 869.5666666660402,
+        "from": "mort",
+        "to": "remise",
+        "period": 5,
+        "meters": 3.983063396867219
+      }
+    ],
+    "events": {
+      "faute-main": 3,
+      "changement": 109,
+      "faute-tir": 3,
+      "vol": 9,
+      "déviation": 5,
+      "sirène": 5,
+      "interception": 4,
+      "retour en zone": 1
+    },
+    "possessionPasses": [
+      0,
+      1,
+      3,
+      3,
+      1,
+      3,
+      3,
+      1,
+      1,
+      2,
+      1,
+      1,
+      3,
+      2,
+      3,
+      3,
+      2,
+      1,
+      2,
+      2,
+      2,
+      4,
+      1,
+      1,
+      0,
+      3,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      3,
+      1,
+      0,
+      1,
+      1,
+      0,
+      3,
+      2,
+      1,
+      2,
+      3,
+      3,
+      3,
+      3,
+      1,
+      2,
+      1,
+      3,
+      3,
+      1,
+      0,
+      1,
+      3,
+      2,
+      1,
+      1,
+      3,
+      3,
+      0,
+      2,
+      2,
+      1,
+      2,
+      1,
+      1,
+      2,
+      0,
+      2,
+      2,
+      3,
+      3,
+      4,
+      0,
+      3,
+      3,
+      2,
+      4,
+      4,
+      0,
+      2,
+      2,
+      2,
+      0,
+      1,
+      2,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1,
+      3,
+      2,
+      1,
+      1,
+      2,
+      4,
+      2,
+      1,
+      2,
+      4,
+      3,
+      1,
+      2,
+      0,
+      1,
+      2,
+      1,
+      1,
+      3,
+      2
+    ],
+    "takeoverDelays": [],
+    "sameBallTargetChanges": 0,
+    "targetExamples": [],
+    "blockedByOtherDunk": 0,
+    "clock": 880.8999999993632,
+    "score": [
+      54,
+      52
+    ],
+    "over": true,
+    "lineups": 36,
+    "trajectoryFallbacks": 2,
+    "boxPoints": [
+      54,
+      52
+    ],
+    "box": [
+      {
+        "pts": 54,
+        "fga": 65,
+        "fgm": 23,
+        "tpa": 30,
+        "tpm": 7,
+        "fta": 1,
+        "ftm": 1,
+        "pf": 4,
+        "oreb": 19,
+        "dreb": 21,
+        "ast": 15,
+        "tov": 8
+      },
+      {
+        "pts": 52,
+        "fga": 54,
+        "fgm": 23,
+        "tpa": 22,
+        "tpm": 3,
+        "fta": 3,
+        "ftm": 3,
+        "pf": 2,
+        "oreb": 10,
+        "dreb": 23,
+        "ast": 20,
+        "tov": 9
+      }
+    ]
+  },
+  {
+    "seed": 919,
+    "shots": [
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.070070564348587,
+        "probability": 0.3006405108800481,
+        "forced": false,
+        "contest": {
+          "distance": 0.8487405624553886,
+          "facing": 0.48059081057606406
+        },
+        "at": 4.049999999999991
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.580570914702552,
+        "probability": 0.34421503889238647,
+        "forced": false,
+        "contest": {
+          "distance": 1.2694017955440864,
+          "facing": 0.9756529225002496
+        },
+        "at": 12.366666666666605
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.1159958320306527,
+        "probability": 0.8060017633189176,
+        "forced": false,
+        "contest": {
+          "distance": 1.4296978306747974,
+          "facing": 0.976535450332882
+        },
+        "at": 20.97499999999945
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3838687077436482,
+        "probability": 0.2954342823621252,
+        "forced": false,
+        "contest": {
+          "distance": 1.136075985016781,
+          "facing": 0
+        },
+        "at": 30.0916666666656
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.325770322430154,
+        "probability": 0.3153587698510326,
+        "forced": false,
+        "contest": {
+          "distance": 1.0488151872653917,
+          "facing": 0.9980946535663158
+        },
+        "at": 44.49999999999812
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.360363297830599,
+        "probability": 0.7867483643845977,
+        "forced": false,
+        "contest": {
+          "distance": 1.1589406541370286,
+          "facing": 0
+        },
+        "at": 54.94166666666419
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.43447443889981,
+        "probability": 0.36489385758752896,
+        "forced": false,
+        "contest": {
+          "distance": 1.338995597936639,
+          "facing": 0.9872325148932914
+        },
+        "at": 65.44166666666482
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3766277089027894,
+        "probability": 0.7469940975548949,
+        "forced": false,
+        "contest": {
+          "distance": 1.7479815609912561,
+          "facing": 0
+        },
+        "at": 73.4250000000045
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3806958048752147,
+        "probability": 0.6941622882888171,
+        "forced": false,
+        "contest": {
+          "distance": 1.386569527100143,
+          "facing": 0
+        },
+        "at": 83.83333333334612
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.2807607798299823,
+        "probability": 0.7192461553184291,
+        "forced": false,
+        "contest": {
+          "distance": 1.2464358600464998,
+          "facing": 0.8404494572817041
+        },
+        "at": 86.04166666668121
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.358184084230018,
+        "probability": 0.7105935196633242,
+        "forced": false,
+        "contest": {
+          "distance": 1.2717126013995104,
+          "facing": 0
+        },
+        "at": 94.70000000002143
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3541135245494496,
+        "probability": 0.7622931791603179,
+        "forced": false,
+        "contest": {
+          "distance": 1.168872527016255,
+          "facing": 0
+        },
+        "at": 98.91666666669146
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.3061380224547525,
+        "probability": 0.3143885987510741,
+        "forced": false,
+        "contest": {
+          "distance": 1.500434641031212,
+          "facing": 0.9500234216865427
+        },
+        "at": 105.7250000000302
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.381452144712889,
+        "probability": 0.8044400495622229,
+        "forced": false,
+        "contest": {
+          "distance": 1.1610271545906325,
+          "facing": 0.13959781667992804
+        },
+        "at": 108.6000000000325
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.375525350410552,
+        "probability": 0.82,
+        "forced": false,
+        "contest": {
+          "distance": 1.170738125641988,
+          "facing": 0
+        },
+        "at": 117.93333333337326
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3795301170462633,
+        "probability": 0.6730897715251897,
+        "forced": false,
+        "contest": {
+          "distance": 1.1004358348314016,
+          "facing": 0
+        },
+        "at": 125.20833333337904
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.308873389611749,
+        "probability": 0.3706986884023384,
+        "forced": false,
+        "contest": {
+          "distance": 1.4055356730492687,
+          "facing": 0.9999121984746419
+        },
+        "at": 132.9750000000434
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.395958862502054,
+        "probability": 0.6259624178063369,
+        "forced": false,
+        "contest": {
+          "distance": 1.6015508220531456,
+          "facing": 0
+        },
+        "at": 140.35833333337
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.269860243348744,
+        "probability": 0.44955888402051686,
+        "forced": false,
+        "contest": {
+          "distance": 1.024428478455996,
+          "facing": 0.06683737657579304
+        },
+        "at": 147.6666666666967
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.6342474127488834,
+        "probability": 0.957831105865645,
+        "forced": false,
+        "contest": {
+          "distance": 1.385881172814809,
+          "facing": 0.42655979160944996
+        },
+        "at": 150.24166666669436
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.8393438547243415,
+        "probability": 0.3346884896257897,
+        "forced": false,
+        "contest": {
+          "distance": 1.4530794845880113,
+          "facing": 0.548411937425567
+        },
+        "at": 158.65000000002004
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3987622740838814,
+        "probability": 0.82,
+        "forced": false,
+        "contest": {
+          "distance": 1.3326509058971918,
+          "facing": 0
+        },
+        "at": 169.8000000000099
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.7327846410547245,
+        "probability": 0.17512625576128935,
+        "forced": false,
+        "contest": {
+          "distance": 1.1472006317596775,
+          "facing": 0.9662567711338491
+        },
+        "at": 177.1416666666699
+      },
+      {
+        "kind": "jump",
+        "zone": "rim",
+        "distance": 0.046189576050137425,
+        "probability": 0.6651983627552648,
+        "forced": false,
+        "contest": {
+          "distance": 1.2767617812954337,
+          "facing": 0.644337726113869
+        },
+        "at": 179.29166666666794
+      },
+      {
+        "kind": "jump",
+        "zone": "rim",
+        "distance": 0.046189576050137425,
+        "probability": 0.578083576333563,
+        "forced": false,
+        "contest": {
+          "distance": 1.247753207348748,
+          "facing": 0.6603253705973733
+        },
+        "at": 180.40000000000026
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3623258665362115,
+        "probability": 0.7206957588893509,
+        "forced": false,
+        "contest": {
+          "distance": 1.4681411090224004,
+          "facing": 0
+        },
+        "at": 189.74999999999176
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.394624237636045,
+        "probability": 0.8027525224946742,
+        "forced": false,
+        "contest": {
+          "distance": 2.187605464238541,
+          "facing": 0
+        },
+        "at": 198.69999999998362
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 8.054629537271293,
+        "probability": 0.42180286178318693,
+        "forced": false,
+        "contest": {
+          "distance": 1.6313500977372914,
+          "facing": 0.8683928418759365
+        },
+        "at": 207.3333333333091
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.4119157856179545,
+        "probability": 0.7917431031006763,
+        "forced": false,
+        "contest": {
+          "distance": 1.5173701337549814,
+          "facing": 0
+        },
+        "at": 214.24999999996948
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.051178169915555,
+        "probability": 0.5215876513851105,
+        "forced": false,
+        "contest": {
+          "distance": 1.5357871244599364,
+          "facing": 0
+        },
+        "at": 228.29166666662337
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.789068630863481,
+        "probability": 0.3788016058825248,
+        "forced": false,
+        "contest": {
+          "distance": 1.070065076970828,
+          "facing": 0.9979029461342549
+        },
+        "at": 236.07499999994963
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.842013591386849,
+        "probability": 0.20924115384268216,
+        "forced": false,
+        "contest": {
+          "distance": 1.3262873730740172,
+          "facing": 0.9711243419519335
+        },
+        "at": 241.2749999999449
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.343728894798445,
+        "probability": 0.3835368333413101,
+        "forced": false,
+        "contest": {
+          "distance": 1.7011958189201866,
+          "facing": 0.985557919439811
+        },
+        "at": 250.2749999999367
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.298328333441755,
+        "probability": 0.2604215618423718,
+        "forced": false,
+        "contest": {
+          "distance": 1.5440734106993763,
+          "facing": 0.9996339965566735
+        },
+        "at": 254.2833333332664
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.342821203936242,
+        "probability": 0.22309036460790035,
+        "forced": false,
+        "contest": {
+          "distance": 1.4201348897199106,
+          "facing": 0.9973696260657743
+        },
+        "at": 258.0416666665963
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.3883044525399619,
+        "probability": 0.8395208568655488,
+        "forced": false,
+        "contest": {
+          "distance": 1.1315969401622132,
+          "facing": 0.9644765123060687
+        },
+        "at": 260.15833333326106
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.808604353991736,
+        "probability": 0.5,
+        "forced": false,
+        "contest": {
+          "distance": 1.332365545047964,
+          "facing": 0
+        },
+        "at": 265.36666666658965
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.04663767677906,
+        "probability": 0.3851891780319351,
+        "forced": false,
+        "contest": {
+          "distance": 1.1443215509584441,
+          "facing": 0.8167637983269264
+        },
+        "at": 275.2916666665806
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3615716139369924,
+        "probability": 0.6466834610123082,
+        "forced": false,
+        "contest": {
+          "distance": 1.5663719648558705,
+          "facing": 0.48980693367309497
+        },
+        "at": 289.17499999990133
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.491400000000002,
+        "probability": 0.9187166666666655,
+        "forced": false,
+        "contest": null,
+        "at": 292.35833333323177
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.491400000000002,
+        "probability": 0.9187166666666655,
+        "forced": false,
+        "contest": null,
+        "at": 295.5999999998955
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3673181435002197,
+        "probability": 0.5907284593476727,
+        "forced": false,
+        "contest": {
+          "distance": 1.2364442118827161,
+          "facing": 0
+        },
+        "at": 302.6166666665558
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.939112716303481,
+        "probability": 0.2837574071207356,
+        "forced": false,
+        "contest": {
+          "distance": 0.9962507969420231,
+          "facing": 0.9634409612533501
+        },
+        "at": 310.92499999988155
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.388294168930873,
+        "probability": 0.5919302733780728,
+        "forced": false,
+        "contest": {
+          "distance": 1.3294552072094274,
+          "facing": 0
+        },
+        "at": 316.74999999987625
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.389550847071957,
+        "probability": 0.740975318114805,
+        "forced": false,
+        "contest": {
+          "distance": 1.1345267031669022,
+          "facing": 0
+        },
+        "at": 325.64166666653483
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3609401030856594,
+        "probability": 0.5213956616584221,
+        "forced": false,
+        "contest": {
+          "distance": 1.0594583555891335,
+          "facing": 0
+        },
+        "at": 332.6583333331951
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.476532995253609,
+        "probability": 0.3866328337456384,
+        "forced": false,
+        "contest": {
+          "distance": 1.3251566915820883,
+          "facing": 0.9866942781838155
+        },
+        "at": 341.8333333331868
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3735584176922266,
+        "probability": 0.648985936259547,
+        "forced": false,
+        "contest": {
+          "distance": 0.818536874625606,
+          "facing": 0.5716634099618684
+        },
+        "at": 348.6999999998472
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.598236502884721,
+        "probability": 0.8699558374072214,
+        "forced": false,
+        "contest": {
+          "distance": 1.1511656666625787,
+          "facing": 0.9045992691729747
+        },
+        "at": 358.6083333331715
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.153048705182867,
+        "probability": 0.44736691296990616,
+        "forced": false,
+        "contest": {
+          "distance": 1.342227350935347,
+          "facing": 0
+        },
+        "at": 364.7166666664993
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.635876216187694,
+        "probability": 0.33657682211720097,
+        "forced": false,
+        "contest": {
+          "distance": 1.233294315315101,
+          "facing": 0.9709160381256058
+        },
+        "at": 372.63333333315876
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3882064416702042,
+        "probability": 0.6827073187407272,
+        "forced": false,
+        "contest": {
+          "distance": 0.9824096304808811,
+          "facing": 0.4119302746457321
+        },
+        "at": 381.27499999981757
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 13.76213984067798,
+        "probability": 0.06570910464535233,
+        "forced": false,
+        "contest": {
+          "distance": 0.6971559500317114,
+          "facing": 0.7583550833185049
+        },
+        "at": 387.2083333331455
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.126724272444662,
+        "probability": 0.4414787877617564,
+        "forced": false,
+        "contest": {
+          "distance": 1.1119077085209514,
+          "facing": 0
+        },
+        "at": 397.21666666646973
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.368017559008056,
+        "probability": 0.35203391051028454,
+        "forced": false,
+        "contest": {
+          "distance": 1.5778256630579839,
+          "facing": 0.9548341889422461
+        },
+        "at": 401.09999999979954
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.974031342471158,
+        "probability": 0.18929361767521613,
+        "forced": false,
+        "contest": {
+          "distance": 1.3913339245013987,
+          "facing": 0
+        },
+        "at": 406.28333333312816
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.474071217730325,
+        "probability": 0.4458700294452627,
+        "forced": false,
+        "contest": {
+          "distance": 1.0544495036120485,
+          "facing": 0.45309550357498385
+        },
+        "at": 414.3833333331208
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 2.431261168694508,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 2.246100192952942,
+          "facing": 0
+        },
+        "at": 428.92499999977423
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3885930701422415,
+        "probability": 0.6902596075310649,
+        "forced": false,
+        "contest": {
+          "distance": 0.9000733470013289,
+          "facing": 0
+        },
+        "at": 436.14999999976766
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.247318019688758,
+        "probability": 0.19244071559310788,
+        "forced": false,
+        "contest": {
+          "distance": 2.6559535829549885,
+          "facing": 0.27952895393201227
+        },
+        "at": 441.9583333330957
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.384269167723306,
+        "probability": 0.3390369253622201,
+        "forced": false,
+        "contest": {
+          "distance": 1.5348700111317723,
+          "facing": 0
+        },
+        "at": 450.19166666642155
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.428822059004239,
+        "probability": 0.26614965547783787,
+        "forced": false,
+        "contest": {
+          "distance": 1.1630524955129504,
+          "facing": 0.9994806500286973
+        },
+        "at": 455.75833333308316
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.377346422915261,
+        "probability": 0.535231808046792,
+        "forced": false,
+        "contest": {
+          "distance": 0.7712264956401141,
+          "facing": 0.7754121725184934
+        },
+        "at": 461.12499999974494
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.998537287940735,
+        "probability": 0.2999479528813021,
+        "forced": false,
+        "contest": {
+          "distance": 0.9814763177401433,
+          "facing": 0.6477186656246151
+        },
+        "at": 466.0999999997404
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.776864937285549,
+        "probability": 0.2509067394069252,
+        "forced": false,
+        "contest": {
+          "distance": 1.0732244839228435,
+          "facing": 0.9979661480368969
+        },
+        "at": 474.7583333330659
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.776864937285549,
+        "probability": 0.3691177760504263,
+        "forced": false,
+        "contest": {
+          "distance": 1.0713407890514128,
+          "facing": 0.9979947159503981
+        },
+        "at": 476.0583333330647
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 4.7565986693203675,
+        "probability": 0.2544069886315888,
+        "forced": false,
+        "contest": {
+          "distance": 1.4720280262323144,
+          "facing": 0.998617126583189
+        },
+        "at": 479.6916666663947
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.381097138920337,
+        "probability": 0.4960087218335416,
+        "forced": false,
+        "contest": {
+          "distance": 1.649330827033743,
+          "facing": 0
+        },
+        "at": 487.94999999972055
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.491400000000002,
+        "probability": 0.5318805555555554,
+        "forced": false,
+        "contest": null,
+        "at": 490.7583333330513
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.491400000000002,
+        "probability": 0.49468611111111405,
+        "forced": false,
+        "contest": null,
+        "at": 493.70833333304864
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.9786295699230021,
+        "probability": 0.8228954095935752,
+        "forced": false,
+        "contest": {
+          "distance": 1.4079446072711923,
+          "facing": 0.9873794336561289
+        },
+        "at": 496.0249999997132
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.816266742863205,
+        "probability": 0.2676928726464165,
+        "forced": false,
+        "contest": {
+          "distance": 1.2941791063679458,
+          "facing": 0.4399133867453069
+        },
+        "at": 502.48333333304066
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3536194857970787,
+        "probability": 0.6217883966217588,
+        "forced": false,
+        "contest": {
+          "distance": 1.3032772423635421,
+          "facing": 0
+        },
+        "at": 513.5583333330306
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3827867027333047,
+        "probability": 0.43232537172679747,
+        "forced": false,
+        "contest": {
+          "distance": 1.1141010904005602,
+          "facing": 0
+        },
+        "at": 523.749999999688
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.3024127916686465,
+        "probability": 0.20660902755029678,
+        "forced": false,
+        "contest": {
+          "distance": 1.362575448327292,
+          "facing": 0.9998128317849969
+        },
+        "at": 530.0083333330157
+      },
+      {
+        "kind": "jump",
+        "zone": "rim",
+        "distance": 0.076648634489782,
+        "probability": 0.7537944057960013,
+        "forced": false,
+        "contest": {
+          "distance": 0.9992237290755757,
+          "facing": 0
+        },
+        "at": 539.2333333330073
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.528305285597437,
+        "probability": 0.30294219930541333,
+        "forced": false,
+        "contest": {
+          "distance": 1.289429691125011,
+          "facing": 0.9829490942378045
+        },
+        "at": 549.1416666663316
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.399314485840399,
+        "probability": 0.404311004107011,
+        "forced": false,
+        "contest": {
+          "distance": 1.6378937657107813,
+          "facing": 0.9708922388925144
+        },
+        "at": 556.466666666325
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3899767296720285,
+        "probability": 0.6467490146677606,
+        "forced": false,
+        "contest": {
+          "distance": 1.076096943659169,
+          "facing": 0
+        },
+        "at": 563.8916666663182
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.68906876627705,
+        "probability": 0.3895443259766146,
+        "forced": false,
+        "contest": {
+          "distance": 1.1576931141005855,
+          "facing": 0.9995321391503293
+        },
+        "at": 578.3583333329717
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.767496757925982,
+        "probability": 0.452922582968411,
+        "forced": false,
+        "contest": {
+          "distance": 2.0777256059324576,
+          "facing": 0.3600102325112072
+        },
+        "at": 587.7083333329632
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.358451064485525,
+        "probability": 0.2923839568663346,
+        "forced": false,
+        "contest": {
+          "distance": 1.4044410834809655,
+          "facing": 0.996491447784163
+        },
+        "at": 595.8083333329558
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.7992489366197555,
+        "probability": 0.0283743104818431,
+        "forced": false,
+        "contest": {
+          "distance": 0.9942371735078541,
+          "facing": 0.982921789652183
+        },
+        "at": 601.9416666662836
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.03882126959941,
+        "probability": 0.2720818965604865,
+        "forced": false,
+        "contest": {
+          "distance": 1.0952075605795382,
+          "facing": 0
+        },
+        "at": 603.9833333329484
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.558261353466307,
+        "probability": 0.30986776276476813,
+        "forced": false,
+        "contest": {
+          "distance": 1.111789058585938,
+          "facing": 0.9976651930749891
+        },
+        "at": 609.5333333329434
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.739683814806531,
+        "probability": 0.3346690584744765,
+        "forced": false,
+        "contest": {
+          "distance": 1.0679176476614523,
+          "facing": 0.9977908987608217
+        },
+        "at": 617.3499999996029
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.759307630920173,
+        "probability": 0.3372834505230632,
+        "forced": false,
+        "contest": {
+          "distance": 1.0588022863507651,
+          "facing": 0.9855952343636434
+        },
+        "at": 626.1833333329282
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.157269384685478,
+        "probability": 0.7739272135838318,
+        "forced": false,
+        "contest": {
+          "distance": 0.7855594499099837,
+          "facing": 0
+        },
+        "at": 629.1166666662589
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.097909755782308,
+        "probability": 0.3023246694230855,
+        "forced": false,
+        "contest": {
+          "distance": 1.346615950605558,
+          "facing": 0.8979524287769863
+        },
+        "at": 637.8999999995842
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 0.907209250499941,
+        "probability": 0.5404037737136033,
+        "forced": false,
+        "contest": {
+          "distance": 1.350813532603645,
+          "facing": 0.9805026625054752
+        },
+        "at": 651.5416666662385
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.365778938080626,
+        "probability": 0.04513483155896359,
+        "forced": false,
+        "contest": {
+          "distance": 1.2903459134298134,
+          "facing": 0.9971882054916706
+        },
+        "at": 658.8833333328985
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.388000114949817,
+        "probability": 0.5636175423394566,
+        "forced": false,
+        "contest": {
+          "distance": 1.1669282835700598,
+          "facing": 0
+        },
+        "at": 664.2083333328936
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.821888689792488,
+        "probability": 0.28549248679491157,
+        "forced": false,
+        "contest": {
+          "distance": 0.8350562895991377,
+          "facing": 0.9226111482617588
+        },
+        "at": 672.7333333328859
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.181858942863558,
+        "probability": 0.3707976923468531,
+        "forced": false,
+        "contest": {
+          "distance": 1.0606317131904452,
+          "facing": 0.9996765780134967
+        },
+        "at": 674.016666666218
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 1.963720790766808,
+        "probability": 0.8959514904812053,
+        "forced": false,
+        "contest": {
+          "distance": 1.0761345882259403,
+          "facing": 0.42136923658526
+        },
+        "at": 676.5166666662158
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.6916077980261415,
+        "probability": 0.23939963462822064,
+        "forced": false,
+        "contest": {
+          "distance": 1.0838273263271976,
+          "facing": 0.15524991761673815
+        },
+        "at": 687.2833333328726
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.182165880434295,
+        "probability": 0.5076174239179142,
+        "forced": false,
+        "contest": {
+          "distance": 0.9757470189964729,
+          "facing": 0.8669066625011502
+        },
+        "at": 694.7333333328659
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.391743832388418,
+        "probability": 0.82,
+        "forced": false,
+        "contest": {
+          "distance": 1.5368290113313003,
+          "facing": 0
+        },
+        "at": 704.433333332857
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.384460441730419,
+        "probability": 0.7166969097056631,
+        "forced": false,
+        "contest": {
+          "distance": 1.0318014469775327,
+          "facing": 0
+        },
+        "at": 718.1499999995112
+      },
+      {
+        "kind": "dunk",
+        "zone": "rim",
+        "distance": 0.38970303552567465,
+        "probability": 0.97,
+        "forced": false,
+        "contest": {
+          "distance": 0.983450111396825,
+          "facing": 0
+        },
+        "at": 719.3833333328434
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 1.9900896438244957,
+        "probability": 0.6528589669094097,
+        "forced": false,
+        "contest": {
+          "distance": 1.9051564940300278,
+          "facing": 0
+        },
+        "at": 722.1666666661743
+      },
+      {
+        "kind": "jump",
+        "zone": "mid",
+        "distance": 5.563812192232416,
+        "probability": 0.43369650896574974,
+        "forced": false,
+        "contest": {
+          "distance": 1.5034685897147786,
+          "facing": 0.4955797709132792
+        },
+        "at": 730.0083333328338
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.618719779624372,
+        "probability": 0.1625533036116947,
+        "forced": false,
+        "contest": {
+          "distance": 1.2221254066646041,
+          "facing": 0.9778275028734555
+        },
+        "at": 737.8999999994933
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 11.874369841388237,
+        "probability": 0.06100930953968371,
+        "forced": false,
+        "contest": {
+          "distance": 1.1388404161706824,
+          "facing": 0.9999978978992892
+        },
+        "at": 747.8166666661509
+      },
+      {
+        "kind": "layup",
+        "zone": "rim",
+        "distance": 2.3471997839255048,
+        "probability": 0.6905043819303545,
+        "forced": false,
+        "contest": {
+          "distance": 1.2582293166103016,
+          "facing": 0
+        },
+        "at": 753.5083333328124
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.8800222222222245,
+        "forced": false,
+        "contest": null,
+        "at": 756.2749999994766
+      },
+      {
+        "kind": "lancer",
+        "zone": "mid",
+        "distance": 4.4914,
+        "probability": 0.98,
+        "forced": false,
+        "contest": null,
+        "at": 759.1999999994739
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.927072086021275,
+        "probability": 0.2891908890320416,
+        "forced": false,
+        "contest": {
+          "distance": 1.0253923600431625,
+          "facing": 0.6439719123203616
+        },
+        "at": 766.849999999467
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.826397746450607,
+        "probability": 0.34488402904978815,
+        "forced": false,
+        "contest": {
+          "distance": 1.1484550760526542,
+          "facing": 0.7071527178306833
+        },
+        "at": 773.1083333327946
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 7.333441431928357,
+        "probability": 0.1592646892760249,
+        "forced": false,
+        "contest": {
+          "distance": 1.4671238247049818,
+          "facing": 0.9977044046587409
+        },
+        "at": 778.6416666661229
+      },
+      {
+        "kind": "jump",
+        "zone": "three",
+        "distance": 13.141948883369956,
+        "probability": 0.059790861587641256,
+        "forced": false,
+        "contest": {
+          "distance": 1.3367272361654916,
+          "facing": 0
+        },
+        "at": 788.7583333327804
+      }
+    ],
+    "passes": 166,
+    "possessions": 116,
+    "emptyReboundJumps": 0,
+    "actualJumps": {
+      "tip": 2,
+      "loose-ball": 233,
+      "shot": 105,
+      "contest": 102
+    },
+    "rebounds": {
+      "air": 51,
+      "ground": 4
+    },
+    "collisions": {
+      "calls": 8395,
+      "corrections": 12991,
+      "airCorrections": 77,
+      "maxAirZ": 0.7260191117592932,
+      "stationaryCorrections": 87,
+      "maxCorrection": 0.03476853125233912
+    },
+    "targetChanges": 0,
+    "bigTargetChanges": 0,
+    "teleports": [
+      {
+        "at": 6.216666666666765,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.6961442126877095
+      },
+      {
+        "at": 14.483333333333151,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 7.265802626680173
+      },
+      {
+        "at": 21.824999999999402,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.003171934075973
+      },
+      {
+        "at": 31.458333333332188,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.9660986291863147
+      },
+      {
+        "at": 56.499999999997435,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.3754670796925454
+      },
+      {
+        "at": 74.70833333333886,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.468233189377851
+      },
+      {
+        "at": 87.30833333334888,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.123067322328401
+      },
+      {
+        "at": 110.07500000003367,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 6.628019084296729
+      },
+      {
+        "at": 119.29166666670767,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.937397100816567
+      },
+      {
+        "at": 126.52500000004676,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.949928801961899
+      },
+      {
+        "at": 141.78333333336872,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.6889309134521175
+      },
+      {
+        "at": 151.09166666669358,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 2.7441456345296973
+      },
+      {
+        "at": 164.84166666668108,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 3.792654482939165
+      },
+      {
+        "at": 171.18333333334198,
+        "from": "mort",
+        "to": "remise",
+        "period": 1,
+        "meters": 4.243589757261583
+      },
+      {
+        "at": 184.8749999999962,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 1,
+        "meters": 13.945327244153464
+      },
+      {
+        "at": 200.1499999999823,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.0182846275197885
+      },
+      {
+        "at": 202.58333333331342,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.8841640292492747
+      },
+      {
+        "at": 209.44999999997384,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.821871108050528
+      },
+      {
+        "at": 219.40833333329812,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.60760797575768
+      },
+      {
+        "at": 222.04166666662906,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.8950697200568682
+      },
+      {
+        "at": 230.06666666662176,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.775433576737658
+      },
+      {
+        "at": 243.42499999994294,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 2.870700227752523
+      },
+      {
+        "at": 261.0083333332603,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.362954021808396
+      },
+      {
+        "at": 267.6083333332543,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.9126099992328536
+      },
+      {
+        "at": 277.066666666579,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.6582576128863415
+      },
+      {
+        "at": 290.7749999998999,
+        "from": "mort",
+        "to": "lancers",
+        "period": 2,
+        "meters": 10.632689998058074
+      },
+      {
+        "at": 297.3833333332272,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 7.472972084830227
+      },
+      {
+        "at": 308.249999999884,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.3574365818066276
+      },
+      {
+        "at": 318.1583333332083,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.517156622585726
+      },
+      {
+        "at": 326.924999999867,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.026732905712337
+      },
+      {
+        "at": 335.12499999985954,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.8791308516495664
+      },
+      {
+        "at": 359.45833333317074,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 3.6892053758825516
+      },
+      {
+        "at": 366.60833333316424,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 4.043016713811959
+      },
+      {
+        "at": 374.82499999982343,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 7.062066414150441
+      },
+      {
+        "at": 382.62499999981634,
+        "from": "mort",
+        "to": "remise",
+        "period": 2,
+        "meters": 5.196178747262331
+      },
+      {
+        "at": 393.0333333331402,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 2,
+        "meters": 27.933503008572742
+      },
+      {
+        "at": 408.274999999793,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 4.165077721023447
+      },
+      {
+        "at": 416.2083333331191,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 7.650556615506957
+      },
+      {
+        "at": 429.77499999977346,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 4.08816862724936
+      },
+      {
+        "at": 437.56666666643304,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.936955058448771
+      },
+      {
+        "at": 451.58333333308696,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 3.6167076445485655
+      },
+      {
+        "at": 489.3666666663859,
+        "from": "mort",
+        "to": "lancers",
+        "period": 3,
+        "meters": 10.357583803804665
+      },
+      {
+        "at": 496.87499999971243,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 5.382283050864509
+      },
+      {
+        "at": 514.8666666663628,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 4.052457625978155
+      },
+      {
+        "at": 558.5999999996563,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 7.226080708116248
+      },
+      {
+        "at": 565.2583333329836,
+        "from": "mort",
+        "to": "remise",
+        "period": 3,
+        "meters": 4.05427810296011
+      },
+      {
+        "at": 582.766666666301,
+        "from": "fin-periode",
+        "to": "remise",
+        "period": 3,
+        "meters": 25.122683424024235
+      },
+      {
+        "at": 589.9333333329612,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 2.8777909223780815
+      },
+      {
+        "at": 619.499999999601,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 4.597005722440419
+      },
+      {
+        "at": 630.474999999591,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 7.236864436661194
+      },
+      {
+        "at": 639.8583333329158,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.3468843224124725
+      },
+      {
+        "at": 665.5916666662257,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 4.033270986687365
+      },
+      {
+        "at": 677.366666666215,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.882087597367613
+      },
+      {
+        "at": 689.1749999995376,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.2566775479901837
+      },
+      {
+        "at": 696.3499999995311,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 6.22009961000948
+      },
+      {
+        "at": 698.8083333328622,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.947895808360145
+      },
+      {
+        "at": 705.9833333328556,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.5849509299628046
+      },
+      {
+        "at": 720.2333333328427,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.556322926565096
+      },
+      {
+        "at": 723.4999999995064,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.109635119077613
+      },
+      {
+        "at": 731.983333332832,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.916627839500479
+      },
+      {
+        "at": 755.108333332811,
+        "from": "mort",
+        "to": "lancers",
+        "period": 4,
+        "meters": 10.793457954008373
+      },
+      {
+        "at": 761.1083333328055,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 6.759035500959498
+      },
+      {
+        "at": 775.2833333327926,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 5.489433359723598
+      },
+      {
+        "at": 782.2666666661196,
+        "from": "mort",
+        "to": "remise",
+        "period": 4,
+        "meters": 3.2585949879419105
+      }
+    ],
+    "events": {
+      "changement": 137,
+      "interception": 10,
+      "vol": 14,
+      "faute-main": 5,
+      "sirène": 4,
+      "déviation": 4,
+      "sortie": 2,
+      "faute-tir": 3,
+      "faute-intentionnelle": 1
+    },
+    "possessionPasses": [
+      1,
+      2,
+      2,
+      1,
+      3,
+      1,
+      0,
+      2,
+      2,
+      1,
+      0,
+      1,
+      2,
+      2,
+      2,
+      2,
+      3,
+      0,
+      3,
+      1,
+      0,
+      1,
+      2,
+      2,
+      1,
+      1,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      3,
+      2,
+      1,
+      2,
+      1,
+      1,
+      3,
+      1,
+      0,
+      1,
+      5,
+      1,
+      1,
+      1,
+      1,
+      2,
+      3,
+      2,
+      3,
+      1,
+      2,
+      1,
+      2,
+      1,
+      2,
+      1,
+      2,
+      2,
+      2,
+      3,
+      1,
+      0,
+      4,
+      1,
+      1,
+      2,
+      1,
+      1,
+      0,
+      0,
+      0,
+      2,
+      1,
+      2,
+      1,
+      0,
+      3,
+      2,
+      1,
+      2,
+      0,
+      2,
+      0,
+      1,
+      3,
+      3,
+      2,
+      1,
+      1,
+      1,
+      1,
+      4,
+      1,
+      3,
+      5,
+      3,
+      1,
+      2,
+      3,
+      1,
+      0,
+      0,
+      3,
+      2,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "takeoverDelays": [],
+    "sameBallTargetChanges": 0,
+    "targetExamples": [],
+    "blockedByOtherDunk": 0,
+    "clock": 797.6166666661056,
+    "score": [
+      51,
+      60
+    ],
+    "over": true,
+    "lineups": 42,
+    "trajectoryFallbacks": 2,
+    "boxPoints": [
+      51,
+      60
+    ],
+    "box": [
+      {
+        "pts": 51,
+        "fga": 48,
+        "fgm": 22,
+        "tpa": 18,
+        "tpm": 3,
+        "fta": 4,
+        "ftm": 4,
+        "pf": 5,
+        "oreb": 10,
+        "dreb": 14,
+        "ast": 15,
+        "tov": 13
+      },
+      {
+        "pts": 60,
+        "fga": 54,
+        "fgm": 26,
+        "tpa": 23,
+        "tpm": 8,
+        "fta": 2,
+        "ftm": 0,
+        "pf": 4,
+        "oreb": 15,
+        "dreb": 16,
+        "ast": 17,
+        "tov": 13
+      }
+    ]
+  }
+]

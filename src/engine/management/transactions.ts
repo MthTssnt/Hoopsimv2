@@ -1,7 +1,7 @@
 import { defaultRotation } from '../coach';
 import { coachingPreset, eligibleIds, PLAYER_ROLES, PLAYER_ROLE_LABELS, repairGamePlan, validateGamePlan } from '../gamePlan';
 import { playerName, POSITIONS, type League, type Player, type Team } from '../types';
-import { budget, commitmentAt, DIRECTION_LABELS, contractDecision, defaultFrontOffice, initialSalaryCap, LEAGUE_ECONOMY_CONFIG as CONFIG, playerValue, tradeStatus } from './economy';
+import { budget, contractSeason, commitmentAt, DIRECTION_LABELS, contractDecision, defaultFrontOffice, initialSalaryCap, LEAGUE_ECONOMY_CONFIG as CONFIG, playerValue, tradeStatus } from './economy';
 import { logMarket } from './state';
 import type { ContractOffer, Decision, TradeOffer } from './types';
 
@@ -20,7 +20,10 @@ export function repairManagedTeam(league: League, team: Team): void {
   const five = recommended.rotation.starterIds.map(id => league.players[id]);
   const avg = (key: 'three' | 'passing' | 'inside') => five.reduce((n, p) => n + p.attrs[key], 0) / 5;
   team.gamePlan = { ...previous, ...recommended,
-    offense: avg('three') >= 72 ? 'paceSpace' : avg('passing') >= 72 ? 'motion' : avg('inside') >= 74 ? 'insideOut' : 'balanced',
+    // Prefer a relative strength; a rising absolute shooting average must not send the whole league to one style.
+    offense: avg('three') >= 72 && avg('three') >= Math.max(avg('passing'), avg('inside')) + 2 ? 'paceSpace'
+      : avg('passing') >= 72 && avg('passing') >= Math.max(avg('three'), avg('inside')) + 2 ? 'motion'
+        : avg('inside') >= 74 && avg('inside') >= Math.max(avg('three'), avg('passing')) + 2 ? 'insideOut' : 'balanced',
     rolesByPlayerId: Object.fromEntries(Object.keys(recommended.rotation.minutesByPlayerId).map(id => [id, previous?.rolesByPlayerId[id] ?? 'rolePlayer'])),
   };
   repairGamePlan(team, league.players);
@@ -35,7 +38,7 @@ export function evaluateTrade(league: League, offer: TradeOffer): Decision & { r
   const reasons: string[] = [], projections: Record<string, number[]> = {};
   const from = league.teams.find(t => t.id === offer.fromTeamId), to = league.teams.find(t => t.id === offer.toTeamId);
   const ids = [...offer.outgoingIds, ...offer.incomingIds];
-  if (!marketOpen(league)) reasons.push('Échanges fermés après la date limite et pendant les playoffs.');
+  if (!marketOpen(league)) reasons.push(league.offseason?.stage === 'draft' ? 'Échanges suspendus pendant la draft.' : 'Échanges fermés après la date limite et pendant les playoffs.');
   if (!from || !to || from === to) reasons.push('Choisissez deux franchises distinctes.');
   if (!offer.outgoingIds.length || !offer.incomingIds.length || offer.outgoingIds.length > CONFIG.maxTradePlayers || offer.incomingIds.length > CONFIG.maxTradePlayers) reasons.push('Un à trois joueurs sont requis de chaque côté.');
   if (new Set(ids).size !== ids.length || ids.some(id => typeof id !== 'string' || !Object.hasOwn(league.players, id))) reasons.push('Joueur absent ou sélectionné plusieurs fois.');
@@ -72,7 +75,13 @@ export function evaluateTrade(league: League, offer: TradeOffer): Decision & { r
 /** Commit only after all speculative changes/plan repairs succeeded. Preserve object identities used by callers. */
 function transact(league: League, teams: string[], ids: string[], mutate: (draft: League) => void): string[] {
   if (!league.management) return ['Marché non initialisé : rechargez la carrière.'];
-  const draft = structuredClone(league);
+  // Only these fields can be mutated by the three private transaction bodies below.
+  // Calendar, archived boxes/reviews, other teams and players are read-only context.
+  const draft: League = { ...league,
+    teams: league.teams.map(t => teams.includes(t.id) ? structuredClone(t) : t),
+    players: { ...league.players }, management: structuredClone(league.management), feed: structuredClone(league.feed),
+  };
+  for (const id of ids) draft.players[id] = structuredClone(league.players[id]);
   try {
     mutate(draft);
     for (const teamId of teams) {
@@ -85,10 +94,15 @@ function transact(league: League, teams: string[], ids: string[], mutate: (draft
       if (new Set(team.roster).size !== team.roster.length || team.roster.some(id => draft.players[id]?.teamId !== team.id)) return ['Effectif incohérent.'];
     }
   } catch (error) { return [error instanceof Error ? error.message : 'Transaction impossible.']; }
-  for (const teamId of teams) Object.assign(league.teams.find(t => t.id === teamId)!, draft.teams.find(t => t.id === teamId)!);
-  for (const id of ids) Object.assign(league.players[id], draft.players[id]);
+  for (const teamId of teams) commitObject(league.teams.find(t => t.id === teamId)!, draft.teams.find(t => t.id === teamId)!);
+  for (const id of ids) commitObject(league.players[id], draft.players[id]);
   league.management = draft.management; league.feed = draft.feed;
   return [];
+}
+/** Object.assign alone retains fields intentionally removed by a successful transaction. */
+function commitObject<T extends object>(target: T, source: T): void {
+  for (const key of Object.keys(target) as (keyof T)[]) if (!Object.hasOwn(source, key)) delete target[key];
+  Object.assign(target, source);
 }
 export function executeTrade(league: League, offer: TradeOffer): string[] {
   const decision = evaluateTrade(league, offer);
@@ -132,7 +146,7 @@ export function extendContract(league: League, teamId: string, playerId: string,
   if (!decision.accepted) return decision.reasons;
   return transact(league, [teamId], [playerId], draft => {
     const player = draft.players[playerId]; player.extension = structuredClone(offer);
-    logMarket(draft, { type: 'extend', teamIds: [teamId], playerIds: [playerId], description: `${draft.teams.find(t => t.id === teamId)!.abbr} prolonge ${playerName(player)} : ${offer.salary.toFixed(1)} M€ × ${offer.years} an(s) à partir de la saison suivante.` });
+    logMarket(draft, { type: 'extend', teamIds: [teamId], playerIds: [playerId], description: `${draft.teams.find(t => t.id === teamId)!.abbr} prolonge ${playerName(player)} : ${offer.salary.toFixed(1)} M€ × ${offer.years} an(s) à partir de ${contractSeason(draft) + 1}.` });
   });
 }
 

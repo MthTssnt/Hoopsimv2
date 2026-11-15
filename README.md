@@ -151,7 +151,7 @@ python scripts/smoke-market.py        # Vite démarré, Playwright Python et Chr
 ```
 
 Voir le [bilan du lot 4](docs/MANAGEMENT_LOT_4.md) pour les règles économiques,
-les preuves et les limites. Le lot 6 reste à développer.
+les preuves et les limites. La livraison des lots 0–6 est terminée ; les limites sont détaillées dans le bilan final.
 
 ## Draft et développement
 
@@ -171,3 +171,27 @@ python scripts/smoke-development.py   # Vite, Playwright Python et Chromium syst
 ```
 
 Le [bilan du lot 5](docs/DEVELOPMENT_LOT_5.md) précise les règles, preuves et limites.
+
+## Bilan de la refonte et sauvegardes
+
+Les lots 0 à 6 sont livrés. Le [bilan final](docs/REFONTE_FINAL_LOT_6.md)
+relie les vingt critères d’acceptation à leurs preuves : 464 tests, trente saisons
+sur trois graines, confrontations tactiques appariées et matchs physiques.
+Les menus de gestion sont vérifiés à 1 280, 768 et 390 pixels ; les tableaux
+se parcourent horizontalement et au clavier.
+
+Une erreur d’enregistrement est affichée avec **Exporter la partie** et **Réessayer**.
+Le menu permet aussi d’exporter une copie JSON de la carrière courante.
+Un chargement invalide conserve le contenu déjà stocké dans le navigateur.
+
+```bash
+npx tsx scripts/calibrate-franchise.ts --snapshot=/tmp/hoopsim-aged-league.json
+npx tsx scripts/calibrate-tactics.ts --output=/tmp/hoopsim-lot6-tactics.json
+npx tsx scripts/calibrate-tactics.ts --fixture=/tmp/hoopsim-aged-league.json --output=/tmp/hoopsim-lot6-tactics-aged.json
+npx tsx scripts/check-release-metrics.ts
+python scripts/smoke-release.py # Vite démarré, Playwright Python et Chromium système
+```
+
+Les résultats sont écrits sous `/tmp`. Les règles fictives de budget, les limites
+du journal, du scouting et des stratégies physiques sont précisées dans le bilan ;
+les échanges de picks, zone/press et la psychologie ne sont pas annoncés comme disponibles.

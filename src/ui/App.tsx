@@ -1,5 +1,6 @@
+import { downloadSave } from './saveBackup';
 import { budget } from '../engine/management/economy';
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ROUND_NAMES,
   daysUntilNextUserGame,
@@ -53,6 +54,12 @@ export default function App() {
   const [tab, setTab] = useState<TabId>('accueil');
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const revealActiveTab = () => navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    revealActiveTab(); window.addEventListener('resize', revealActiveTab);
+    return () => window.removeEventListener('resize', revealActiveTab);
+  }, [tab, Boolean(state.league), Boolean(state.liveMatch)]);
 
   const ui = useMemo(
     () => ({ openPlayer: (id: string) => setPlayerId(id), openTeam: (id: string) => setTeamId(id) }),
@@ -60,7 +67,7 @@ export default function App() {
   );
 
   if (!state.league) {
-    return <NewGameScreen hasSave={state.hasSave()} onLoad={() => store.load()} />;
+    return <NewGameScreen error={state.loadError} hasSave={state.hasSave()} onLoad={() => store.load()} />;
   }
 
   const league = state.league;
@@ -79,10 +86,10 @@ export default function App() {
     <UiContext.Provider value={ui}>
       <div className="app">
         <TopBar league={league} userTeam={userTeam} onDevelopment={() => setTab('developpement')} />
-        <nav className="nav">
+        <nav className="nav" ref={navRef}>
           <div className="nav-inner">
             {TABS.map((t) => (
-              <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+              <button key={t.id} aria-current={tab === t.id ? 'page' : undefined} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
                 {t.label}
               </button>
             ))}
@@ -90,6 +97,8 @@ export default function App() {
         </nav>
 
         <main className="app-main">
+          {state.saveError && <div className="panel" role="alert"><p>{state.saveError}</p><div className="row" style={{ flexWrap: 'wrap' }}><button className="btn" onClick={() => downloadSave(league)}>Exporter la partie</button><button className="btn" onClick={() => store.retrySave()}>Réessayer la sauvegarde</button></div></div>}
+          {state.loadError && <p role="alert">{state.loadError}</p>}
           {state.actionError && <p role="alert">{state.actionError}</p>}
           {league.phase === 'offseason' && !league.offseason && <p className="panel" role="status">{budget(league, userTeam).expiringIds.length} contrat(s) sans prolongation arrivent à expiration. <button className="btn btn-sm" onClick={() => setTab('marche')}>Négocier avant la draft</button></p>}
           {tab === 'accueil' && <Dashboard league={league} team={userTeam} onNavigate={setTab} />}
@@ -206,9 +215,10 @@ function TopBar({ league, userTeam, onDevelopment }: { league: League; userTeam:
                 La partie est sauvegardée automatiquement dans ce navigateur après chaque action.
               </p>
               <div className="row" style={{ flexWrap: 'wrap' }}>
-                <button className="btn" onClick={() => { store.save(); setConfirmNew(false); }}>
+                <button className="btn" onClick={() => { if (store.retrySave()) setConfirmNew(false); }}>
                   Sauvegarder maintenant
                 </button>
+                <button className="btn" onClick={() => downloadSave(league)}>Exporter la partie</button>
                 <button
                   className="btn"
                   onClick={() => {

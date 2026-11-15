@@ -1,7 +1,7 @@
 /** Paired seeds + mirrored home court, no career mutation, reports measured box counters. */
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
-import { createNewGame } from '../src/engine';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createNewGame, migrateLeague, projectedStrength } from '../src/engine';
 import { OFFENSE_STYLES, type OffenseStyle } from '../src/engine/gamePlan';
 import { simulateGame } from '../src/engine/simGame';
 import { Rng } from '../src/engine/rng';
@@ -27,9 +27,13 @@ function add(to: Totals, result: GameResult, teamId: string) {
   }
   assert.equal(result.box.rows[teamId].reduce((s, r) => s + r.line.pts, 0), mine);
 }
-for (const leagueSeed of [31, 8126, 919]) {
-  const league = createNewGame('bos', leagueSeed);
-  const mine = league.teams.find(t => t.id === 'bos')!, theirs = league.teams.find(t => t.id === 'phx')!;
+const fixturePath = process.argv.find(s => s.startsWith('--fixture='))?.slice(10);
+const fixtures = fixturePath ? [migrateLeague(JSON.parse(readFileSync(fixturePath, 'utf8')))] : [31, 8126, 919].map(seed => createNewGame('bos', seed));
+const matchups: { season: number; teams: string[]; strengths: number[] }[] = [];
+for (const league of fixtures) {
+  const ranked = [...league.teams].filter(t => t.id !== league.userTeamId).sort((a, b) => projectedStrength(league, a.id) - projectedStrength(league, b.id));
+  const mine = fixturePath ? ranked[Math.floor(ranked.length / 2)] : league.teams.find(t => t.id === 'bos')!, theirs = fixturePath ? ranked[Math.floor(ranked.length / 2) + 1] : league.teams.find(t => t.id === 'phx')!;
+  matchups.push({ season: league.season, teams: [mine.id, theirs.id], strengths: [projectedStrength(league, mine.id), projectedStrength(league, theirs.id)] });
   for (const style of OFFENSE_STYLES) {
     for (let seed = 1; seed <= samples; seed++) {
       for (const home of [true, false]) {
@@ -52,7 +56,7 @@ for (const leagueSeed of [31, 8126, 919]) {
       roundRobin[styleA].wins += Number(aWon); roundRobin[styleB].wins += Number(!aWon);
     }
   }
-  console.log(`Fixture ${leagueSeed}: ${games} matchs cumulés.`);
+  console.log(`Fixture ${league.seed}/${league.season}: ${games} matchs cumulés.`);
 }
 const metrics = Object.fromEntries(OFFENSE_STYLES.map(style => {
   const t = totals[style];
@@ -65,4 +69,4 @@ assert(metrics.paceSpace.possessions > metrics.balanced.possessions, 'Pace & Spa
 assert(metrics.paceSpace.threeShare > metrics.balanced.threeShare, 'Pace & Space did not change shot selection');
 console.log(JSON.stringify({ games, samples, metrics }, null, 2));
 const output = process.argv.find(s => s.startsWith('--output='))?.slice(9) ?? '/tmp/hoopsim-tactics-calibration.json';
-writeFileSync(output, JSON.stringify({ games, samples, leagueSeeds: [31, 8126, 919], totals, roundRobin, metrics }, null, 2));
+writeFileSync(output, JSON.stringify({ games, samples, matchups, leagueSeeds: fixtures.map(l => l.seed), fixtureSeasons: fixtures.map(l => l.season), totals, roundRobin, metrics }, null, 2));

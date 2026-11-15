@@ -1,0 +1,28 @@
+
+ RUN  v4.1.10 /workspace/Hoopsimv2
+
+ ↓ src/engine/engine.test.ts > générateur aléatoire > est déterministe pour une même graine
+ ↓ src/engine/engine.test.ts > générateur aléatoire > produit des tirages pondérés cohérents
+ ↓ src/engine/engine.test.ts > calendrier > donne 82 matchs à chaque équipe
+ ↓ src/engine/engine.test.ts > calendrier > ne programme jamais deux matchs le même jour pour une équipe
+ ↓ src/engine/engine.test.ts > simulation de match > distribue exactement 240 minutes par équipe
+ ↓ src/engine/engine.test.ts > simulation de match > produit des feuilles de match cohérentes
+ ↓ src/engine/engine.test.ts > simulation de match > renvoie le même résultat pour une même graine
+ ↓ src/engine/engine.test.ts > saison complète > joue 82 matchs par équipe
+ ↓ src/engine/engine.test.ts > saison complète > donne des moyennes de ligue crédibles
+ ↓ src/engine/engine.test.ts > saison complète > classe les équipes par pourcentage de victoires
+ ↓ src/engine/engine.test.ts > saison complète > désigne un champion à l'issue des playoffs
+ ↓ src/engine/engine.test.ts > saison complète > enchaîne sur une nouvelle saison propre
+ ✓ src/engine/engine.test.ts > intersaisons successives > ne donnent jamais à un rookie l’identifiant d’un joueur actif (effectifs cohérents) 789ms
+ ↓ src/engine/engine.test.ts > intersaisons successives > répare au chargement les effectifs abîmés par l’ancien bug
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 13 skipped (14)
+   Start at  12:42:40
+   Duration  5.80s (transform 382ms, setup 0ms, import 4.81s, tests 791ms, environment 0ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

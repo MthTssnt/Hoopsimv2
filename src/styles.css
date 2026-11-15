@@ -701,3 +701,21 @@ tbody tr.highlight {
     font-size: 26px;
   }
 }
+
+/* Management controls and scrollable tables remain usable on narrow screens and by keyboard. */
+.app-main select, .app-main input:not([type="checkbox"]):not([type="range"]) {
+  max-width: 100%; padding: 7px 8px; background: var(--bg-elevated); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; font: inherit;
+}
+.app-main .btn { max-width: 100%; }
+.grid, .grid > *, .panel, .table-wrap { min-width: 0; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.app-main :is(button, input, select, summary):focus-visible, .table-wrap:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+@media (max-width: 1000px) {
+  .topbar { position: static; }
+  .nav { position: sticky; top: 0; }
+  .app-main { padding-inline: 12px; }
+}

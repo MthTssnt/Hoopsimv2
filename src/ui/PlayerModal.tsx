@@ -1,4 +1,4 @@
-import { expectedSalary, playerValue, tradeStatus, DIRECTION_LABELS } from '../engine/management/economy';
+import { contractSeason, expectedSalary, playerValue, tradeStatus, DIRECTION_LABELS } from '../engine/management/economy';
 import { PLAYER_ROLE_LABELS } from '../engine/gamePlan';
 import {
   formatMinutes,
@@ -99,7 +99,7 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
       <div className="panel" style={{ marginBottom: 16 }}>
         <p>Valeur de marché estimée : {playerValue(player, team?.frontOffice?.direction).toFixed(1)} · projet {DIRECTION_LABELS[team?.frontOffice?.direction ?? 'compete']}.</p>
         <p>{player.teamId ? `Statut : ${{ normal: 'à l’écoute', listed: 'liste des transferts', core: 'noyau dur', unavailable: 'indisponible' }[tradeStatus(league, player)]}` : `Agent libre · demande indicative ${expectedSalary(player).toFixed(1)} M€ par saison.`}</p>
-        {player.extension && <p>Prolongation signée pour la saison suivante : {player.extension.salary.toFixed(1)} M€ × {player.extension.years} an(s).</p>}
+        {player.extension && <p>Prolongation signée à partir de {contractSeason(league) + 1} : {player.extension.salary.toFixed(1)} M€ × {player.extension.years} an(s).</p>}
         <p>Rôle promis : {player.promisedRole ? PLAYER_ROLE_LABELS[player.promisedRole] : 'aucun'} · rôle actuel : {team?.gamePlan?.rolesByPlayerId[player.id] ? PLAYER_ROLE_LABELS[team.gamePlan.rolesByPlayerId[player.id]] : 'hors rotation'} · minutes cibles : {team?.gamePlan?.rotation.minutesByPlayerId[player.id] ?? 0}.</p>
         {player.minimumException && <p className="faint small">Contrat minimal de secours pour préserver l’effectif réglementaire.</p>}
         {(league.management?.transactions ?? []).filter(e => e.playerIds.includes(player.id)).slice(-6).map(e => <p className="faint small" key={e.id}>Saison {e.season}, jour {e.day + 1} : {e.description}</p>)}

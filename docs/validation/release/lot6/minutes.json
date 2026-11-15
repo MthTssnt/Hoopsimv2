@@ -1,0 +1,58 @@
+[
+  {
+    "seed": 31,
+    "quarterMinutes": 1,
+    "target": 6,
+    "normalizedMinutes": 8.870000000000605,
+    "fouls": 0
+  },
+  {
+    "seed": 8126,
+    "quarterMinutes": 1,
+    "target": 6,
+    "normalizedMinutes": 7.403333333332911,
+    "fouls": 0
+  },
+  {
+    "seed": 31,
+    "quarterMinutes": 1,
+    "target": 36,
+    "normalizedMinutes": 30.263333333320563,
+    "fouls": 0
+  },
+  {
+    "seed": 8126,
+    "quarterMinutes": 1,
+    "target": 36,
+    "normalizedMinutes": 32.06666666665093,
+    "fouls": 0
+  },
+  {
+    "seed": 31,
+    "quarterMinutes": 3,
+    "target": 6,
+    "normalizedMinutes": 9.99888888888751,
+    "fouls": 0
+  },
+  {
+    "seed": 8126,
+    "quarterMinutes": 3,
+    "target": 6,
+    "normalizedMinutes": 7.611666666670053,
+    "fouls": 0
+  },
+  {
+    "seed": 31,
+    "quarterMinutes": 3,
+    "target": 36,
+    "normalizedMinutes": 32.494444444419834,
+    "fouls": 1
+  },
+  {
+    "seed": 8126,
+    "quarterMinutes": 3,
+    "target": 36,
+    "normalizedMinutes": 31.258888888865116,
+    "fouls": 0
+  }
+]

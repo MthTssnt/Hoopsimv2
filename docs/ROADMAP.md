@@ -157,7 +157,7 @@ ont été retirés ; la direction actuelle est celle de `ART_DIRECTION.md` et `s
 - ✅ Lot 3 : interprète spatial, man/switch/drop, commandes coach en pause Regarder, consignes/cinq différés et rapport physique observé ; 30 matchs complets, contrôles Chromium et clavier.
 - ✅ Lot 4 : marché, échanges atomiques, signatures/prolongations, expiration réelle, budget et IA GM minimale ; 439 tests, 11 785 matchs, neuf transitions et parcours navigateur.
 - ✅ Lot 5 : draft interactive à deux tours, scouting estimé, entraînement sur durée réelle, projets CPU expliqués et dix bilans archivés ; 456 tests, 19 656 matchs, quinze transitions avec draft rechargée et parcours Chromium.
-- ⬜ Lot 6 : finition, calibrage approfondi des stratégies/économie et validation finale du §17.
+- ✅ Lot 6 : valeur de marché corrigée, styles CPU équilibrés sur trente saisons, suppressions de champs atomiques, erreurs de stockage/export, petits écrans et acceptation §17 ; 464 tests, 36 900 matchs réguliers et 8 640 matchs tactiques appariés, campagnes physiques et Chromium.
 - Audit, preuves, scénarios et limites : [COACHING_REFONTE.md](COACHING_REFONTE.md).
 
 Suite du §19 : [lots 1–2, preuves et limites](COACHING_LOTS_1_2.md).
@@ -167,3 +167,5 @@ Livraison du lot 3 : [coaching sur le terrain et preuves](COACHING_LOT_3.md).
 Livraison du lot 4 : [marché, contrats et preuves](MANAGEMENT_LOT_4.md).
 
 Livraison du lot 5 : [draft, développement et preuves](DEVELOPMENT_LOT_5.md).
+
+Bilan final des lots 0–6 : [équilibrage, acceptation et limites](REFONTE_FINAL_LOT_6.md).

@@ -1,0 +1,114 @@
+Fixture 919/2036: 2160 matchs cumulés.
+{
+  "games": 2160,
+  "samples": 80,
+  "metrics": {
+    "balanced": {
+      "games": 160,
+      "points": 112.6125,
+      "possessions": 97.9375,
+      "fg": 0.4710697932565561,
+      "threeShare": 0.38448730400999026,
+      "threePct": 0.3623240707325875,
+      "ftPct": 0.8347646856750258,
+      "fga": 90.0875,
+      "oreb": 11.75,
+      "rebounds": 47.7875,
+      "ast": 24.3375,
+      "turnovers": 11.8875,
+      "fouls": 17.475,
+      "winRate": 0.45,
+      "roundRobinWinRate": 0.46
+    },
+    "paceSpace": {
+      "games": 160,
+      "points": 122.8375,
+      "possessions": 107.0625,
+      "fg": 0.4586616716186539,
+      "threeShare": 0.5483141712956983,
+      "threePct": 0.3658852632818942,
+      "ftPct": 0.8336886993603412,
+      "fga": 96.7625,
+      "oreb": 11.025,
+      "rebounds": 50.1,
+      "ast": 28.49375,
+      "turnovers": 14.025,
+      "fouls": 19.56875,
+      "winRate": 0.45625,
+      "roundRobinWinRate": 0.4975
+    },
+    "motion": {
+      "games": 160,
+      "points": 113.91875,
+      "possessions": 97.0875,
+      "fg": 0.4878237069268019,
+      "threeShare": 0.3547617376658011,
+      "threePct": 0.37388724035608306,
+      "ftPct": 0.8437283437283437,
+      "fga": 89.05625,
+      "oreb": 10.86875,
+      "rebounds": 46.6375,
+      "ast": 28.31875,
+      "turnovers": 11.28125,
+      "fouls": 17.475,
+      "winRate": 0.575,
+      "roundRobinWinRate": 0.4825
+    },
+    "pickRoll": {
+      "games": 160,
+      "points": 114.1125,
+      "possessions": 98.1875,
+      "fg": 0.48927491384766864,
+      "threeShare": 0.355791546522259,
+      "threePct": 0.3613362324570073,
+      "ftPct": 0.832010582010582,
+      "fga": 88.86875,
+      "oreb": 10.70625,
+      "rebounds": 46.48125,
+      "ast": 26.29375,
+      "turnovers": 12.075,
+      "fouls": 17.80625,
+      "winRate": 0.525,
+      "roundRobinWinRate": 0.56
+    },
+    "insideOut": {
+      "games": 160,
+      "points": 112.175,
+      "possessions": 95.2125,
+      "fg": 0.5213466518682945,
+      "threeShare": 0.22301146873843877,
+      "threePct": 0.38254810882548107,
+      "ftPct": 0.8412698412698413,
+      "fga": 84.46875,
+      "oreb": 10.2375,
+      "rebounds": 44.7875,
+      "ast": 24.65,
+      "turnovers": 12.55625,
+      "fouls": 17.53125,
+      "winRate": 0.54375,
+      "roundRobinWinRate": 0.475
+    },
+    "isolation": {
+      "games": 160,
+      "points": 109.35625,
+      "possessions": 94.2375,
+      "fg": 0.5005141765829293,
+      "threeShare": 0.2964595269575437,
+      "threePct": 0.37685827552031714,
+      "ftPct": 0.8415770609318997,
+      "fga": 85.0875,
+      "oreb": 9.55625,
+      "rebounds": 44.03125,
+      "ast": 16.70625,
+      "turnovers": 11.35,
+      "fouls": 16.80625,
+      "winRate": 0.54375,
+      "roundRobinWinRate": 0.525
+    }
+  }
+}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

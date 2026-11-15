@@ -1,0 +1,1193 @@
+[
+  {
+    "playId": "fiveOut",
+    "seed": 31,
+    "defensePolicy": "man",
+    "score": [
+      29,
+      27
+    ],
+    "samples": 526,
+    "formationSamples": 66,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 45,
+    "maxArrived": 4,
+    "maxStep": 0.06383018757302321,
+    "phases": {
+      "transition": 166,
+      "setup": 79,
+      "read": 58,
+      "fallback": 223
+    },
+    "observations": {
+      "playsStarted": {
+        "fiveOut": 27
+      },
+      "screenWindows": 0,
+      "cutsStarted": 14,
+      "fallbacks": 22,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 22
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "fiveOut",
+    "seed": 31,
+    "defensePolicy": "switch",
+    "score": [
+      29,
+      27
+    ],
+    "samples": 526,
+    "formationSamples": 66,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 45,
+    "maxArrived": 4,
+    "maxStep": 0.06383018757302321,
+    "phases": {
+      "transition": 166,
+      "setup": 79,
+      "read": 58,
+      "fallback": 223
+    },
+    "observations": {
+      "playsStarted": {
+        "fiveOut": 27
+      },
+      "screenWindows": 0,
+      "cutsStarted": 14,
+      "fallbacks": 22,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 22
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "fiveOut",
+    "seed": 31,
+    "defensePolicy": "drop",
+    "score": [
+      22,
+      23
+    ],
+    "samples": 542,
+    "formationSamples": 48,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 48,
+    "maxArrived": 4,
+    "maxStep": 0.06226081193197679,
+    "phases": {
+      "transition": 181,
+      "setup": 74,
+      "read": 49,
+      "fallback": 238
+    },
+    "observations": {
+      "playsStarted": {
+        "fiveOut": 19
+      },
+      "screenWindows": 0,
+      "cutsStarted": 9,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 23,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "fiveOut",
+    "seed": 8126,
+    "defensePolicy": "man",
+    "score": [
+      35,
+      33
+    ],
+    "samples": 594,
+    "formationSamples": 72,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 42,
+    "maxArrived": 4,
+    "maxStep": 0.0616808865043305,
+    "phases": {
+      "transition": 170,
+      "setup": 78,
+      "read": 76,
+      "fallback": 270
+    },
+    "observations": {
+      "playsStarted": {
+        "fiveOut": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 12,
+      "fallbacks": 22,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 30
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 25,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "fiveOut",
+    "seed": 8126,
+    "defensePolicy": "switch",
+    "score": [
+      35,
+      33
+    ],
+    "samples": 594,
+    "formationSamples": 72,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 42,
+    "maxArrived": 4,
+    "maxStep": 0.0616808865043305,
+    "phases": {
+      "transition": 170,
+      "setup": 78,
+      "read": 76,
+      "fallback": 270
+    },
+    "observations": {
+      "playsStarted": {
+        "fiveOut": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 12,
+      "fallbacks": 22,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 30
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 25,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "fiveOut",
+    "seed": 8126,
+    "defensePolicy": "drop",
+    "score": [
+      25,
+      16
+    ],
+    "samples": 575,
+    "formationSamples": 91,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 88,
+    "maxArrived": 4,
+    "maxStep": 0.0625148546246152,
+    "phases": {
+      "transition": 148,
+      "setup": 93,
+      "read": 94,
+      "fallback": 240
+    },
+    "observations": {
+      "playsStarted": {
+        "fiveOut": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 8,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 21
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 21,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "horns",
+    "seed": 31,
+    "defensePolicy": "man",
+    "score": [
+      29,
+      19
+    ],
+    "samples": 601,
+    "formationSamples": 149,
+    "bothElbowsSamples": 66,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.061811681479924586,
+    "phases": {
+      "transition": 130,
+      "setup": 98,
+      "screen": 58,
+      "roll": 79,
+      "fallback": 187,
+      "read": 49
+    },
+    "observations": {
+      "playsStarted": {
+        "horns": 24
+      },
+      "screenWindows": 3,
+      "cutsStarted": 12,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 16
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 16,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "horns",
+    "seed": 31,
+    "defensePolicy": "switch",
+    "score": [
+      14,
+      24
+    ],
+    "samples": 546,
+    "formationSamples": 127,
+    "bothElbowsSamples": 33,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.06192796241639401,
+    "phases": {
+      "transition": 142,
+      "setup": 43,
+      "screen": 89,
+      "roll": 72,
+      "fallback": 187,
+      "read": 13
+    },
+    "observations": {
+      "playsStarted": {
+        "horns": 20
+      },
+      "screenWindows": 6,
+      "cutsStarted": 12,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 1
+    }
+  },
+  {
+    "playId": "horns",
+    "seed": 31,
+    "defensePolicy": "drop",
+    "score": [
+      34,
+      23
+    ],
+    "samples": 523,
+    "formationSamples": 95,
+    "bothElbowsSamples": 21,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 4,
+    "maxStep": 0.061918513679570485,
+    "phases": {
+      "transition": 144,
+      "setup": 61,
+      "screen": 59,
+      "roll": 64,
+      "fallback": 191,
+      "read": 4
+    },
+    "observations": {
+      "playsStarted": {
+        "horns": 29
+      },
+      "screenWindows": 5,
+      "cutsStarted": 10,
+      "fallbacks": 23,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 20
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "horns",
+    "seed": 8126,
+    "defensePolicy": "man",
+    "score": [
+      25,
+      14
+    ],
+    "samples": 573,
+    "formationSamples": 195,
+    "bothElbowsSamples": 78,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.059889247325205466,
+    "phases": {
+      "transition": 142,
+      "setup": 68,
+      "fallback": 161,
+      "screen": 94,
+      "roll": 77,
+      "read": 31
+    },
+    "observations": {
+      "playsStarted": {
+        "horns": 23
+      },
+      "screenWindows": 2,
+      "cutsStarted": 11,
+      "fallbacks": 16,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 17
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 17,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "horns",
+    "seed": 8126,
+    "defensePolicy": "switch",
+    "score": [
+      31,
+      21
+    ],
+    "samples": 511,
+    "formationSamples": 103,
+    "bothElbowsSamples": 40,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.06378780882748868,
+    "phases": {
+      "transition": 133,
+      "setup": 69,
+      "fallback": 217,
+      "screen": 62,
+      "roll": 30
+    },
+    "observations": {
+      "playsStarted": {
+        "horns": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 5,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 20
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "horns",
+    "seed": 8126,
+    "defensePolicy": "drop",
+    "score": [
+      23,
+      29
+    ],
+    "samples": 579,
+    "formationSamples": 192,
+    "bothElbowsSamples": 51,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.060414831603648654,
+    "phases": {
+      "transition": 173,
+      "setup": 59,
+      "fallback": 141,
+      "screen": 129,
+      "roll": 77
+    },
+    "observations": {
+      "playsStarted": {
+        "horns": 21
+      },
+      "screenWindows": 6,
+      "cutsStarted": 13,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 27
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 21,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "highPickRoll",
+    "seed": 31,
+    "defensePolicy": "man",
+    "score": [
+      18,
+      24
+    ],
+    "samples": 607,
+    "formationSamples": 151,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062253847463554925,
+    "phases": {
+      "transition": 163,
+      "setup": 55,
+      "screen": 78,
+      "roll": 78,
+      "fallback": 226,
+      "read": 7
+    },
+    "observations": {
+      "playsStarted": {
+        "highPickRoll": 20
+      },
+      "screenWindows": 2,
+      "cutsStarted": 12,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "highPickRoll",
+    "seed": 31,
+    "defensePolicy": "switch",
+    "score": [
+      18,
+      24
+    ],
+    "samples": 607,
+    "formationSamples": 151,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062253847463554925,
+    "phases": {
+      "transition": 163,
+      "setup": 55,
+      "screen": 78,
+      "roll": 78,
+      "fallback": 226,
+      "read": 7
+    },
+    "observations": {
+      "playsStarted": {
+        "highPickRoll": 20
+      },
+      "screenWindows": 2,
+      "cutsStarted": 12,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "highPickRoll",
+    "seed": 31,
+    "defensePolicy": "drop",
+    "score": [
+      24,
+      27
+    ],
+    "samples": 615,
+    "formationSamples": 173,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.06307258680320559,
+    "phases": {
+      "transition": 138,
+      "setup": 38,
+      "screen": 101,
+      "roll": 75,
+      "read": 18,
+      "fallback": 245
+    },
+    "observations": {
+      "playsStarted": {
+        "highPickRoll": 20
+      },
+      "screenWindows": 5,
+      "cutsStarted": 10,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 23
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "highPickRoll",
+    "seed": 8126,
+    "defensePolicy": "man",
+    "score": [
+      20,
+      19
+    ],
+    "samples": 595,
+    "formationSamples": 171,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.06073217077686163,
+    "phases": {
+      "transition": 171,
+      "setup": 60,
+      "screen": 68,
+      "roll": 96,
+      "fallback": 165,
+      "read": 35
+    },
+    "observations": {
+      "playsStarted": {
+        "highPickRoll": 24
+      },
+      "screenWindows": 3,
+      "cutsStarted": 11,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 18
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "highPickRoll",
+    "seed": 8126,
+    "defensePolicy": "switch",
+    "score": [
+      25,
+      15
+    ],
+    "samples": 634,
+    "formationSamples": 155,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.060469800872115856,
+    "phases": {
+      "transition": 142,
+      "setup": 66,
+      "screen": 77,
+      "roll": 97,
+      "fallback": 251,
+      "read": 1
+    },
+    "observations": {
+      "playsStarted": {
+        "highPickRoll": 24
+      },
+      "screenWindows": 4,
+      "cutsStarted": 13,
+      "fallbacks": 18,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 19
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 1
+    }
+  },
+  {
+    "playId": "highPickRoll",
+    "seed": 8126,
+    "defensePolicy": "drop",
+    "score": [
+      22,
+      19
+    ],
+    "samples": 631,
+    "formationSamples": 117,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.060469800872115856,
+    "phases": {
+      "transition": 179,
+      "setup": 98,
+      "screen": 61,
+      "roll": 61,
+      "fallback": 232
+    },
+    "observations": {
+      "playsStarted": {
+        "highPickRoll": 28
+      },
+      "screenWindows": 1,
+      "cutsStarted": 9,
+      "fallbacks": 23,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 28
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 23,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "postEntry",
+    "seed": 31,
+    "defensePolicy": "man",
+    "score": [
+      30,
+      27
+    ],
+    "samples": 502,
+    "formationSamples": 137,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062127174483515034,
+    "phases": {
+      "transition": 148,
+      "setup": 53,
+      "read": 126,
+      "fallback": 175
+    },
+    "observations": {
+      "playsStarted": {
+        "postEntry": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 20
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "postEntry",
+    "seed": 31,
+    "defensePolicy": "switch",
+    "score": [
+      30,
+      27
+    ],
+    "samples": 502,
+    "formationSamples": 137,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062127174483515034,
+    "phases": {
+      "transition": 148,
+      "setup": 53,
+      "read": 126,
+      "fallback": 175
+    },
+    "observations": {
+      "playsStarted": {
+        "postEntry": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 20
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "postEntry",
+    "seed": 31,
+    "defensePolicy": "drop",
+    "score": [
+      26,
+      27
+    ],
+    "samples": 563,
+    "formationSamples": 163,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.06226587116293972,
+    "phases": {
+      "transition": 138,
+      "setup": 50,
+      "read": 164,
+      "fallback": 211
+    },
+    "observations": {
+      "playsStarted": {
+        "postEntry": 20
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 19
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "postEntry",
+    "seed": 8126,
+    "defensePolicy": "man",
+    "score": [
+      23,
+      13
+    ],
+    "samples": 587,
+    "formationSamples": 155,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 4,
+    "maxStep": 0.06681733692004338,
+    "phases": {
+      "transition": 193,
+      "setup": 83,
+      "fallback": 172,
+      "read": 139
+    },
+    "observations": {
+      "playsStarted": {
+        "postEntry": 23
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 19
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "postEntry",
+    "seed": 8126,
+    "defensePolicy": "switch",
+    "score": [
+      23,
+      13
+    ],
+    "samples": 587,
+    "formationSamples": 155,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 4,
+    "maxStep": 0.06681733692004338,
+    "phases": {
+      "transition": 193,
+      "setup": 83,
+      "fallback": 172,
+      "read": 139
+    },
+    "observations": {
+      "playsStarted": {
+        "postEntry": 23
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 19
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "postEntry",
+    "seed": 8126,
+    "defensePolicy": "drop",
+    "score": [
+      21,
+      10
+    ],
+    "samples": 548,
+    "formationSamples": 136,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.06640244839657179,
+    "phases": {
+      "transition": 153,
+      "setup": 97,
+      "fallback": 167,
+      "read": 131
+    },
+    "observations": {
+      "playsStarted": {
+        "postEntry": 21
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 19
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "isolation",
+    "seed": 31,
+    "defensePolicy": "man",
+    "score": [
+      23,
+      26
+    ],
+    "samples": 523,
+    "formationSamples": 55,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062098303538740726,
+    "phases": {
+      "transition": 151,
+      "setup": 127,
+      "read": 63,
+      "fallback": 182
+    },
+    "observations": {
+      "playsStarted": {
+        "isolation": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 21,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "isolation",
+    "seed": 31,
+    "defensePolicy": "switch",
+    "score": [
+      23,
+      26
+    ],
+    "samples": 523,
+    "formationSamples": 55,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062098303538740726,
+    "phases": {
+      "transition": 151,
+      "setup": 127,
+      "read": 63,
+      "fallback": 182
+    },
+    "observations": {
+      "playsStarted": {
+        "isolation": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 25
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 21,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "isolation",
+    "seed": 31,
+    "defensePolicy": "drop",
+    "score": [
+      18,
+      28
+    ],
+    "samples": 591,
+    "formationSamples": 110,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 5,
+    "maxStep": 0.062098303538740726,
+    "phases": {
+      "transition": 141,
+      "setup": 104,
+      "read": 114,
+      "fallback": 232
+    },
+    "observations": {
+      "playsStarted": {
+        "isolation": 22
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 21,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 24
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 18,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "isolation",
+    "seed": 8126,
+    "defensePolicy": "man",
+    "score": [
+      26,
+      23
+    ],
+    "samples": 498,
+    "formationSamples": 91,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 4,
+    "maxStep": 0.06137419092210029,
+    "phases": {
+      "transition": 163,
+      "setup": 112,
+      "read": 88,
+      "fallback": 135
+    },
+    "observations": {
+      "playsStarted": {
+        "isolation": 27
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 21
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "isolation",
+    "seed": 8126,
+    "defensePolicy": "switch",
+    "score": [
+      26,
+      23
+    ],
+    "samples": 498,
+    "formationSamples": 91,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 4,
+    "maxStep": 0.06137419092210029,
+    "phases": {
+      "transition": 163,
+      "setup": 112,
+      "read": 88,
+      "fallback": 135
+    },
+    "observations": {
+      "playsStarted": {
+        "isolation": 27
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 21
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 20,
+      "switches": 0
+    }
+  },
+  {
+    "playId": "isolation",
+    "seed": 8126,
+    "defensePolicy": "drop",
+    "score": [
+      24,
+      20
+    ],
+    "samples": 535,
+    "formationSamples": 92,
+    "bothElbowsSamples": 0,
+    "fiveOutsideSamples": 0,
+    "maxArrived": 4,
+    "maxStep": 0.060867421106950516,
+    "phases": {
+      "transition": 155,
+      "setup": 87,
+      "read": 98,
+      "fallback": 195
+    },
+    "observations": {
+      "playsStarted": {
+        "isolation": 23
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 17,
+      "switches": 0
+    },
+    "defense": {
+      "playsStarted": {
+        "default": 20
+      },
+      "screenWindows": 0,
+      "cutsStarted": 0,
+      "fallbacks": 19,
+      "switches": 0
+    }
+  }
+]

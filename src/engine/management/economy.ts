@@ -45,12 +45,14 @@ export function tradeStatus(league: League, player: Player): TradeStatus {
 }
 export function playerValue(player: Player, direction: FrontOfficeDirection = 'compete'): number {
   const now = Math.pow(Math.max(0, player.overall - 35), 2) / 80;
-  const growth = Math.max(0, player.potential - player.overall) * Math.max(0, (30 - player.age) / 10);
+  // Absolute future quality prevents a lower current rating from manufacturing market value.
+  const projected = Math.pow(Math.max(0, Math.max(player.overall, player.potential) - 35), 2) / 80;
+  const youth = Math.max(0, Math.min(1, (30 - player.age) / 10));
   const immediate = { contend: 1.2, compete: 1, retool: 0.95, rebuild: 0.8 }[direction];
   const future = { contend: 0.35, compete: 0.75, retool: 0.95, rebuild: 1.4 }[direction];
   const contractRisk = Math.max(0, player.contract.salary - expectedSalary(player)) * Math.max(1, player.contract.years) * 0.45;
   const extensionRisk = player.extension ? Math.max(0, player.extension.salary - expectedSalary(player)) * player.extension.years * 0.45 : 0;
-  return Math.round(Math.max(0.5, now * immediate + growth * future + Math.min(4, player.contract.years) * 0.5 - Math.max(0, player.age - 31) * 0.6 - player.injuryGames * 0.12 - contractRisk - extensionRisk) * 10) / 10;
+  return Math.round(Math.max(0.5, now * immediate + projected * youth * future + Math.min(4, player.contract.years) * 0.5 - Math.max(0, player.age - 31) * 0.6 - player.injuryGames * 0.12 - contractRisk - extensionRisk) * 10) / 10;
 }
 export function contractDecision(league: League, team: Team, player: Player, offer: ContractOffer): Decision & { askingSalary: number; projectedPayroll: number[] } {
   const reasons: string[] = [];

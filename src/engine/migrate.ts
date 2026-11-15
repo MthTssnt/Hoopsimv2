@@ -12,6 +12,9 @@ const RENAMED_TEAMS: Record<string, { from: string; to: string }> = {
 
 /** Met à niveau une partie chargée depuis une sauvegarde plus ancienne. */
 export function migrateLeague(league: League): League {
+  if (!league || !Array.isArray(league.teams) || !league.teams.some(t => t.id === league.userTeamId) || !league.players || typeof league.players !== 'object' || Array.isArray(league.players)) {
+    throw new Error('Carrière invalide : équipe dirigée ou base de joueurs absente.');
+  }
   for (const player of Object.values(league.players)) ensureAthleticAttrs(player);
   for (const team of league.teams) {
     const rename = RENAMED_TEAMS[team.id];

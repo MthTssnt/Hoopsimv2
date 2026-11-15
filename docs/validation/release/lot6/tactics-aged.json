@@ -1,0 +1,263 @@
+{
+  "games": 2160,
+  "samples": 80,
+  "matchups": [
+    {
+      "season": 2036,
+      "teams": [
+        "sas",
+        "phx"
+      ],
+      "strengths": [
+        79.73553719008264,
+        79.85123966942149
+      ]
+    }
+  ],
+  "leagueSeeds": [
+    919
+  ],
+  "fixtureSeasons": [
+    2036
+  ],
+  "totals": {
+    "balanced": {
+      "games": 160,
+      "wins": 72,
+      "pts": 18018,
+      "opponentPts": 18210,
+      "possessions": 15670,
+      "fgm": 6790,
+      "fga": 14414,
+      "tpm": 2008,
+      "tpa": 5542,
+      "ftm": 2430,
+      "fta": 2911,
+      "oreb": 1880,
+      "dreb": 5766,
+      "ast": 3894,
+      "tov": 1902,
+      "pf": 2796
+    },
+    "paceSpace": {
+      "games": 160,
+      "wins": 73,
+      "pts": 19654,
+      "opponentPts": 19884,
+      "possessions": 17130,
+      "fgm": 7101,
+      "fga": 15482,
+      "tpm": 3106,
+      "tpa": 8489,
+      "ftm": 2346,
+      "fta": 2814,
+      "oreb": 1764,
+      "dreb": 6252,
+      "ast": 4559,
+      "tov": 2244,
+      "pf": 3131
+    },
+    "motion": {
+      "games": 160,
+      "wins": 92,
+      "pts": 18227,
+      "opponentPts": 17817,
+      "possessions": 15534,
+      "fgm": 6951,
+      "fga": 14249,
+      "tpm": 1890,
+      "tpa": 5055,
+      "ftm": 2435,
+      "fta": 2886,
+      "oreb": 1739,
+      "dreb": 5723,
+      "ast": 4531,
+      "tov": 1805,
+      "pf": 2796
+    },
+    "pickRoll": {
+      "games": 160,
+      "wins": 84,
+      "pts": 18258,
+      "opponentPts": 18247,
+      "possessions": 15710,
+      "fgm": 6957,
+      "fga": 14219,
+      "tpm": 1828,
+      "tpa": 5059,
+      "ftm": 2516,
+      "fta": 3024,
+      "oreb": 1713,
+      "dreb": 5724,
+      "ast": 4207,
+      "tov": 1932,
+      "pf": 2849
+    },
+    "insideOut": {
+      "games": 160,
+      "wins": 87,
+      "pts": 17948,
+      "opponentPts": 17699,
+      "possessions": 15234,
+      "fgm": 7046,
+      "fga": 13515,
+      "tpm": 1153,
+      "tpa": 3014,
+      "ftm": 2703,
+      "fta": 3213,
+      "oreb": 1638,
+      "dreb": 5528,
+      "ast": 3944,
+      "tov": 2009,
+      "pf": 2805
+    },
+    "isolation": {
+      "games": 160,
+      "wins": 87,
+      "pts": 17497,
+      "opponentPts": 17448,
+      "possessions": 15078,
+      "fgm": 6814,
+      "fga": 13614,
+      "tpm": 1521,
+      "tpa": 4036,
+      "ftm": 2348,
+      "fta": 2790,
+      "oreb": 1529,
+      "dreb": 5516,
+      "ast": 2673,
+      "tov": 1816,
+      "pf": 2689
+    }
+  },
+  "roundRobin": {
+    "balanced": {
+      "games": 400,
+      "wins": 184
+    },
+    "paceSpace": {
+      "games": 400,
+      "wins": 199
+    },
+    "motion": {
+      "games": 400,
+      "wins": 193
+    },
+    "pickRoll": {
+      "games": 400,
+      "wins": 224
+    },
+    "insideOut": {
+      "games": 400,
+      "wins": 190
+    },
+    "isolation": {
+      "games": 400,
+      "wins": 210
+    }
+  },
+  "metrics": {
+    "balanced": {
+      "games": 160,
+      "points": 112.6125,
+      "possessions": 97.9375,
+      "fg": 0.4710697932565561,
+      "threeShare": 0.38448730400999026,
+      "threePct": 0.3623240707325875,
+      "ftPct": 0.8347646856750258,
+      "fga": 90.0875,
+      "oreb": 11.75,
+      "rebounds": 47.7875,
+      "ast": 24.3375,
+      "turnovers": 11.8875,
+      "fouls": 17.475,
+      "winRate": 0.45,
+      "roundRobinWinRate": 0.46
+    },
+    "paceSpace": {
+      "games": 160,
+      "points": 122.8375,
+      "possessions": 107.0625,
+      "fg": 0.4586616716186539,
+      "threeShare": 0.5483141712956983,
+      "threePct": 0.3658852632818942,
+      "ftPct": 0.8336886993603412,
+      "fga": 96.7625,
+      "oreb": 11.025,
+      "rebounds": 50.1,
+      "ast": 28.49375,
+      "turnovers": 14.025,
+      "fouls": 19.56875,
+      "winRate": 0.45625,
+      "roundRobinWinRate": 0.4975
+    },
+    "motion": {
+      "games": 160,
+      "points": 113.91875,
+      "possessions": 97.0875,
+      "fg": 0.4878237069268019,
+      "threeShare": 0.3547617376658011,
+      "threePct": 0.37388724035608306,
+      "ftPct": 0.8437283437283437,
+      "fga": 89.05625,
+      "oreb": 10.86875,
+      "rebounds": 46.6375,
+      "ast": 28.31875,
+      "turnovers": 11.28125,
+      "fouls": 17.475,
+      "winRate": 0.575,
+      "roundRobinWinRate": 0.4825
+    },
+    "pickRoll": {
+      "games": 160,
+      "points": 114.1125,
+      "possessions": 98.1875,
+      "fg": 0.48927491384766864,
+      "threeShare": 0.355791546522259,
+      "threePct": 0.3613362324570073,
+      "ftPct": 0.832010582010582,
+      "fga": 88.86875,
+      "oreb": 10.70625,
+      "rebounds": 46.48125,
+      "ast": 26.29375,
+      "turnovers": 12.075,
+      "fouls": 17.80625,
+      "winRate": 0.525,
+      "roundRobinWinRate": 0.56
+    },
+    "insideOut": {
+      "games": 160,
+      "points": 112.175,
+      "possessions": 95.2125,
+      "fg": 0.5213466518682945,
+      "threeShare": 0.22301146873843877,
+      "threePct": 0.38254810882548107,
+      "ftPct": 0.8412698412698413,
+      "fga": 84.46875,
+      "oreb": 10.2375,
+      "rebounds": 44.7875,
+      "ast": 24.65,
+      "turnovers": 12.55625,
+      "fouls": 17.53125,
+      "winRate": 0.54375,
+      "roundRobinWinRate": 0.475
+    },
+    "isolation": {
+      "games": 160,
+      "points": 109.35625,
+      "possessions": 94.2375,
+      "fg": 0.5005141765829293,
+      "threeShare": 0.2964595269575437,
+      "threePct": 0.37685827552031714,
+      "ftPct": 0.8415770609318997,
+      "fga": 85.0875,
+      "oreb": 9.55625,
+      "rebounds": 44.03125,
+      "ast": 16.70625,
+      "turnovers": 11.35,
+      "fouls": 16.80625,
+      "winRate": 0.54375,
+      "roundRobinWinRate": 0.525
+    }
+  }
+}

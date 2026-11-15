@@ -1,3 +1,10 @@
+> Bilan du 15 novembre 2026 : lots 0–6 livrés et vérifiés. La valeur de marché est
+> corrigée pour ne pas favoriser artificiellement une note inférieure ; les styles CPU
+> reposent sur les forces relatives du cinq. Les erreurs de sauvegarde sont visibles,
+> avec export JSON et réessai. Menus et tableaux vérifiés à 390/768/1 280 px.
+> Voir [l’acceptation finale et ses limites](REFONTE_FINAL_LOT_6.md) : vingt critères,
+> trente saisons, matchs appariés et physiques, parcours Jouer/Regarder et gestion.
+
 > Développement du 15 novembre 2026 : draft en deux tours sauvegardable, consultation
 > des 60 prospects avant les CPU, scouting estimé, choix humains et décisions CPU selon
 > projet/budget/besoins. Six focus individuels accumulent des journées réelles sans gain

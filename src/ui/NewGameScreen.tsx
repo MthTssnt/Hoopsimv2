@@ -5,7 +5,7 @@ import { Rating, TeamLogo, playerLabel, teamFullName } from './common';
 
 const CONFERENCES = ['Est', 'Ouest'] as const;
 
-export function NewGameScreen({ onLoad, hasSave }: { onLoad: () => void; hasSave: boolean }) {
+export function NewGameScreen({ onLoad, hasSave, error }: { onLoad: () => void; hasSave: boolean; error?: string | null }) {
   const [seed, setSeed] = useState(() => randomSeed());
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -34,6 +34,7 @@ export function NewGameScreen({ onLoad, hasSave }: { onLoad: () => void; hasSave
 
         <p><a className="btn" href="?court">Tester un match jouable</a> <a className="btn" href="?style">Voir les designs des joueurs</a> <a className="btn" href="?anims">Animations</a></p>
 
+        {error && <p role="alert" className="panel">{error}</p>}
         <div className="toolbar" style={{ marginTop: 18 }}>
           <button className="btn" onClick={() => setSeed(randomSeed())}>
             Générer une autre ligue

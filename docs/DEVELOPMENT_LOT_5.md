@@ -69,3 +69,5 @@ Relevés sous [validation/development/lot5](validation/development/lot5/). Le JS
 ## 7. Suite
 
 **Lot 6** : calibration multi-graines approfondie des distributions et stratégies après progression, exploitation économique, finition des messages et petits écrans, vérification finale de la checklist §17 et bilan des limites. La psychologie et les échanges de picks ne sont pas annoncés comme disponibles.
+
+Suite livrée : [lot 6 — équilibrage, finition et acceptation finale](REFONTE_FINAL_LOT_6.md).
