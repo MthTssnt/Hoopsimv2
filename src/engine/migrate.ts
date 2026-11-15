@@ -1,3 +1,5 @@
+import { ensureManagement } from './management/state';
+import { repairGamePlan } from './gamePlan';
 import { refreshRotations } from './coach';
 import { ensureAthleticAttrs } from './generate';
 import type { League } from './types';
@@ -15,6 +17,9 @@ export function migrateLeague(league: League): League {
     if (rename && team.name === rename.from) team.name = rename.to;
   }
   if (repairRosters(league)) refreshRotations(league, true);
+  for (const team of league.teams) repairGamePlan(team, league.players);
+  league.schemaVersion = 2;
+  ensureManagement(league);
   return league;
 }
 

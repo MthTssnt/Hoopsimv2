@@ -1,3 +1,4 @@
+import { budget } from '../engine/management/economy';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import {
   ROUND_NAMES,
@@ -18,6 +19,8 @@ import { TeamLogo, teamFullName } from './common';
 import { Dashboard } from './tabs/Dashboard';
 import { HistoryTab } from './tabs/HistoryTab';
 import { PlayoffsTab } from './tabs/PlayoffsTab';
+import { MarketTab } from './tabs/MarketTab';
+import { TacticsTab } from './tabs/TacticsTab';
 import { RosterTab } from './tabs/RosterTab';
 import { ScheduleTab } from './tabs/ScheduleTab';
 import { StandingsTab } from './tabs/StandingsTab';
@@ -31,6 +34,8 @@ const AnimationLab = lazy(() => import('./AnimationLab'));
 const TABS = [
   { id: 'accueil', label: 'Accueil' },
   { id: 'effectif', label: 'Effectif' },
+  { id: 'tactiques', label: 'Tactiques' },
+  { id: 'marche', label: 'Marché' },
   { id: 'calendrier', label: 'Calendrier' },
   { id: 'classement', label: 'Classement' },
   { id: 'stats', label: 'Statistiques' },
@@ -63,7 +68,7 @@ export default function App() {
   if (state.liveMatch) {
     return (
       <Suspense fallback={<div className="muted" style={{ padding: 24 }}>Chargement du match…</div>}>
-        <PhaserGame match={state.liveMatch} onMatchOver={(played) => store.finishLiveMatch(played)} />
+        <PhaserGame coachingVariants={userTeam.savedGamePlans ?? []} match={state.liveMatch} onMatchOver={(played) => store.finishLiveMatch(played)} />
       </Suspense>
     );
   }
@@ -83,7 +88,11 @@ export default function App() {
         </nav>
 
         <main className="app-main">
+          {state.actionError && <p role="alert">{state.actionError}</p>}
+          {league.phase === 'offseason' && <p className="panel" role="status">{budget(league, userTeam).expiringIds.length} contrat(s) sans prolongation arrivent à expiration. <button className="btn btn-sm" onClick={() => setTab('marche')}>Négocier avant la saison suivante</button></p>}
           {tab === 'accueil' && <Dashboard league={league} team={userTeam} onNavigate={setTab} />}
+          {tab === 'marche' && <MarketTab league={league} team={userTeam} />}
+          {tab === 'tactiques' && (userTeam.gamePlan ? <TacticsTab key={JSON.stringify(userTeam.gamePlan)} league={league} team={userTeam} /> : <p role="alert">Au moins cinq joueurs aptes sont nécessaires pour préparer un plan tactique.</p>)}
           {tab === 'effectif' && <RosterTab league={league} team={userTeam} />}
           {tab === 'calendrier' && <ScheduleTab league={league} team={userTeam} />}
           {tab === 'classement' && <StandingsTab league={league} />}

@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import {
-  ROTATION_SIZE,
-  minuteTargets,
   payroll,
   perGame,
   playerName,
@@ -11,7 +9,8 @@ import {
   type Player,
   type Team,
 } from '../../engine';
-import { store } from '../../state/store';
+import { eligibleIds } from '../../engine/gamePlan';
+import { CoachingEditor } from './CoachingEditor';
 import { Rating, num, pctShort } from '../common';
 import { useUi } from '../uiContext';
 
@@ -22,29 +21,6 @@ export function RosterTab({ league, team }: { league: League; team: Team }) {
   const [sort, setSort] = useState<SortKey>('overall');
 
   const roster = team.roster.map((id) => league.players[id]).filter(Boolean);
-  const rotationIds = team.rotation.filter((id) => league.players[id]);
-  const rotation = rotationIds.map((id) => league.players[id]);
-  const targets = minuteTargets(Math.max(rotation.length, 5)).map((s) => s / 60);
-  const bench = roster.filter((p) => !rotationIds.includes(p.id));
-
-  const move = (index: number, direction: -1 | 1) => {
-    const next = [...rotationIds];
-    const target = index + direction;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    store.setRotation(next);
-  };
-
-  const remove = (id: string) => {
-    if (rotationIds.length <= 5) return;
-    store.setRotation(rotationIds.filter((x) => x !== id));
-  };
-
-  const add = (id: string) => {
-    if (rotationIds.length >= ROTATION_SIZE) return;
-    store.setRotation([...rotationIds, id]);
-  };
-
   const sorted = [...roster].sort((a, b) => {
     switch (sort) {
       case 'pts':
@@ -66,84 +42,8 @@ export function RosterTab({ league, team }: { league: League; team: Team }) {
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <div className="panel">
-        <div className="row" style={{ marginBottom: 12 }}>
-          <div className="panel-title" style={{ margin: 0 }}>
-            Rotation — {rotation.length} joueurs
-          </div>
-          <div className="spacer" />
-          <button className="btn btn-sm" onClick={() => store.resetRotation()}>
-            Rotation automatique
-          </button>
-        </div>
-        <p className="faint small" style={{ marginTop: 0 }}>
-          L'ordre fixe le temps de jeu : les cinq premiers sont titulaires, et chaque place plus bas
-          signifie moins de minutes. Les blessés sont automatiquement écartés.
-        </p>
-
-        <div className="grid grid-2">
-          <div>
-            {rotation.map((p, i) => (
-              <div key={p.id} className={`rotation-slot${i < 5 ? ' starter' : ''}`}>
-                <span className="faint mono" style={{ width: 18 }}>
-                  {i + 1}
-                </span>
-                <Rating value={p.overall} />
-                <button
-                  onClick={() => ui.openPlayer(p.id)}
-                  style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', minWidth: 0, flex: 1 }}
-                >
-                  <span style={{ fontWeight: 600 }}>{playerName(p)}</span>
-                  <span className="faint small" style={{ display: 'block' }}>
-                    {p.pos} · {i < 5 ? 'titulaire' : 'remplaçant'} · ~{Math.round(targets[i] ?? 6)} min
-                  </span>
-                </button>
-                {p.injuryGames > 0 && <span className="pill pill-injury">{p.injuryGames} m.</span>}
-                <button className="btn btn-sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Monter">
-                  ↑
-                </button>
-                <button
-                  className="btn btn-sm"
-                  onClick={() => move(i, 1)}
-                  disabled={i === rotation.length - 1}
-                  aria-label="Descendre"
-                >
-                  ↓
-                </button>
-                <button className="btn btn-sm" onClick={() => remove(p.id)} disabled={rotation.length <= 5}>
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <div className="panel-title">Hors rotation</div>
-            {bench.length === 0 && <p className="faint small">Tout l'effectif est dans la rotation.</p>}
-            {bench.map((p) => (
-              <div key={p.id} className="rotation-slot">
-                <Rating value={p.overall} />
-                <button
-                  onClick={() => ui.openPlayer(p.id)}
-                  style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', minWidth: 0, flex: 1 }}
-                >
-                  <span style={{ fontWeight: 600 }}>{playerName(p)}</span>
-                  <span className="faint small" style={{ display: 'block' }}>
-                    {p.pos} · {p.age} ans
-                  </span>
-                </button>
-                {p.injuryGames > 0 ? (
-                  <span className="pill pill-injury">{p.injuryLabel}</span>
-                ) : (
-                  <button className="btn btn-sm" onClick={() => add(p.id)} disabled={rotation.length >= ROTATION_SIZE}>
-                    + Ajouter
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {team.coachingWarnings?.map(warning => <p role="status" key={warning}>{warning}</p>)}
+      {eligibleIds(team, league.players).length >= 5 ? <CoachingEditor key={JSON.stringify(team.gamePlan)} league={league} team={team} /> : <p role="alert">Moins de cinq joueurs aptes : le plan est conservé. Attendez leur retour pour modifier le coaching ou lancer un match GM.</p>}
 
       <div className="panel">
         <div className="row" style={{ marginBottom: 8 }}>

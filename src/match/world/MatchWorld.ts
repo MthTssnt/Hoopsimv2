@@ -1,3 +1,4 @@
+import { OFFENSE_LABELS, DEFENSE_LABELS } from '../../engine/coaching/tactics';
 import { bodyRadius, resolveBodies } from './bodyContacts';
 import { BallControlRig, catchable } from './ballControl';
 import { GestureTracker } from '../render/gestureTracker';
@@ -23,7 +24,10 @@ import {
   type ShotZone,
   type TimingGrade,
 } from '../../engine/shot';
-import { FOUL_OUT, inBonus, newCoachContext, nextLineup, restEnergy, seatLineup, startingLineup, SUB_INTERVAL, updateCoachContext } from '../../engine/rotation';
+import { coachedPlayer, validateGamePlan, type GamePlan } from '../../engine/gamePlan';
+import { planMemberOptions, rotationTargets } from '../../engine/rotation';
+import { TacticalDirector } from '../tactics/director';
+import { FOUL_OUT, inBonus, newCoachContext, nextLineup, restEnergy, seatLineup, startingLineup, substitutionInterval, updateCoachContext } from '../../engine/rotation';
 import type { Player } from '../../engine/types';
 import { BALL_PHYSICS, stepBall, type BallState } from '../physics/ball';
 import { BALL_RADIUS, distanceToRim, inPaintHalf, type Court, type Hoop, type HoopSide, type Vec3 } from '../physics/court';
@@ -338,6 +342,11 @@ export class MatchWorld {
   private readonly rng: Rng;
   /** Rotations de départ (ordre du coach) : un nouveau match repart d'elles. */
   private rosters: Player[][] = [];
+  private gamePlans: [GamePlan?, GamePlan?] = [];
+  readonly tactics = new TacticalDirector();
+  private pendingPlans: (GamePlan | undefined)[] = [];
+  private pendingFives: (string[] | undefined)[] = [];
+  readonly coachingEvents: { team: number; time: number; kind: 'plan' | 'five' | 'rotation'; status: 'queued' | 'applied' | 'cancelled'; message: string }[] = [];
   private readonly coach = newCoachContext();
   /** Ballon mort à ce pas : le coach regardera son cinq à la fin du pas. */
   private subsDue = false;
@@ -400,6 +409,8 @@ export class MatchWorld {
     this.lineup.length = 0;
     this.lineup.push(this.membersOf(0), this.membersOf(1));
     this.full = null;
+    this.tactics.reset([], this.rng.state);
+    this.pendingPlans = []; this.pendingFives = []; this.coachingEvents.length = 0;
     this.rules = newHalfCourt(2, target);
     this.resetGame();
   }
@@ -410,9 +421,10 @@ export class MatchWorld {
    * départ vient des cinq premiers, rangés par poste (meneur d'abord, pivot en dernier) ; les autres
    * attendent sur le banc. Le match commence par un entre-deux.
    */
-  startFullCourt(home: readonly Player[], away: readonly Player[], quarterMinutes: number = FULL_COURT.quarterMinutes): void {
+  startFullCourt(home: readonly Player[], away: readonly Player[], quarterMinutes: number = FULL_COURT.quarterMinutes, plans: [GamePlan?, GamePlan?] = []): void {
+    this.gamePlans = structuredClone(plans);
     this.rosters = [[...home], [...away]];
-    const fives = this.rosters.map((rotation, team) => startingLineup(createSquad(team, rotation).members).map((m) => m.player));
+    const fives = this.rosters.map((rotation, team) => startingLineup(createSquad(team, rotation, this.gamePlans[team]).members).map((m) => m.player));
     this.startTeams(fives[0], fives[1]);
     this.rules = null;
     this.full = newFullCourt(quarterMinutes);
@@ -581,6 +593,7 @@ export class MatchWorld {
     let list: readonly WorldInput[] = Array.isArray(inputs) ? inputs : [inputs as WorldInput];
     const previousHolder = this.holder;
     this.clock += dt;
+    this.applyPendingCoaching();
     if (this.pendingShotSettings && !this.shot && !this.players.some((body) => body.airborne) && this.full?.freeThrows?.aim == null) this.setShotSettings(this.pendingShotSettings);
     this.passCooldown = Math.max(0, this.passCooldown - dt);
     for (let i = 0; i < this.players.length; i++) {
@@ -796,13 +809,13 @@ export class MatchWorld {
     const full = this.full;
     const squad = this.squads?.[team];
     if (!full || !squad) return 0;
-    return Math.max(0, SUB_INTERVAL / matchTimeScale(full.quarterMinutes) - squad.sinceSub);
+    return Math.max(0, substitutionInterval(this.gamePlans[team]) / matchTimeScale(full.quarterMinutes) - squad.sinceSub);
   }
 
   /** Nouveau match : rotations remises à neuf (énergie, stats, fautes), cinq de départ sur les corps de chaque équipe. */
   private setupSquads(): void {
     if (this.rosters.length !== 2) return;
-    const squads = this.rosters.map((rotation, team) => createSquad(team, rotation));
+    const squads = this.rosters.map((rotation, team) => createSquad(team, rotation, this.gamePlans[team]));
     squads.forEach((squad, team) => {
       const five = startingLineup(squad.members);
       const bodies = this.membersOf(team);
@@ -867,9 +880,20 @@ export class MatchWorld {
     const keeper = keep !== null ? this.memberOf(keep) : null;
     for (const squad of this.squads) {
       const forced = squad.members.some((m) => m.body !== null && m.fouledOut);
-      if (!forced && squad.sinceSub < Math.max(60, SUB_INTERVAL / ctx.timeScale)) continue;
-      const five = nextLineup(squad.members, ctx);
+      const desired = this.pendingFives[squad.team];
+      if (desired && desired.some(id => !squad.members.some(m => m.id === id && !m.fouledOut))) {
+        this.pendingFives[squad.team] = undefined;
+        this.coachingEvents.push({ team: squad.team, time: this.clock, kind: 'five', status: 'cancelled', message: 'Cinq annulé : un joueur est devenu indisponible.' });
+      }
+      const requested = this.pendingFives[squad.team];
+      if (!forced && !requested && squad.sinceSub < substitutionInterval(this.gamePlans[squad.team]) / ctx.timeScale) continue;
+      if (requested && (full.freeThrows || this.shot || this.pass || this.players.some(p => p.airborne))) continue;
+      const five = requested ? requested.map(id => squad.members.find(m => m.id === id)!) : nextLineup(squad.members, ctx);
       if (keeper && keeper.team === squad.team && !five.includes(keeper)) continue;
+      if (requested) {
+        this.pendingFives[squad.team] = undefined;
+        this.coachingEvents.push({ team: squad.team, time: this.clock, kind: 'five', status: 'applied', message: 'Cinq appliqué à un arrêt légal.' });
+      }
       squad.sinceSub = 0;
       const before = this.lineup[squad.team].join();
       const { lineup, entering } = substitute(squad, five, this.lineup[squad.team]);
@@ -883,11 +907,57 @@ export class MatchWorld {
         this.offBalance[sub.body] = 0;
         this.pushEvent('changement', sub.body, sub.body);
       }
+      if (!requested && entering.length > 0) {
+        const outs = entering.flatMap(s => s.out ? [s.out] : []);
+        const reason = ctx.closing ? 'cinq de fin de match' : ctx.garbage ? 'match largement décidé' : this.gamePlans[squad.team]?.rotation.foulTroubleProtection !== false && outs.some(m => m.line.pf >= 4) ? 'protection des fautes' : outs.some(m => m.energy < 55) ? 'fatigue' : 'minutes cibles et équilibre des postes';
+        this.coachingEvents.push({ team: squad.team, time: this.clock, kind: 'rotation', status: 'applied', message: `Rotation automatique : ${reason}.` });
+      }
       if (entering.length > 0 || lineup.join() !== before) {
         this.lineupVersion++;
         this.presentation = { version: this.presentation.version + 1, time: this.clock, kind: 'changement' };
       }
     }
+  }
+
+  getGamePlan(team: number): GamePlan | undefined { return structuredClone(this.gamePlans[team]); }
+
+  requestCoachingPlan(team: number, plan: GamePlan): string[] {
+    const roster = this.rosters[team];
+    if (!this.full || !roster || this.matchOver || this.full.phase === 'fin-match') return ['Aucun match actif.'];
+    const players = Object.fromEntries(roster.map(p => [p.id, p]));
+    const errors = validateGamePlan(plan, { id: roster[0].teamId ?? '', roster: roster.map(p => p.id) }, players);
+    if (errors.length) return errors;
+    this.pendingPlans[team] = structuredClone(plan);
+    this.coachingEvents.push({ team, time: this.clock, kind: 'plan', status: 'queued', message: `Plan « ${plan.name} » (${OFFENSE_LABELS[plan.offense]} / ${DEFENSE_LABELS[plan.defense]}) en attente d’une fenêtre sûre.` });
+    return [];
+  }
+
+  requestCoachingFive(team: number, ids: string[]): string[] {
+    const squad = this.squads?.[team];
+    if (!this.full || !squad || this.matchOver || this.full.phase === 'fin-match') return ['Aucun match actif.'];
+    if (ids.length !== 5 || new Set(ids).size !== 5 || ids.some(id => !squad.members.some(m => m.id === id && !m.fouledOut))) return ['Choisissez cinq joueurs distincts et non éliminés de cette équipe.'];
+    this.pendingFives[team] = [...ids];
+    this.coachingEvents.push({ team, time: this.clock, kind: 'five', status: 'queued', message: 'Cinq demandé pour le prochain arrêt légal, hors lancers.' });
+    return [];
+  }
+
+  private applyPendingCoaching(): void {
+    if (!this.full || !this.squads || this.shot || this.pass || this.full.freeThrows || this.players.some(p => p.airborne) || !['jeu', 'mort', 'fin-periode'].includes(this.full.phase)) return;
+    this.pendingPlans.forEach((plan, team) => {
+      if (!plan) return;
+      this.gamePlans[team] = plan; this.tactics.setPlan(team, plan);
+      const squad = this.squads![team], targets = rotationTargets(squad.members.map(m => m.player), plan);
+      squad.fatigueFactor = 1 + Math.max(0, (plan.defensivePressure - 50) / 50) * 0.12;
+      for (const member of squad.members) {
+        member.player = coachedPlayer(this.rosters[team].find(p => p.id === member.id)!, plan);
+        Object.assign(member, planMemberOptions(member.id, plan));
+        member.targetSecs = targets.get(member.id) ?? 0;
+      }
+      this.pendingPlans[team] = undefined;
+      this.coachingEvents.push({ team, time: this.clock, kind: 'plan', status: 'applied', message: `Plan « ${plan.name} » (${OFFENSE_LABELS[plan.offense]} / ${DEFENSE_LABELS[plan.defense]}) appliqué sans déplacer les joueurs.` });
+      this.refreshAthletes(true);
+    });
+    if (this.pendingFives.some(Boolean) && (this.full.phase === 'mort' || this.full.phase === 'fin-periode')) this.coachSubs(null);
   }
 
   /** Faute personnelle de `fouler` : faute d'équipe ; à la 6e, il est éliminé (il sortira au ballon mort). */
@@ -1178,6 +1248,8 @@ export class MatchWorld {
     this.lastShot = null;
     this.turnovers.length = 0;
     this.setupSquads();
+    this.tactics.reset(this.gamePlans, this.rng.state);
+    this.pendingPlans = []; this.pendingFives = []; this.coachingEvents.length = 0;
     this.setupTip();
   }
 

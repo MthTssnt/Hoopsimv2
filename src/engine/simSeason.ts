@@ -1,3 +1,4 @@
+import { runFrontOffices } from './management/aiGm';
 import { refreshRotations } from './coach';
 import { Rng } from './rng';
 import { buildSchedule, scheduleLength } from './schedule';
@@ -50,6 +51,7 @@ export interface PlayedGame {
 
 /** Simule un match puis l'enregistre. */
 export function playGame(league: League, game: Game, options: GameSimOptions = {}): GameResult {
+  if (game.played) throw new Error('Ce match est déjà enregistré.');
   const home = teamById(league, game.homeId);
   const away = teamById(league, game.awayId);
 
@@ -62,6 +64,7 @@ export function playGame(league: League, game: Game, options: GameSimOptions = {
 
 /** Enregistre un match joué dans le navigateur : énergie de fin reportée, puis comme un match simulé. */
 export function recordPlayedGame(league: League, game: Game, played: PlayedGame): GameResult {
+  if (game.played) throw new Error('Ce match est déjà enregistré.');
   for (const [id, energy] of Object.entries(played.energy)) {
     const player = league.players[id];
     if (player) player.energy = energy;
@@ -75,6 +78,7 @@ export function recordPlayedGame(league: League, game: Game, played: PlayedGame)
  * régulière), feuille archivée, blessures.
  */
 export function recordGame(league: League, game: Game, result: GameResult): void {
+  if (game.played) throw new Error('Ce match est déjà enregistré.');
   const home = teamById(league, game.homeId);
   const away = teamById(league, game.awayId);
   result.box.gameId = game.id;
@@ -225,6 +229,7 @@ export function simulateDay(league: League, options: DayOptions = {}): DaySummar
   restIdleTeams(league, playing);
   const summary: DaySummary = { day: league.day, games: played, userGame };
   league.day += 1;
+  runFrontOffices(league);
   return summary;
 }
 

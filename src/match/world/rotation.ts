@@ -1,11 +1,14 @@
+import { coachedPlayer } from '../../engine/gamePlan';
 import {
   drainEnergy,
   energyFactor,
   rotationTargets,
+  planMemberOptions,
   seatLineup,
   startingEnergy,
   type RotationMember,
 } from '../../engine/rotation';
+import type { GamePlan } from '../../engine/gamePlan';
 import { POSITION_INDEX } from '../../engine/ratings';
 import { emptyStatLine, type Attributes, type Player, type StatLine } from '../../engine/types';
 import { FULL_COURT, periodLength } from './fullCourt';
@@ -34,6 +37,7 @@ export interface MatchMember extends RotationMember {
 /** Une équipe pendant le match : sa rotation, ses fautes d'équipe de la période. */
 export interface Squad {
   team: number;
+  fatigueFactor: number;
   members: MatchMember[];
   /** Fautes d'équipe de la période en cours. */
   fouls: number;
@@ -42,10 +46,12 @@ export interface Squad {
 }
 
 /** Équipe `team` à partir de sa rotation (dans l'ordre du coach) : énergie de départ, minutes visées, stats à 0. */
-export function createSquad(team: number, rotation: readonly Player[]): Squad {
-  const targets = rotationTargets(rotation);
+export function createSquad(team: number, rotation: readonly Player[], plan?: GamePlan): Squad {
+  rotation = rotation.map(p => coachedPlayer(p, plan));
+  const targets = rotationTargets(rotation, plan);
   const members = rotation.map(
     (player): MatchMember => ({
+      ...planMemberOptions(player.id, plan),
       id: player.id,
       overall: player.overall,
       posIndex: POSITION_INDEX[player.pos],
@@ -60,7 +66,7 @@ export function createSquad(team: number, rotation: readonly Player[]): Squad {
       body: null,
     }),
   );
-  return { team, members, fouls: 0, sinceSub: 0 };
+  return { team, members, fatigueFactor: 1 + Math.max(0, ((plan?.defensivePressure ?? 50) - 50) / 50) * 0.12, fouls: 0, sinceSub: 0 };
 }
 
 /** Accélération d'un match de `quarterMinutes` par quart-temps par rapport à un match de 48 min (×4 pour 3 min). */
@@ -100,7 +106,7 @@ export function tiredAthlete(player: Player, energy: number): Player {
 export function tickSquad(squad: Squad, seconds: number, scale: number): void {
   for (const m of squad.members) {
     if (m.body !== null) m.line.secs += seconds;
-    m.energy = drainEnergy(m.energy, m.player.attrs.stamina, seconds * scale, m.body !== null);
+    m.energy = drainEnergy(m.energy, m.player.attrs.stamina, seconds * scale * (m.body !== null ? squad.fatigueFactor : 1), m.body !== null);
   }
   squad.sinceSub += seconds;
 }

@@ -23,7 +23,7 @@ export function Dashboard({
 }: {
   league: League;
   team: Team;
-  onNavigate: (tab: 'effectif' | 'calendrier' | 'classement' | 'stats' | 'playoffs') => void;
+  onNavigate: (tab: 'marche' | 'effectif' | 'calendrier' | 'classement' | 'stats' | 'playoffs') => void;
 }) {
   const ui = useUi();
   const standings = buildStandings(league, team.conference);
@@ -71,7 +71,7 @@ export function Dashboard({
             <NextGameCard league={league} team={team} game={upcoming} />
           ) : league.phase === 'offseason' ? (
             <p className="muted" style={{ margin: 0 }}>
-              La saison est terminée. Lancez l'intersaison depuis la barre du haut.
+              La saison est terminée. Négociez vos prolongations dans Marché avant de lancer l’intersaison depuis la barre du haut.
             </p>
           ) : (
             <p className="muted" style={{ margin: 0 }}>
@@ -79,6 +79,7 @@ export function Dashboard({
             </p>
           )}
 
+          {league.phase === 'offseason' && <button className="btn btn-sm" onClick={() => onNavigate('marche')}>Négocier les contrats</button>}
           <div className="panel-title" style={{ marginTop: 20 }}>
             Derniers résultats
           </div>

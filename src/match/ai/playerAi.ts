@@ -554,7 +554,8 @@ export class PlayerAi {
     this.stuck = 0;
     this.decideClock = 0;
     this.tightShotDecided = false;
-    this.plan = choosePlan(world.players[this.index].athlete.tendencies, this.rng);
+    const t = world.players[this.index].athlete.tendencies, weights = world.tactics.shotWeights(world, this.index);
+    this.plan = choosePlan({ ...t, rim: t.rim * weights.rim, mid: t.mid * weights.mid, three: t.three * weights.three }, this.rng);
     this.spot = this.spotFor(world, this.plan);
   }
 
@@ -654,7 +655,7 @@ export class PlayerAi {
     this.mode = 'attaque';
     this.possessionTime += dt;
     const a = body.athlete;
-    const passChance = lerp(AI_TUNING.passChance[0], AI_TUNING.passChance[1], ratingT((a.attrs.passing + a.attrs.iq) / 2));
+    const passChance = Math.min(0.96, lerp(AI_TUNING.passChance[0], AI_TUNING.passChance[1], ratingT((a.attrs.passing + a.attrs.iq) / 2)) * world.tactics.passFactor(world, this.index));
     const full = world.full;
     // Terrain entier : d'abord monter le ballon dans sa moitié avant.
     if (full) {
@@ -680,6 +681,7 @@ export class PlayerAi {
     }
     if (strategy === 'normal') {
       const intention = sequenceIntent(world, this.index);
+      if (intention.zone) { this.plan = intention.zone; this.spot = this.spotFor(world, intention.zone); }
       if (intention.passTo !== undefined) return this.passTo(world, intention.passTo);
       if (intention.target) { this.target = intention.target; return this.moveTo(world, this.target); }
     }
@@ -719,7 +721,7 @@ export class PlayerAi {
       this.plan = this.plan === 'rim' ? 'mid' : this.plan;
       this.spot = this.spotFor(world, this.plan ?? 'mid');
     }
-    const late = this.possessionTime >= (strategy === 'quick-two' ? 2.5 : full ? AI_TUNING.shootAfterFull : AI_TUNING.shootAfter) || teamLate;
+    const late = this.possessionTime >= (strategy === 'quick-two' ? 2.5 : full ? AI_TUNING.shootAfterFull * (world.tactics.prepared(team)?.durationFactor ?? 1) : AI_TUNING.shootAfter) || teamLate;
     if (this.plan === 'rim') {
       const toRim = Math.hypot(hoop.rim.x - body.pos.x, hoop.rim.y - body.pos.y);
       if (canDunk(world.dunkContext(this.index))) return this.shoot(world, 'rim');
@@ -817,6 +819,7 @@ export class PlayerAi {
     const intention = sequenceIntent(world, this.index);
     if (intention.target) {
       this.mode = intention.mode ?? 'coupe'; this.target = intention.target;
+      if (world.tactics.enabled(team) && intention.mode === 'écran' && Math.hypot(body.pos.x - this.target.x, body.pos.y - this.target.y) < 0.6) return { x: 0, y: 0, jump: false, face: { x: world.ball.pos.x - body.pos.x, y: world.ball.pos.y - body.pos.y } };
       return this.moveTo(world, this.target, intention.mode !== 'écran');
     }
     const spot = spacingSpots(world, team).get(this.index) ?? { x: body.pos.x, y: body.pos.y };
@@ -891,7 +894,8 @@ export class PlayerAi {
     }
     // Porteur encore dans sa moitié arrière : on recule devant lui (on le prend à la ligne médiane).
     const sag = full && !full.frontcourt && !inFrontcourt(world.court, world.team[other], full.period, seen.x);
-    this.target = guardSpot(seen, hoop, sag ? AI_TUNING.backcourtGap : AI_TUNING.guardGap);
+    this.target = guardSpot(seen, hoop, sag ? AI_TUNING.backcourtGap : world.tactics.guardGap(world.team[this.index]));
+    this.target = world.tactics.defensiveTarget(world, this.index, other, this.target);
     if (sag) return this.moveTo(world, this.target, Math.hypot(this.target.x - body.pos.x, this.target.y - body.pos.y) > AI_TUNING.sprintFrom);
     // Attaquant déjà sur nous : on tient notre place au lieu d'avancer vers lui (on ne lui rentre
     // pas dedans parce qu'on le voit avec du retard).
@@ -954,7 +958,7 @@ export class PlayerAi {
     const seen = delayedPosition(this.history, this.clock, this.reaction(world));
     const hoop = world.defendHoop(world.team[this.index]);
     const ball = world.holder !== null ? world.players[world.holder].pos : world.ball.pos;
-    const spot = helpSpot(seen, hoop, ball);
+    const spot = world.tactics.defensiveTarget(world, this.index, this.mark, helpSpot(seen, hoop, ball));
     // Un bon intercepteur se décale vers la ligne de passe vers son joueur.
     const deny = lerp(AI_TUNING.deny[0], AI_TUNING.deny[1], ratingT(world.players[this.index].athlete.attrs.steal));
     const lane = { x: ball.x + (seen.x - ball.x) * AI_TUNING.denyAt, y: ball.y + (seen.y - ball.y) * AI_TUNING.denyAt };

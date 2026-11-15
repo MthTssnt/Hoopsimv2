@@ -1,3 +1,6 @@
+import { prepareTactics, resolvePossessionTactics, type PreparedTactics, type PossessionTactics, type ShotZone } from './coaching/tactics';
+import { reportSnapshot, type TeamTacticalReport } from './coaching/analytics';
+import { coachedPlayer } from './gamePlan';
 import { POSITION_INDEX } from './ratings';
 import type { Rng } from './rng';
 import {
@@ -10,10 +13,11 @@ import {
   nextLineup,
   restEnergy,
   rotationTargets,
+  planMemberOptions,
   seatLineup,
   startingEnergy,
   startingLineup,
-  SUB_INTERVAL,
+  substitutionInterval,
   updateCoachContext,
   type CoachContext,
 } from './rotation';
@@ -56,6 +60,10 @@ interface LiveTeam {
   periodScores: number[];
   periodFouls: number;
   isHome: boolean;
+  sinceSub: number;
+  tactics: PreparedTactics;
+  possession?: PossessionTactics;
+  report: TeamTacticalReport;
 }
 
 export interface GameSimOptions {
@@ -127,7 +135,7 @@ export function simulateGame(
     home.periodScores.push(0);
     away.periodScores.push(0);
     offenseIsHome = period % 2 === 1 ? firstPossessionHome : !firstPossessionHome;
-    let sinceLastSub = 0;
+    home.sinceSub = 0; away.sinceSub = 0;
 
     log(
       period <= REGULATION_PERIODS ? `Début du ${period}${period === 1 ? 'er' : 'e'} quart-temps` : `Début de la prolongation ${period - REGULATION_PERIODS}`,
@@ -142,22 +150,31 @@ export function simulateGame(
       const margin = Math.abs(home.score - away.score);
       updateCoachContext(ctx, period, clock, elapsedTotal, REGULATION_PERIODS * PERIOD_SECONDS, margin, REGULATION_PERIODS);
 
-      if (sinceLastSub >= SUB_INTERVAL) {
-        setLineup(home, ctx);
-        setLineup(away, ctx);
-        sinceLastSub = 0;
+      for (const team of [home, away]) {
+        if (team.sinceSub >= substitutionInterval(team.team.gamePlan)) {
+          setLineup(team, ctx);
+          team.sinceSub = 0;
+        }
       }
 
-      const base = clamp(rng.normal(14.4, 5.2), 3, 24);
+      // Crashing the offensive glass sacrifices some transition protection on the next attack.
+      const transition = 1 - ((def.tactics.plan?.offensiveReboundAggression ?? 50) - 50) / 50 * 0.06;
+      const base = clamp(rng.normal(14.4, 5.2) * off.tactics.durationFactor * transition, 3, 24);
       const displayClock = Math.max(0, clock - base);
+      const scoreBefore = off.score;
+      const turnoversBefore = off.rotation.reduce((sum, lp) => sum + lp.line.tov, 0);
       const extra = runPossession(rng, off, def, displayClock, log, hca, ctx);
+      const id = off.possession!.playId;
+      const usage = off.report.plays![id]!;
+      usage.points += off.score - scoreBefore;
+      usage.turnovers += off.rotation.reduce((sum, lp) => sum + lp.line.tov, 0) - turnoversBefore;
       const elapsed = Math.min(clock, base + extra);
 
       advanceTime(home, elapsed);
       advanceTime(away, elapsed);
       clock -= elapsed;
       elapsedTotal += elapsed;
-      sinceLastSub += elapsed;
+      home.sinceSub += elapsed; away.sinceSub += elapsed;
       offenseIsHome = !offenseIsHome;
     }
 
@@ -176,6 +193,7 @@ export function simulateGame(
 
   const periods = home.periodScores.map((h, i) => ({ home: h, away: away.periodScores[i] ?? 0 }));
   const box = {
+    tactics: { source: 'fast' as const, durationSeconds: elapsedTotal, teams: { [homeTeam.id]: home.report, [awayTeam.id]: away.report } },
     gameId,
     homeId: homeTeam.id,
     awayId: awayTeam.id,
@@ -190,21 +208,22 @@ export function simulateGame(
 
   // Report de l'énergie de fin de match sur le joueur (récupérée entre les rencontres).
   for (const lp of [...home.rotation, ...away.rotation]) {
-    lp.player.energy = lp.energy;
+    players[lp.id].energy = lp.energy;
   }
 
   return { homeScore: home.score, awayScore: away.score, periods, box, pbp };
 }
 
 function buildLiveTeam(team: Team, players: Record<string, Player>, isHome: boolean): LiveTeam {
-  const available = matchRotation(team, players);
+  const available = matchRotation(team, players).map(p => coachedPlayer(p, team.gamePlan));
   // L'ordre de la rotation choisi par l'entraîneur fixe les minutes visées :
   // le premier de la liste joue le plus, le dernier le moins.
-  const targetById = rotationTargets(available);
+  const targetById = rotationTargets(available, team.gamePlan);
 
   return {
     team,
     rotation: available.map((player) => ({
+      ...planMemberOptions(player.id, team.gamePlan),
       id: player.id,
       player,
       overall: player.overall,
@@ -221,6 +240,9 @@ function buildLiveTeam(team: Team, players: Record<string, Player>, isHome: bool
     periodScores: [],
     periodFouls: 0,
     isHome,
+    sinceSub: 0,
+    tactics: prepareTactics(team.gamePlan),
+    report: reportSnapshot(team.gamePlan, true),
   };
 }
 
@@ -240,7 +262,7 @@ function setLineup(team: LiveTeam, ctx: CoachContext): void {
 function advanceTime(team: LiveTeam, seconds: number): void {
   for (const lp of team.rotation) {
     if (lp.onCourt) lp.line.secs += seconds;
-    lp.energy = drainEnergy(lp.energy, lp.player.attrs.stamina, seconds, lp.onCourt);
+    lp.energy = drainEnergy(lp.energy, lp.player.attrs.stamina, seconds * (lp.onCourt ? team.tactics.fatigueFactor + (team.possession?.fatiguePlayerId === lp.id ? 0.12 : 0) : 1), lp.onCourt);
   }
 }
 
@@ -270,12 +292,19 @@ function runPossession(
   let extra = 0;
 
   // --- Perte de balle ---
-  const handler = weightedPlayer(rng, off.lineup, (lp) => eff(lp, 'handling') * 0.6 + eff(lp, 'passing') * 0.4);
+  const tactics = resolvePossessionTactics(off.tactics, def.tactics,
+    off.lineup.map(lp => ({ ...lp.player, attrs: { ...lp.player.attrs, handling: eff(lp, 'handling'), passing: eff(lp, 'passing') } })),
+    def.lineup.map(lp => lp.player), rng);
+  off.possession = tactics;
+  off.report.possessions!++;
+  const usage = off.report.plays![tactics.playId] ??= { possessions: 0, points: 0, turnovers: 0, shots: 0 };
+  usage.possessions++;
+  const handler = off.lineup.find(lp => lp.id === tactics.handlerId)!;
   const pressure = lineupAvg(def, 'steal') * 0.55 + lineupAvg(def, 'perimeterDef') * 0.45;
   const security = eff(handler, 'handling') * 0.5 + eff(handler, 'iq') * 0.3 + eff(handler, 'passing') * 0.2;
   const tovChance = clamp(0.128 + (pressure - security) * 0.0022 - (off.isHome ? hca * 0.004 : 0), 0.05, 0.26);
 
-  if (rng.chance(tovChance)) {
+  if (rng.chance(clamp(tovChance * tactics.turnoverFactor, 0.035, 0.32))) {
     handler.line.tov += 1;
     if (rng.chance(0.55)) {
       const thief = weightedPlayer(rng, def.lineup, (lp) => Math.pow(eff(lp, 'steal') / 50, 2.2));
@@ -288,7 +317,7 @@ function runPossession(
   }
 
   // --- Faute sans tir (envoi en bonus) ---
-  if (rng.chance(0.1)) {
+  if (rng.chance(0.1 * def.tactics.foulFactor)) {
     const fouler = weightedPlayer(rng, def.lineup, (lp) => 110 - eff(lp, 'iq'));
     fouler.line.pf += 1;
     def.periodFouls += 1;
@@ -324,25 +353,27 @@ function runShotSequence(
 ): ShotOutcome {
   const shooter = isPutback
     ? weightedPlayer(rng, off.lineup, (lp) => Math.pow(eff(lp, 'offReb') / 50, 2) + 0.4)
-    : weightedPlayer(rng, off.lineup, (lp) => lp.player.tendencies.usage * (0.65 + 0.35 * (lp.energy / 100)));
+    : weightedPlayer(rng, off.lineup, (lp) => lp.player.tendencies.usage * (off.possession?.usageByPlayerId[lp.id] ?? 1) * (0.65 + 0.35 * (lp.energy / 100)));
 
   const t = shooter.player.tendencies;
   const shotType: 'rim' | 'mid' | 'three' = isPutback
     ? 'rim'
-    : (['rim', 'mid', 'three'] as const)[rng.weightedIndex([t.rim, t.mid, t.three])];
+    : (['rim', 'mid', 'three'] as const)[rng.weightedIndex([t.rim * (off.possession?.zoneWeights.rim ?? 1), t.mid * (off.possession?.zoneWeights.mid ?? 1), t.three * (off.possession?.zoneWeights.three ?? 1)])];
 
   // Le défenseur direct est celui qui occupe le même poste dans le cinq adverse.
   const slotIndex = off.lineup.indexOf(shooter);
-  const defender = def.lineup[Math.min(slotIndex, def.lineup.length - 1)];
+  const switched = shooter.id === off.possession?.handlerId ? def.lineup.find(lp => lp.id === off.possession?.switchedDefenderId) : undefined;
+  const defender = switched ?? def.lineup[Math.min(slotIndex, def.lineup.length - 1)];
 
   // --- Faute sur tir ---
   const foulChance = shotType === 'rim' ? 0.15 : shotType === 'mid' ? 0.05 : 0.025;
-  if (rng.chance(foulChance)) {
+  if (rng.chance(foulChance * def.tactics.foulFactor)) {
     defender.line.pf += 1;
     def.periodFouls += 1;
     checkFoulOut(defender, def, log, clock, ctx);
     const andOne = shotType === 'rim' && rng.chance(0.3);
     if (andOne) {
+      countShot(off, shotType);
       shooter.line.fga += 1;
       shooter.line.fgm += 1;
       registerMake(shooter, off, def, 2, clock, log, `${playerName(shooter.player)} marque au cercle et provoque la faute !`, true);
@@ -360,6 +391,7 @@ function runShotSequence(
         ? 0.024
         : 0.008;
   if (rng.chance(blockChance)) {
+    countShot(off, shotType);
     shooter.line.fga += 1;
     if (shotType === 'three') shooter.line.tpa += 1;
     defender.line.blk += 1;
@@ -380,6 +412,7 @@ function runShotSequence(
   if (isPutback) p += 0.05;
   p = clamp(p, bounds[shotType][0], bounds[shotType][1]);
 
+  countShot(off, shotType);
   shooter.line.fga += 1;
   if (shotType === 'three') shooter.line.tpa += 1;
 
@@ -389,7 +422,7 @@ function runShotSequence(
     shooter.line.fgm += 1;
     const assistChance = isPutback ? 0.14 : shotType === 'three' ? 0.87 : shotType === 'mid' ? 0.6 : 0.58;
     let assistText = '';
-    if (off.lineup.length > 1 && rng.chance(assistChance)) {
+    if (off.lineup.length > 1 && rng.chance(clamp(assistChance * (off.possession?.passFactor ?? 1), 0.05, 0.96))) {
       const passer = weightedPlayer(rng, off.lineup, (lp) =>
         lp === shooter ? 0 : Math.pow(eff(lp, 'passing') / 50, 2.5),
       );
@@ -416,6 +449,11 @@ function runShotSequence(
         : `Tentative près du cercle manquée de ${playerName(shooter.player)}`;
   log(missLabel, off.team.id, clock);
   return rebound(rng, off, def, clock, log, false, 0);
+}
+
+function countShot(team: LiveTeam, zone: ShotZone): void {
+  team.report.shots![zone]++;
+  team.report.plays![team.possession!.playId]!.shots++;
 }
 
 function registerMake(
@@ -482,7 +520,7 @@ function rebound(
 ): ShotOutcome {
   const offStrength = lineupAvg(off, 'offReb') * 0.75 + lineupAvg(off, 'strength') * 0.25;
   const defStrength = lineupAvg(def, 'defReb') * 0.75 + lineupAvg(def, 'strength') * 0.25;
-  const p = clamp(0.245 + (offStrength - defStrength) * 0.0035 + modifier - (isFreeThrow ? 0.06 : 0), 0.1, 0.42);
+  const p = clamp((0.245 + (offStrength - defStrength) * 0.0035 + modifier - (isFreeThrow ? 0.06 : 0)) * (off.possession?.reboundFactor ?? 1), 0.08, 0.44);
 
   if (rng.chance(p)) {
     const rebounder = weightedPlayer(rng, off.lineup, (lp) => Math.pow(eff(lp, 'offReb') / 45, 2.6));

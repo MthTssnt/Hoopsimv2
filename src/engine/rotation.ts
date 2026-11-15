@@ -1,4 +1,5 @@
 import { minuteTargets, pickLineup, type LineupCandidate } from './coach';
+import { distributeMinutes, type GamePlan, type PlayerRole } from './gamePlan';
 import type { Player, StatLine, Team } from './types';
 
 /**
@@ -122,6 +123,12 @@ export function updateCoachContext(
 
 /** Un joueur de la rotation, tel que le coach le voit. */
 export interface RotationMember extends LineupCandidate {
+  starterSlot?: number;
+  closingSlot?: number;
+  role?: PlayerRole;
+  autoSubstitutions?: boolean;
+  preserveStartersInClutch?: boolean;
+  foulTroubleProtection?: boolean;
   energy: number;
   onCourt: boolean;
   fouledOut: boolean;
@@ -136,8 +143,10 @@ export interface RotationMember extends LineupCandidate {
  * fatigue, les fautes et le money time viennent ensuite le corriger.
  */
 export function coachValue(lp: RotationMember, ctx: CoachContext): number {
+  if (lp.autoSubstitutions === false && lp.onCourt) return 1000;
+  if (ctx.closing && (lp.closingSlot !== undefined || (lp.preserveStartersInClutch && lp.starterSlot !== undefined))) return 500 + lp.energy;
   if (ctx.closing) {
-    return lp.overall * (0.85 + 0.15 * (lp.energy / 100)) + (lp.onCourt ? 2 : 0) - (lp.line.pf >= 5 ? 10 : 0);
+    return lp.overall * (0.85 + 0.15 * (lp.energy / 100)) + (lp.onCourt ? 2 : 0) - (lp.foulTroubleProtection !== false && lp.line.pf >= 5 ? 10 : 0);
   }
   const expected = lp.targetSecs * ctx.progress;
   const deficitMinutes = clamp((expected - lp.line.secs * ctx.timeScale) / 60, -10, 10);
@@ -147,6 +156,7 @@ export function coachValue(lp: RotationMember, ctx: CoachContext): number {
   }
   let value = 55 + deficitMinutes * 4 + (lp.overall - 60) * 0.25 + (lp.energy - 65) * 0.12;
   if (lp.onCourt) value += 2;
+  if (lp.foulTroubleProtection === false) return value;
   if (lp.line.pf >= 5) value -= 15;
   else if (lp.line.pf >= 4 && ctx.period <= 3) value -= 8;
   else if (lp.line.pf >= 3 && ctx.period <= 2) value -= 5;
@@ -155,13 +165,23 @@ export function coachValue(lp: RotationMember, ctx: CoachContext): number {
 
 /** Cinq de départ : les cinq premiers de la rotation, chacun au poste qui lui va le mieux. */
 export function startingLineup<T extends RotationMember>(rotation: readonly T[]): T[] {
-  return pickLineup(rotation.slice(0, 5), (lp) => lp.overall);
+  const explicit = rotation.filter(lp => lp.starterSlot !== undefined).sort((a, b) => a.starterSlot! - b.starterSlot!);
+  return explicit.length === 5 ? explicit : pickLineup(rotation.slice(0, 5), (lp) => lp.overall);
 }
 
 /** Cinq choisi par le coach parmi les joueurs non éliminés (tous, s'il en reste moins de cinq). */
 export function nextLineup<T extends RotationMember>(rotation: readonly T[], ctx: CoachContext): T[] {
-  const candidates = rotation.filter((lp) => !lp.fouledOut);
-  const pool = candidates.length >= 5 ? candidates : [...rotation];
+  const candidates = rotation.filter((lp) => !lp.fouledOut && lp.targetSecs > 0);
+  const eligible = rotation.filter(lp => !lp.fouledOut);
+  const pool = candidates.length >= 5 ? candidates : eligible.length >= 5 ? eligible : [...rotation];
+  if (ctx.closing && pool.every(lp => lp.autoSubstitutions !== false)) {
+    const closing = pool.filter(lp => lp.closingSlot !== undefined).sort((a, b) => a.closingSlot! - b.closingSlot!);
+    if (closing.length === 5) return closing;
+    if (!closing.length) {
+      const starters = pool.filter(lp => lp.preserveStartersInClutch && lp.starterSlot !== undefined).sort((a, b) => a.starterSlot! - b.starterSlot!);
+      if (starters.length === 5) return starters;
+    }
+  }
   return pickLineup(pool, (lp) => coachValue(lp, ctx));
 }
 
@@ -177,15 +197,15 @@ export function seatLineup(rotation: readonly RotationMember[], lineup: readonly
  * le cas extrême d'un effectif décimé, les blessés légers jouent.
  */
 export function matchRotation(team: Team, players: Readonly<Record<string, Player>>): Player[] {
-  const available = team.rotation
+  const available = [...new Set(team.rotation)]
     .map((id) => players[id])
-    .filter((p): p is Player => Boolean(p) && p.teamId === team.id && p.injuryGames === 0);
+    .filter((p): p is Player => Boolean(p) && team.roster.includes(p.id) && p.teamId === team.id && p.injuryGames === 0);
 
   if (available.length < 8) {
     const known = new Set(available.map((p) => p.id));
     const extras = team.roster
       .map((id) => players[id])
-      .filter((p) => p && p.injuryGames === 0 && !known.has(p.id))
+      .filter((p) => p && p.teamId === team.id && p.injuryGames === 0 && !known.has(p.id))
       .sort((a, b) => b.overall - a.overall);
     while (available.length < 8 && extras.length > 0) available.push(extras.shift()!);
   }
@@ -204,7 +224,32 @@ export function matchRotation(team: Team, players: Readonly<Record<string, Playe
  * Minutes visées de chaque joueur disponible (secondes d'un match de 48 min) : l'ordre de la
  * rotation les fixe, le premier joue le plus, le dernier le moins.
  */
-export function rotationTargets(available: readonly Player[]): Map<string, number> {
+export function rotationTargets(available: readonly Player[], plan?: GamePlan): Map<string, number> {
+  if (plan) {
+    const active = available.filter(p => (plan.rotation.minutesByPlayerId[p.id] ?? 0) > 0);
+    if (active.length >= 5) {
+      const requested = plan.rotation.minutesByPlayerId;
+      const sum = active.reduce((n, p) => n + requested[p.id], 0);
+      const minutes = Math.abs(sum - 240) < 1e-6 ? requested : distributeMinutes(active.map(p => p.id), requested);
+      return new Map(available.map(p => [p.id, (minutes[p.id] ?? 0) * 60]));
+    }
+  }
   const targets = minuteTargets(available.length);
   return new Map(available.map((p, i) => [p.id, targets[i]]));
+}
+
+/** Shared coaching contract; both match adapters consume the same 48-minute targets and preferences. */
+export function planMemberOptions(id: string, plan?: GamePlan): Partial<RotationMember> {
+  if (!plan) return {};
+  const r = plan.rotation;
+  const slot = r.starterIds.indexOf(id);
+  const closing = r.closingFiveIds?.indexOf(id) ?? -1;
+  return { starterSlot: slot < 0 ? undefined : slot, closingSlot: closing < 0 ? undefined : closing,
+    role: plan.rolesByPlayerId[id], autoSubstitutions: r.autoSubstitutions,
+    preserveStartersInClutch: r.preserveStartersInClutch && !r.closingFiveIds, foulTroubleProtection: r.foulTroubleProtection };
+}
+
+/** Equivalent regulation seconds; both adapters divide this interval by their time scale. */
+export function substitutionInterval(plan?: GamePlan): number {
+  return SUB_INTERVAL * (1.5 - (plan?.substitutionAggression ?? 50) / 100);
 }

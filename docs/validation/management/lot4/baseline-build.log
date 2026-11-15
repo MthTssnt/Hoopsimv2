@@ -1,0 +1,61 @@
+
+> hoopsim@0.0.0 build
+> tsc -b && vite build
+
+vite v8.2.1 building client environment for production...
+[2Ktransforming...✓ 165 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                1.22 kB │ gzip:   0.64 kB
+dist/assets/compose.worker-1AGrH8tL.js       519.25 kB
+dist/assets/0-2-up-B0_r0QBo.png              796.82 kB
+dist/assets/0-2-down-CcE8RxL8.png            803.67 kB
+dist/assets/0-1-up-D0otv4c7.png              850.78 kB
+dist/assets/0-0-up-h_6M1Wtx.png              853.16 kB
+dist/assets/1-0-up-DiYNOljm.png              857.28 kB
+dist/assets/1-2-up-bbBQHROb.png              876.43 kB
+dist/assets/1-1-up-BNgKaUb-.png              889.73 kB
+dist/assets/1-2-down-E87Y0_AX.png            890.43 kB
+dist/assets/1-1-down-CMVt313w.png            902.22 kB
+dist/assets/0-0-down-D2Jv38jZ.png            903.80 kB
+dist/assets/0-1-down-DYlvylM6.png            907.02 kB
+dist/assets/0-4-up-BZ9ljlrX.png              912.42 kB
+dist/assets/0-3-up-WqMXfSM6.png              920.36 kB
+dist/assets/1-0-down-DYTVpAnE.png            922.23 kB
+dist/assets/0-3-down-CgIbC63f.png            932.56 kB
+dist/assets/1-3-up-Df96QBKH.png              950.33 kB
+dist/assets/0-4-down-BBZfmCka.png            954.75 kB
+dist/assets/1-3-down-DeXwgBvp.png            961.83 kB
+dist/assets/1-4-up-4OY5dWsG.png              973.73 kB
+dist/assets/1-4-down-Bpzkcq1b.png            987.74 kB
+dist/assets/ball-spin-Cw_XGbj9.png         1,265.21 kB
+dist/assets/team-navy-Hfe-XK-6.png         1,359.39 kB
+dist/assets/0-0-up-B6zPVFQr.png            1,394.55 kB
+dist/assets/0-0-down-D-OAUGR8.png          1,416.70 kB
+dist/assets/maple-PYb8THnf.png             1,605.93 kB
+dist/assets/team-ivory-Fam7Nay_.png        1,939.45 kB
+dist/assets/AnimationLab-Bez5ujga.css          4.60 kB │ gzip:   1.45 kB
+dist/assets/index-CvmxgK_z.css                 8.62 kB │ gzip:   2.37 kB
+dist/assets/PlayerDesigns-DxDtDM9f.js          0.06 kB │ gzip:   0.08 kB
+dist/assets/rng-DTNF7STV.js                    1.00 kB │ gzip:   0.52 kB
+dist/assets/preload-helper-Czpn1I53.js         1.19 kB │ gzip:   0.67 kB
+dist/assets/team-navy-2THLZaoR.js              1.34 kB │ gzip:   0.77 kB
+dist/assets/LocomotionWitness-CZjrzVuW.js      7.24 kB │ gzip:   2.77 kB
+dist/assets/jsx-runtime-QtymfJMM.js            7.92 kB │ gzip:   2.99 kB
+dist/assets/AnimationLab-R9uRtY6V.js          12.44 kB │ gzip:   4.48 kB
+dist/assets/gameResult-BGJ5UZr7.js            72.25 kB │ gzip:  28.64 kB
+dist/assets/index-XGdvCEud.js                260.66 kB │ gzip:  77.14 kB
+dist/assets/motionArt-BtzKSSNj.js            523.20 kB │ gzip: 114.25 kB
+dist/assets/PhaserGame-DESehmje.js         1,573.03 kB │ gzip: 424.07 kB
+
+✓ built in 1.22s
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 1500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

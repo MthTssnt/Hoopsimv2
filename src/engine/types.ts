@@ -1,3 +1,7 @@
+import type { ManagementState, FrontOfficePlan, TradeStatus, ContractOffer } from './management/types';
+import type { TacticalReport } from './coaching/analytics';
+import type { GamePlan } from './gamePlan';
+
 export type Position = 'PG' | 'SG' | 'SF' | 'PF' | 'C';
 
 export const POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
@@ -83,6 +87,13 @@ export interface StatLine {
 }
 
 export interface Player {
+  tradeStatus?: TradeStatus;
+  extension?: ContractOffer;
+  promisedRole?: ContractOffer['promisedRole'];
+  freeAgentSince?: number;
+  minimumException?: boolean;
+  replacement?: boolean;
+  legacyMinimum?: boolean;
   id: string;
   firstName: string;
   lastName: string;
@@ -114,6 +125,11 @@ export interface Player {
 }
 
 export interface Team {
+  frontOffice?: FrontOfficePlan;
+  /** Optional only for import of legacy saves; populated on creation/migration. */
+  gamePlan?: GamePlan;
+  savedGamePlans?: GamePlan[];
+  coachingWarnings?: string[];
   id: string;
   city: string;
   name: string;
@@ -157,6 +173,7 @@ export interface BoxScoreRow {
 }
 
 export interface GameBox {
+  tactics?: TacticalReport;
   gameId: string;
   homeId: string;
   awayId: string;
@@ -226,6 +243,8 @@ export interface SeasonHistory {
 export type Phase = 'regular' | 'playoffs' | 'offseason';
 
 export interface League {
+  management?: ManagementState;
+  schemaVersion?: 2;
   seed: number;
   rngState: number;
   season: number;

@@ -5,7 +5,7 @@ import { Rng } from '../engine/rng';
 import type { Game, League } from '../engine/types';
 import { runToEnd } from './ai/finish';
 import { PlayerAi } from './ai/playerAi';
-import { gmMatchSetup, toPlayedGame, worldRotations, type MatchSetup } from './gameResult';
+import { gmMatchSetup, toPlayedGame, worldRotations, worldGamePlans, type MatchSetup } from './gameResult';
 import { makeCourt } from './physics/court';
 import { awayLook, colorDistance, JERSEY_CLASH, teamLook } from './render/arena/draw';
 import { MatchWorld, WORLD_DT } from './world/MatchWorld';
@@ -24,7 +24,7 @@ function playOut(setup: MatchSetup, quarterMinutes = 1): MatchWorld {
   const [mine, theirs] = worldRotations(setup);
   const w = new MatchWorld(makeCourt('pro'), mine[0], { x: 10, y: 7, z: 0 }, { mode: 'timing', speed: 'normal' }, new Rng(setup.seed));
   w.autoRestart = false;
-  w.startFullCourt(mine, theirs, quarterMinutes);
+  w.startFullCourt(mine, theirs, quarterMinutes, worldGamePlans(setup));
   const ais = w.players.map((_, i) => new PlayerAi(i, new Rng(setup.seed + i)));
   // Un peu de jeu « normal », puis la fin simulée.
   for (let t = 0; t < 20; t += WORLD_DT) w.step(WORLD_DT, ais.map((ai) => ai.think(w, WORLD_DT)));

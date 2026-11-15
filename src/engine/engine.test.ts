@@ -187,9 +187,11 @@ describe('saison complète', () => {
         expect(league.players[id].stats.gp).toBe(0);
       }
     }
-    // Aucun joueur orphelin ne traîne dans la base.
+    // Chaque joueur est possédé exactement une fois, ou libre avec un contrat nul.
     for (const player of Object.values(league.players)) {
-      expect(player.teamId).toBeTruthy();
+      const owners = league.teams.filter(t => t.roster.includes(player.id));
+      if (player.teamId === null) { expect(owners).toHaveLength(0); expect(player.contract).toEqual({ salary: 0, years: 0 }); }
+      else { expect(owners.map(t => t.id)).toEqual([player.teamId]); expect(player.contract.years).toBeGreaterThan(0); }
       expect(player.age).toBeLessThan(41);
     }
     // Rookies et agents libres ne reprennent pas un nom de famille déjà porté.
@@ -202,13 +204,15 @@ describe('intersaisons successives', () => {
   it('ne donnent jamais à un rookie l’identifiant d’un joueur actif (effectifs cohérents)', () => {
     const league = createNewGame('bos', 2024);
     for (let season = 0; season < 4; season++) {
+      league.phase = 'offseason'; // Fixture du cycle d’effectifs, sans rejouer les calendriers sportifs.
       startNextSeason(league);
       const listed = league.teams.flatMap((t) => t.roster);
       expect(new Set(listed).size).toBe(listed.length);
       for (const team of league.teams) {
         for (const id of team.roster) expect(league.players[id]?.teamId).toBe(team.id);
       }
-      expect(listed.length).toBe(Object.keys(league.players).length);
+      expect(listed.length).toBe(Object.values(league.players).filter(p => p.teamId !== null).length);
+      for (const player of Object.values(league.players).filter(p => p.teamId === null)) { expect(listed).not.toContain(player.id); expect(player.contract).toEqual({ salary: 0, years: 0 }); }
     }
   });
 

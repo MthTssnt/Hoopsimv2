@@ -53,7 +53,8 @@ export function teamSequence(world: MatchWorld, team: number): TeamSequence | nu
 }
 
 /** Roles persist through a pass. A bounded sequence falls back to ordinary spacing on failure. */
-export function sequenceIntent(world: MatchWorld, index: number): { target?: Point; passTo?: number; mode?: 'écran' | 'coupe' | 'main-à-main' } {
+export function sequenceIntent(world: MatchWorld, index: number): { target?: Point; passTo?: number; mode?: 'écran' | 'coupe' | 'main-à-main' | 'écartement'; zone?: 'rim' | 'mid' | 'three' } {
+  if (world.tactics.enabled(world.team[index])) return world.tactics.intent(world, index);
   const plan = teamSequence(world, world.team[index]);
   if (!plan || plan.phase === 'done' || endgameStrategy(world, world.team[index]) !== 'normal') return {};
   const hoop = world.attackHoop(world.team[index]), me = world.players[index].pos;
@@ -82,6 +83,7 @@ const defenses = new WeakMap<MatchWorld, { key: string; at: number; switched: nu
 /** A beaten defender trades responsibilities with the helper, with a cooldown against oscillation. */
 export function coordinatedMarks(world: MatchWorld, base: Map<number, number>): Map<number, number> {
   if (!world.full) return base;
+  if (world.possession && world.tactics.enabled(1 - world.possession.team)) return world.tactics.defensiveMarks(world, base);
   const key = `${world.possession?.since}:${world.lineupVersion}:${world.full.period}`;
   let state = defenses.get(world);
   if (!state || state.key !== key) { state = { key, at: -Infinity, switched: -Infinity, marks: base }; defenses.set(world, state); }

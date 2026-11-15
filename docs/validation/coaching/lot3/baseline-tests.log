@@ -1,0 +1,18 @@
+
+> hoopsim@0.0.0 test
+> vitest run
+
+
+ RUN  v4.1.10 /workspace/Hoopsimv2
+
+
+ Test Files  44 passed (44)
+      Tests  412 passed (412)
+   Start at  06:35:03
+   Duration  20.56s (transform 3.08s, setup 0ms, import 10.91s, tests 43.63s, environment 4ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

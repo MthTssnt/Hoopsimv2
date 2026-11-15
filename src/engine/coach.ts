@@ -1,3 +1,4 @@
+import { repairGamePlan } from './gamePlan';
 import { POSITION_INDEX } from './ratings';
 import type { League, Player, Team } from './types';
 
@@ -99,9 +100,11 @@ export function refreshRotations(league: League, skipUserTeam = false): void {
       while (valid.length < ROTATION_SIZE && fillers.length > 0) valid.push(fillers.shift()!.id);
       if (valid.length >= 5) {
         team.rotation = valid;
+        repairGamePlan(team, league.players);
         continue;
       }
     }
     team.rotation = defaultRotation(team, league.players);
+    repairGamePlan(team, league.players);
   }
 }

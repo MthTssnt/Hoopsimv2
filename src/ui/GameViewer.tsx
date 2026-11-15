@@ -1,3 +1,4 @@
+import { TacticalReport } from './TacticalReport';
 import { useEffect, useState } from 'react';
 import { formatClock, playerName, totalReb, type GameBox, type League, type PlayEvent } from '../engine';
 import type { WatchedGame } from '../state/store';
@@ -157,6 +158,7 @@ export function GameViewer({ league, watched, onClose }: { league: League; watch
         </>
       )}
 
+      {!live && <TacticalReport box={box} league={league} />}
       <BoxScoreTable league={league} box={box} teamId={box.awayId} />
       <BoxScoreTable league={league} box={box} teamId={box.homeId} />
     </Modal>

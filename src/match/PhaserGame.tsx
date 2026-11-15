@@ -1,3 +1,6 @@
+import type { GamePlan } from '../engine/gamePlan';
+import type { CoachSnapshot } from './tactics/coaching';
+import { MatchCoaching } from './ui/MatchCoaching';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import type { PlayedGame } from '../engine/simSeason';
@@ -25,7 +28,7 @@ const isPauseKey = (event: KeyboardEvent) => event.key === 'Escape' || event.key
  * regarder (vitesses ×1, ×2, ×4 avec les touches 1-3 ou les boutons) ; « Simuler la fin » le
  * termine tout seul ; à la fin, le résultat part au GM par `onMatchOver`.
  */
-export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup; onMatchOver?: (played: PlayedGame) => void } = {}) {
+export default function PhaserGame({ match, onMatchOver, coachingVariants = [] }: { match?: MatchSetup; coachingVariants?: GamePlan[]; onMatchOver?: (played: PlayedGame) => void } = {}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const parentRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -40,6 +43,8 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
   const panelOpenRef = useRef(panelOpen);
   /** Regarder : vitesse choisie ; fin simulée en cours (plus de boutons). */
   const watching = match ? match.mode === 'regarder' : new URLSearchParams(window.location.search).has('watch');
+  const [coach, setCoach] = useState<CoachSnapshot | null>(null);
+  const [coachErrors, setCoachErrors] = useState<string[]>([]);
   const [speed, setSpeed] = useState(1);
   const [finishing, setFinishing] = useState(false);
   const [canFinish, setCanFinish] = useState(false);
@@ -76,6 +81,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     // Le jeu peut demander un changement de réglage (ex. touche C pour la caméra).
     game.events.on('request-settings', (next: MatchSettings) => setSettings(next));
     // Le match s'est arrêté : il publie son box score.
+    game.events.on('coach-state', (state: CoachSnapshot, errors: string[]) => { setCoach(state); setCoachErrors(errors); });
     game.events.on('pause-box', (box: BoxView | null) => setPause({ box }));
     game.events.on('preparation-progress', (progress: { done: number; total: number }) => setPreparation(progress));
     game.events.on('preparation-error', (message: string) => setPreparationError(message));
@@ -160,7 +166,7 @@ export default function PhaserGame({ match, onMatchOver }: { match?: MatchSetup;
     <div ref={rootRef} style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
       <div ref={parentRef} style={{ width: '100%', height: '100%' }} />
       {ready && inspection && gameRef.current && <MatchInspector snapshot={inspection} scene={gameRef.current.scene.getScene('Match') as MatchScene} />}
-      {pause && <MatchPause box={pause.box} onResume={onResume} onFinish={match && !finishing ? onFinish : undefined} />}
+      {pause && <MatchPause box={pause.box} coach={watching && coach ? <MatchCoaching key={pause.box?.clock} snapshot={coach} variants={coachingVariants} errors={coachErrors} onCommand={command => gameRef.current?.events.emit('coach-command', command)} /> : undefined} onResume={onResume} onFinish={match && !finishing ? onFinish : undefined} />}
       {!ready && <div role={preparationError ? 'alert' : 'status'} style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff5e5', background: '#17243b' }}>
         {preparationError ? `Préparation impossible : ${preparationError}` : `Préparation des joueurs… ${preparation.done}${preparation.total ? ` / ${preparation.total}` : ''}`}
       </div>}

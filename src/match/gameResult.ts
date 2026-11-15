@@ -1,3 +1,6 @@
+import { reportSnapshot } from '../engine/coaching/analytics';
+import { matchTimeScale } from './world/rotation';
+import { repairGamePlan, validateGamePlan, type GamePlan } from '../engine/gamePlan';
 import { hashSeed } from '../engine/rng';
 import { matchRotation } from '../engine/rotation';
 import { teamById, type PlayedGame } from '../engine/simSeason';
@@ -13,6 +16,8 @@ export type MatchMode = 'jouer' | 'regarder';
  * côté, le mode et la graine. Ton équipe est l'équipe 0 du monde.
  */
 export interface MatchSetup {
+  homePlan?: GamePlan;
+  awayPlan?: GamePlan;
   gameId: string;
   home: Team;
   away: Team;
@@ -27,7 +32,13 @@ export interface MatchSetup {
 export function gmMatchSetup(league: League, game: Game, mode: MatchMode): MatchSetup {
   const home = teamById(league, game.homeId);
   const away = teamById(league, game.awayId);
+  for (const team of [home, away]) {
+    repairGamePlan(team, league.players);
+    const errors = validateGamePlan(team.gamePlan, team, league.players);
+    if (errors.length) throw new Error(errors.join(' '));
+  }
   return {
+    homePlan: structuredClone(home.gamePlan), awayPlan: structuredClone(away.gamePlan),
     gameId: game.id,
     home,
     away,
@@ -70,6 +81,7 @@ export function toPlayedGame(world: MatchWorld, setup: MatchSetup): PlayedGame {
     awayScore,
     periods,
     box: {
+      tactics: { source: 'physical' as const, durationSeconds: squads[homeTeam].members.reduce((sum, m) => sum + m.line.secs, 0) / 5, normalizationFactor: matchTimeScale(world.full!.quarterMinutes), teams: { [setup.home.id]: { ...reportSnapshot(world.getGamePlan(homeTeam) ?? setup.homePlan), initialPlanName: setup.homePlan?.name, live: world.tactics.summary(homeTeam), coachingEvents: world.coachingEvents.filter(e => e.team === homeTeam).map(e => ({ time: e.time, message: e.message })) }, [setup.away.id]: { ...reportSnapshot(world.getGamePlan(awayTeam) ?? setup.awayPlan), initialPlanName: setup.awayPlan?.name, live: world.tactics.summary(awayTeam), coachingEvents: world.coachingEvents.filter(e => e.team === awayTeam).map(e => ({ time: e.time, message: e.message })) } } },
       gameId: setup.gameId,
       homeId: setup.home.id,
       awayId: setup.away.id,
@@ -82,4 +94,8 @@ export function toPlayedGame(world: MatchWorld, setup: MatchSetup): PlayedGame {
   };
   const energy = Object.fromEntries(squads.flatMap((s) => s.members.map((m) => [m.id, m.energy])));
   return { result, energy };
+}
+
+export function worldGamePlans(setup: MatchSetup): [GamePlan?, GamePlan?] {
+  return setup.userSide === 'home' ? [setup.homePlan, setup.awayPlan] : [setup.awayPlan, setup.homePlan];
 }

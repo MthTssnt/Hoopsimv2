@@ -1,7 +1,8 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { BoxRowView, BoxTeamView, BoxView } from '../boxView';
 
 interface Props {
+  coach?: ReactNode;
   /** Box score au moment de la pause (null hors 5 contre 5). */
   box: BoxView | null;
   onResume: () => void;
@@ -200,7 +201,7 @@ function TeamTable({ team }: { team: BoxTeamView }) {
  * d'équipe, box score des deux équipes (titulaires en tête, ● sur le terrain, éliminés grisés).
  * Il ne fait qu'afficher la photo publiée par le match ; aucune logique de jeu ici.
  */
-export function MatchPause({ box, onResume, onFinish }: Props) {
+export function MatchPause({ box, onResume, onFinish, coach }: Props) {
   return (
     <div style={backdrop} onClick={onResume}>
       <div style={panel} onClick={(event) => event.stopPropagation()}>
@@ -221,6 +222,7 @@ export function MatchPause({ box, onResume, onFinish }: Props) {
             Reprendre
           </button>
         </div>
+        {coach}
         {box ? (
           <>
             <ScoreTable box={box} />

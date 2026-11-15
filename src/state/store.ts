@@ -1,3 +1,5 @@
+import { executeTrade, extendContract, signFreeAgent } from '../engine/management/transactions';
+import type { ContractOffer, FrontOfficeDirection, TradeOffer, TradeStatus } from '../engine/management/types';
 import { useSyncExternalStore } from 'react';
 import {
   advancePlayoffs,
@@ -19,6 +21,7 @@ import {
   type PlayedGame,
   type PlayoffDaySummary,
 } from '../engine';
+import { defaultGamePlan, validateGamePlan, planRotationIds, type GamePlan } from '../engine/gamePlan';
 import { gmMatchSetup, type MatchMode, type MatchSetup } from '../match/gameResult';
 
 const SAVE_KEY = 'hoopsim.save.v1';
@@ -40,6 +43,7 @@ class GameStore {
   /** Match de ton équipe en cours dans le navigateur (jouer ou regarder), non sauvegardé. */
   liveMatch: MatchSetup | null = null;
   busy = false;
+  actionError: string | null = null;
 
   private version = 0;
   private listeners = new Set<() => void>();
@@ -147,7 +151,14 @@ class GameStore {
     const league = this.league_();
     const game = userGameToday(league);
     if (!game) return;
-    this.liveMatch = gmMatchSetup(league, game, mode);
+    this.actionError = null;
+    try {
+      this.liveMatch = gmMatchSetup(league, game, mode);
+    } catch (error) {
+      this.actionError = error instanceof Error ? error.message : 'Impossible de préparer ce match.';
+      this.emit();
+      return;
+    }
     this.watched = null;
     this.emit();
   }
@@ -215,22 +226,93 @@ class GameStore {
 
   // --- Gestion d'effectif ---
 
-  setRotation(ids: string[]): void {
+  private marketAction(action: (league: League) => string[]): string[] {
+    if (this.liveMatch || this.busy) return ['Terminez le match ou la simulation avant de modifier le marché.'];
+    const errors = action(this.league_());
+    if (!errors.length) { this.save(); this.emit(); }
+    return errors;
+  }
+  proposeTrade(offer: TradeOffer): string[] {
+    return this.marketAction(league => offer.fromTeamId !== league.userTeamId ? ['Vous ne dirigez pas cette équipe.'] : executeTrade(league, offer));
+  }
+  offerContract(playerId: string, offer: ContractOffer): string[] {
+    return this.marketAction(league => league.players[playerId]?.teamId === league.userTeamId ? extendContract(league, league.userTeamId, playerId, offer) : signFreeAgent(league, league.userTeamId, playerId, offer));
+  }
+  setTradeStatus(playerId: string, status: TradeStatus): string[] {
+    return this.marketAction(league => {
+      if (!['normal', 'listed', 'core', 'unavailable'].includes(status) || league.players[playerId]?.teamId !== league.userTeamId) return ['Statut ou propriétaire invalide.'];
+      league.players[playerId].tradeStatus = status; return [];
+    });
+  }
+  setFrontOffice(direction: FrontOfficeDirection): string[] {
+    return this.marketAction(league => {
+      if (!['contend', 'compete', 'retool', 'rebuild'].includes(direction)) return ['Projet inconnu.'];
+      const team = league.teams.find(t => t.id === league.userTeamId)!;
+      team.frontOffice = { ...team.frontOffice!, direction }; return [];
+    });
+  }
+  respondTradeProposal(id: string, accept: boolean): string[] {
+    return this.marketAction(league => {
+      const proposal = league.management?.proposals.find(p => p.id === id && p.offer.toTeamId === league.userTeamId);
+      if (!proposal) return ['Offre absente.'];
+      if (accept) {
+        if (proposal.season !== league.season || league.day - proposal.day > 14) return ['Cette offre a expiré.'];
+        const errors = executeTrade(league, proposal.offer); if (errors.length) return errors;
+      }
+      league.management!.proposals = league.management!.proposals.filter(p => p.id !== id); return [];
+    });
+  }
+
+  setGamePlan(plan: GamePlan): string[] {
+    if (this.liveMatch || this.busy) return ['Terminez le match ou la simulation avant de modifier le plan.'];
     const league = this.league_();
-    const team = league.teams.find((t) => t.id === league.userTeamId);
-    if (!team) return;
-    team.rotation = ids;
+    const team = league.teams.find(t => t.id === league.userTeamId)!;
+    const errors = validateGamePlan(plan, team, league.players);
+    if (errors.length) return errors;
+    team.gamePlan = structuredClone(plan);
+    delete team.coachingWarnings;
+    team.rotation = planRotationIds(plan);
     this.save();
     this.emit();
+    return [];
+  }
+
+  savePlanVariant(plan: GamePlan): string[] {
+    if (this.liveMatch || this.busy) return ['Terminez le match ou la simulation avant de modifier les variantes.'];
+    const league = this.league_();
+    const team = league.teams.find(t => t.id === league.userTeamId)!;
+    const errors = validateGamePlan(plan, team, league.players);
+    if (errors.length) return errors;
+    const saved = team.savedGamePlans ?? [];
+    const index = saved.findIndex(p => p.name === plan.name);
+    if (index < 0 && saved.length >= 8) return ['La bibliothèque est limitée à huit variantes.'];
+    const next = [...saved];
+    if (index < 0) next.push(structuredClone(plan));
+    else next[index] = structuredClone(plan);
+    team.savedGamePlans = next;
+    this.save(); this.emit();
+    return [];
+  }
+
+  deletePlanVariant(name: string): void {
+    if (this.liveMatch || this.busy) return;
+    const league = this.league_();
+    const team = league.teams.find(t => t.id === league.userTeamId)!;
+    team.savedGamePlans = (team.savedGamePlans ?? []).filter(p => p.name !== name);
+    this.save(); this.emit();
+  }
+
+  setRotation(ids: string[]): string[] {
+    const league = this.league_();
+    const team = league.teams.find(t => t.id === league.userTeamId)!;
+    if (ids.length < 5 || ids.length > 10 || new Set(ids).size !== ids.length || ids.some(id => !team.roster.includes(id) || league.players[id]?.teamId !== team.id || league.players[id].injuryGames > 0)) return ['Rotation invalide : choisissez 5 à 10 joueurs aptes et distincts de votre équipe.'];
+    return this.setGamePlan(defaultGamePlan({ ...team, rotation: ids }, league.players));
   }
 
   resetRotation(): void {
     const league = this.league_();
-    const team = league.teams.find((t) => t.id === league.userTeamId);
-    if (!team) return;
-    team.rotation = defaultRotation(team, league.players);
-    this.save();
-    this.emit();
+    const team = league.teams.find(t => t.id === league.userTeamId)!;
+    this.setGamePlan(defaultGamePlan({ ...team, rotation: defaultRotation(team, league.players) }, league.players));
   }
 
   clearWatched(): void {

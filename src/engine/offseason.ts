@@ -1,5 +1,8 @@
+import { ensureManagement, logMarket, reservePlayerIds } from './management/state';
+import { cpuRenewals, fillRosters, updateCPUProjects } from './management/aiGm';
+import { budget, LEAGUE_ECONOMY_CONFIG } from './management/economy';
 import { defaultRotation, refreshRotations } from './coach';
-import { generateDraftClass, nextRookieId } from './generate';
+import { generateDraftClass } from './generate';
 import { clampRating, computeOverall, defenseRating } from './ratings';
 import { Rng } from './rng';
 import { buildSchedule } from './schedule';
@@ -21,8 +24,7 @@ const ATTR_KEYS: AttributeKey[] = [
   'vertical', 'standingDunk', 'drivingDunk',
 ];
 
-const ROSTER_TARGET = 14;
-const ROSTER_MINIMUM = 13;
+const ROSTER_TARGET = LEAGUE_ECONOMY_CONFIG.targetRoster;
 
 export function computeAwards(league: League): { mvpId: string; awards: SeasonAward[] } {
   const race = mvpRace(league, 5);
@@ -119,6 +121,10 @@ function shouldRetire(rng: Rng, player: Player): boolean {
  * draft des rookies puis nouveau calendrier.
  */
 export function startNextSeason(league: League): { retired: Player[]; drafted: { teamId: string; player: Player }[] } {
+  if (league.phase !== 'offseason') throw new Error('Terminez la saison avant de lancer l’intersaison.');
+  ensureManagement(league);
+  cpuRenewals(league);
+  updateCPUProjects(league);
   const retired: Player[] = [];
   const drafted: { teamId: string; player: Player }[] = [];
 
@@ -147,44 +153,61 @@ export function startNextSeason(league: League): { retired: Player[]; drafted: {
       delete league.players[player.id];
     }
 
+    // --- Expiration réelle ou activation d’une prolongation déjà négociée ---
+    for (const player of Object.values(league.players)) {
+      if (!player.teamId || player.contract.years > 0) continue;
+      if (player.extension) {
+        player.contract = { salary: player.extension.salary, years: player.extension.years };
+        player.promisedRole = player.extension.promisedRole;
+        delete player.extension; delete player.minimumException; delete player.legacyMinimum;
+      } else {
+        const team = league.teams.find(t => t.id === player.teamId)!;
+        team.roster = team.roster.filter(id => id !== player.id);
+        player.teamId = null; player.contract = { salary: 0, years: 0 }; player.freeAgentSince = league.season + 1;
+        delete player.minimumException; delete player.legacyMinimum; delete player.promisedRole; player.tradeStatus = 'normal';
+        logMarket(league, { type: 'expire', teamIds: [team.id], playerIds: [player.id], description: `${playerName(player)} quitte ${team.abbr} à l’expiration de son contrat et devient agent libre.` });
+      }
+    }
+
     // --- Draft, dans l'ordre inverse du classement ---
     const order = [...league.teams].sort((a, b) => winPct(a.wins, a.losses) - winPct(b.wins, b.losses));
     // Petite loterie : les quatre pires bilans peuvent échanger leurs places.
     const lottery = rng.shuffle(order.slice(0, 4));
     const draftOrder = [...lottery, ...order.slice(4)];
     const activeNames = () => Object.values(league.players).map((p) => p.lastName);
-    const pool = generateDraftClass(rng, 60, nextRookieId(league.players), activeNames());
+    const pool = generateDraftClass(rng, 60, reservePlayerIds(league, 60), activeNames());
 
+    for (const player of pool) player.contract.salary = Math.max(LEAGUE_ECONOMY_CONFIG.minimumSalary, player.contract.salary);
     for (let round = 0; round < 2; round++) {
       for (const team of draftOrder) {
         if (pool.length === 0) break;
         if (team.roster.length >= ROSTER_TARGET) continue;
+        const candidate = pool[0];
+        if (budget(league, team).commitments.slice(0, candidate.contract.years).some(sum => sum + candidate.contract.salary > league.management!.salaryCap + 1e-6)) {
+          logMarket(league, { type: 'draft', teamIds: [team.id], playerIds: [], description: `${team.abbr} ne peut pas engager le contrat du prochain rookie sous le plafond.` });
+          continue;
+        }
         const pick = pool.shift()!;
         pick.teamId = team.id;
         league.players[pick.id] = pick;
         team.roster.push(pick.id);
         drafted.push({ teamId: team.id, player: pick });
+        logMarket(league, { type: 'draft', teamIds: [team.id], playerIds: [pick.id], description: `${team.abbr} sélectionne ${playerName(pick)} au tour ${round + 1} de la draft.` });
       }
     }
 
-    // --- Agents libres : on complète les effectifs trop courts ---
+    // Les rookies non retenus rejoignent le marché plutôt que disparaître sans statut.
+    for (const player of pool) {
+      player.teamId = null; player.contract = { salary: 0, years: 0 }; player.freeAgentSince = league.season + 1;
+      league.players[player.id] = player;
+    }
+    fillRosters(league);
     for (const team of league.teams) {
-      while (team.roster.length < ROSTER_MINIMUM) {
-        const filler = pool.shift() ?? generateDraftClass(rng, 1, nextRookieId(league.players), activeNames())[0];
-        filler.teamId = team.id;
-        filler.age = rng.int(23, 31);
-        league.players[filler.id] = filler;
-        team.roster.push(filler.id);
-      }
-    }
-
-    // --- Numéros et contrats ---
-    for (const player of Object.values(league.players)) {
-      if (player.contract.years === 0) {
-        player.contract = {
-          salary: Math.round(Math.max(1, Math.pow(Math.max(0, (player.overall - 48) / 45), 2.6) * 48 + 1.1) * 10) / 10,
-          years: rng.int(1, 4),
-        };
+      const used = new Set<number>();
+      for (const id of team.roster) {
+        const p = league.players[id];
+        if (used.has(p.number)) p.number = Array.from({ length: 100 }, (_, i) => i).find(n => !used.has(n))!;
+        used.add(p.number);
       }
     }
 
@@ -214,7 +237,7 @@ export function startNextSeason(league: League): { retired: Player[]; drafted: {
     league.phase = 'regular';
     league.playoffs = null;
     league.boxScores = {};
-    league.feed = league.feed.slice(-40);
+    league.feed = league.feed.slice(-200);
     league.schedule = buildSchedule(rng, league.teams);
   });
 

@@ -35,8 +35,8 @@ F pour le plein écran. Les touches sont modifiables dans Paramètres.
   interceptions, fautes (dont le bonus), contres, rebonds offensifs, lancers francs, passes
   décisives, fatigue, rotations, sorties pour six fautes, temps mort de fin de match et
   prolongations.
-- **Gestion de la rotation** : l'ordre que vous choisissez fixe le temps de jeu. Les cinq
-  premiers sont titulaires, chaque place plus bas signifie moins de minutes.
+- **Coaching** : cinq titulaire explicite, minutes cibles totalisant 240, rôles, cinq de fin de
+  match, fréquence des changements et huit variantes de plan sauvegardables.
 - **Blessures** : elles surviennent en fonction des minutes jouées, de l'âge et de la
   résistance du joueur, et écartent automatiquement l'intéressé de la rotation.
 - **Playoffs** : 16 équipes, séries au meilleur des sept avec avantage du terrain 2-2-1-1-1,
@@ -88,8 +88,8 @@ les moyennes obtenues. Les valeurs actuelles :
 
 ## Limites connues
 
-- Pas de marché des transferts ni d'agents libres : les contrats arrivés à terme sont
-  reconduits automatiquement, et les effectifs sont complétés par la draft.
+- La draft reste automatique ; les picks ne sont pas encore négociables. Le marché utilise
+  une économie fictive et une IA GM minimale, sans clauses ni enchères concurrentes.
 - Les feuilles de match ne sont archivées que pour votre équipe et pour les playoffs, afin de
   garder la sauvegarde légère.
 - Le déroulé action par action n'est conservé que pour le dernier match affiché.
@@ -104,3 +104,51 @@ Les 35 constats et les huit lots de correction sont documentés dans
 et la cohérence du box score. La campagne enregistrée contient douze graines.
 La capture reproductible utilise `scripts/record-gameplay.py` avec Playwright Python,
 Chromium et FFmpeg ; les commandes complètes figurent dans le rapport.
+
+## Coaching et tactiques
+
+L’onglet **Effectif** permet de fixer les cinq postes et les minutes équivalentes à 48 minutes,
+de répartir le reste automatiquement et de choisir les rôles. Mémoriser une variante conserve
+une copie ; la charger propose un brouillon, puis **Enregistrer le plan** l’active.
+
+L’onglet **Tactiques** configure les six identités offensives, le playbook pondéré, la défense
+individuelle/switch/drop et les priorités. Ces systèmes collectifs s’appliquent à **Simuler**, **Jouer** et **Regarder**, avec des résultats
+propres à chaque moteur. Les matchs physiques utilisent des placements, écrans, coupes et replis.
+Dans **Regarder → Pause**, vous pouvez envoyer des consignes et demander un cinq au prochain
+arrêt légal. Ces changements restent locaux au match. Zone et press ne sont pas disponibles.
+
+Après un match, **Analyse tactique** présente les comptes réellement suivis et les minutes
+cibles/effectives. Une possession estimée est indiquée comme telle ; les données non suivies
+ne sont pas inventées. Les anciennes carrières restent sous la même clé de sauvegarde.
+
+Validation reproductible, sans écraser les rapports suivis :
+
+```bash
+npx tsx scripts/validate-coaching.ts  # huit matchs physiques complets, deux durées
+npx tsx scripts/calibrate-tactics.ts # 6 480 matchs rapides, graines appariées
+npx tsx scripts/validate-live-tactics.ts # 30 matchs physiques, cinq systèmes et trois défenses
+```
+
+Les rapports sont produits sous `/tmp` par défaut. Voir le [bilan des lots 1–2](docs/COACHING_LOTS_1_2.md)
+pour les résultats et limites de ces campagnes.
+
+Le [bilan du lot 3](docs/COACHING_LOT_3.md) détaille le coaching en match, ses mesures et ses limites.
+
+## Marché et contrats
+
+L’onglet **Marché** permet de rechercher les joueurs et agents libres, composer un échange
+de un à trois joueurs par côté, comprendre les refus et négocier salaire/durée/rôle promis.
+Les finances affichent le plafond et les engagements futurs. Les clubs CPU gèrent aussi
+leurs effectifs et peuvent envoyer des offres lors des fenêtres de marché.
+
+Avant **Lancer la saison**, négociez les prolongations dans **Contrats** : sans accord,
+les joueurs expirants quittent réellement le club. Les éventuels renforts de secours
+pour atteindre 13 joueurs sont identifiés dans les transactions.
+
+```bash
+npx tsx scripts/validate-management.ts # trois graines × trois saisons complètes
+python scripts/smoke-market.py        # Vite démarré, Playwright Python et Chromium système
+```
+
+Voir le [bilan du lot 4](docs/MANAGEMENT_LOT_4.md) pour les règles économiques,
+les preuves et les limites. Les lots 5–6 restent à développer.

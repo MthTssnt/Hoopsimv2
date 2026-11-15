@@ -148,3 +148,19 @@ ont été retirés ; la direction actuelle est celle de `ART_DIRECTION.md` et `s
 - ✅ Atelier commun au match avec ralenti, image par image et référence approuvée à côté.
 - Vérification : 6 720 rendus aux tailles/corpulences extrêmes, puis vrai match jouable et GM.
 - ✅ Validation de l’ensemble par Matheo et demande de publication sur `main` pour test jouable.
+
+## Refonte management/coaching — 15 novembre 2026
+
+- ✅ Lot 0 : `GamePlan`, defaults des 30 équipes, validation, migration v2 sous la clé existante, réparation et tests d’import.
+- ✅ Lot 1 : éditeur cinq/minutes/rôles, variantes sauvegardées, commandes validées, intervalle des changements commun aux deux moteurs et campagne de huit matchs physiques complets (deux durées).
+- ✅ Lot 2 : six identités sur le moteur rapide, playbook, man/switch/drop, Tactiques, adéquation/scouting, rapport mesuré ; 6 480 matchs de calibration appariés.
+- ✅ Lot 3 : interprète spatial, man/switch/drop, commandes coach en pause Regarder, consignes/cinq différés et rapport physique observé ; 30 matchs complets, contrôles Chromium et clavier.
+- ✅ Lot 4 : marché, échanges atomiques, signatures/prolongations, expiration réelle, budget et IA GM minimale ; 439 tests, 11 785 matchs, neuf transitions et parcours navigateur.
+- ⬜ Lots 5–6 : draft/développement, IA avancée, finition et équilibrage prolongé.
+- Audit, preuves, scénarios et limites : [COACHING_REFONTE.md](COACHING_REFONTE.md).
+
+Suite du §19 : [lots 1–2, preuves et limites](COACHING_LOTS_1_2.md).
+
+Livraison du lot 3 : [coaching sur le terrain et preuves](COACHING_LOT_3.md).
+
+Livraison du lot 4 : [marché, contrats et preuves](MANAGEMENT_LOT_4.md).

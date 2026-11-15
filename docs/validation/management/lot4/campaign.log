@@ -1,0 +1,15 @@
+{"seed":31,"season":2026,"gamesCumulative":1306,"players":495,"freeAgents":75,"cap":250,"maxPayroll":185,"events":187,"retainedTrades":12}
+{"seed":31,"season":2027,"gamesCumulative":2610,"players":547,"freeAgents":127,"cap":250,"maxPayroll":176.8,"events":430,"retainedTrades":0}
+{"seed":31,"season":2028,"gamesCumulative":3924,"players":589,"freeAgents":170,"cap":250,"maxPayroll":180.3,"events":728,"retainedTrades":0}
+{"seed":8126,"season":2026,"gamesCumulative":5232,"players":490,"freeAgents":70,"cap":250,"maxPayroll":223.6,"events":202,"retainedTrades":11}
+{"seed":8126,"season":2027,"gamesCumulative":6549,"players":544,"freeAgents":125,"cap":250,"maxPayroll":221.7,"events":460,"retainedTrades":0}
+{"seed":8126,"season":2028,"gamesCumulative":7858,"players":591,"freeAgents":172,"cap":250,"maxPayroll":207.9,"events":718,"retainedTrades":0}
+{"seed":919,"season":2026,"gamesCumulative":9161,"players":494,"freeAgents":75,"cap":250,"maxPayroll":200.1,"events":206,"retainedTrades":7}
+{"seed":919,"season":2027,"gamesCumulative":10472,"players":541,"freeAgents":122,"cap":250,"maxPayroll":200.9,"events":458,"retainedTrades":0}
+{"seed":919,"season":2028,"gamesCumulative":11785,"players":587,"freeAgents":168,"cap":250,"maxPayroll":202.8,"events":749,"retainedTrades":0}
+PASS: 11785 real games, nine season transitions, ownership/contracts/caps/plans and save-load invariants.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

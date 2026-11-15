@@ -1,3 +1,18 @@
+> Management du 15 novembre 2026 : l’onglet Marché gère les échanges atomiques,
+> agents libres et prolongations. Les contrats non prolongés expirent réellement ;
+> les renforts minimaux sont tracés. Économie fictive en M€, effectifs 13–15,
+> engagements futurs contrôlés, projets GM et fenêtres CPU. La draft reste automatique.
+> Voir [le bilan du lot 4](MANAGEMENT_LOT_4.md) pour les règles et preuves.
+
+> Coaching du 15 novembre 2026 : cinq explicite, minutes équivalentes à 48 minutes, rôles,
+> variantes et fréquence des changements sont partagés. Les six identités et le playbook
+> agissent sur la simulation rapide ; Five-Out, Horns, high P&R, entrée au poste et isolation
+> ont aussi un interprète spatial dans les matchs physiques, avec individuelle/switch/drop.
+> Dans Regarder, la pause permet de transmettre des consignes et un cinq différé. Les gestes
+> en cours et les lancers sont protégés ; aucun résultat joué n’est remplacé par un score simulé.
+> Voir [le bilan du lot 3](COACHING_LOT_3.md) pour les preuves et limites.
+
+
 > Mise à jour du 13 novembre 2026 : les huit lots de correction du naturel ont été
 > autorisés sans validation intermédiaire puis appliqués. Les changements de règles
 > et leur portée sont consignés dans [GAMEPLAY_REMEDIATION.md](GAMEPLAY_REMEDIATION.md).

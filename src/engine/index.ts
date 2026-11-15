@@ -1,3 +1,4 @@
+import { ensureManagement } from './management/state';
 import { refreshRotations } from './coach';
 import { generateLeague } from './generate';
 import { randomSeed, Rng } from './rng';
@@ -14,6 +15,7 @@ export * from './simSeason';
 export * from './playoffs';
 export * from './offseason';
 export * from './coach';
+export * from './gamePlan';
 export { formatClock, simulateGame } from './simGame';
 export { generateDraftClass } from './generate';
 export { migrateLeague } from './migrate';
@@ -30,6 +32,7 @@ export function createNewGame(userTeamId: string, seed = randomSeed()): League {
   const league = generateLeague(rng, seed, userTeamId, FIRST_SEASON);
   refreshRotations(league, false);
   startRegularSeason(league);
+  ensureManagement(league);
   return league;
 }
 

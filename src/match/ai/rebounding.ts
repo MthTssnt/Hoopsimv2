@@ -37,7 +37,7 @@ export function reboundRoles(world: MatchWorld, team: number): number[] {
     const distance = Math.hypot(b.pos.x - ball.x, b.pos.y - ball.y);
     const ability = offense ? a.offReb : a.defReb;
     return { i, score: distance / b.runSpeed - ability * 0.004 - b.jumpHeight * 0.1 };
-  }).sort((a, b) => a.score - b.score || a.i - b.i).slice(0, world.full && !offense ? 3 : 2).map((s) => s.i);
+  }).sort((a, b) => a.score - b.score || a.i - b.i).slice(0, world.full && !offense ? 3 : offense && world.tactics.enabled(team) ? 1 + Math.round((world.tactics.plan(team)?.offensiveReboundAggression ?? 50) / 50) : 2).map((s) => s.i);
   saved.roles.set(team, ranked);
   return ranked;
 }

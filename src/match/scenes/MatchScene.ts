@@ -30,7 +30,8 @@ import type { Heading } from '../render/sprites/views';
 import { sheetIndexIn } from '../render/sprites/layout';
 import { FRAME, SPRITE_DETAIL, seenFromBehind } from '../render/sprites/views';
 import { buildBoxView, type BoxView } from '../boxView';
-import { toPlayedGame, worldRotations, type MatchSetup } from '../gameResult';
+import { coachSnapshot, type CoachCommand } from '../tactics/coaching';
+import { toPlayedGame, worldRotations, worldGamePlans, type MatchSetup } from '../gameResult';
 import { halfCourtRoster } from '../roster';
 import { loadSettings, type MatchSettings } from '../settings';
 import { MatchWorld, WORLD_DT, type FoulCall, type MatchEvent, type ShotRecord, type WorldInput } from '../world/MatchWorld';
@@ -548,7 +549,7 @@ export class MatchScene extends Phaser.Scene {
     const settings = { mode: this.settings.shotMode, speed: this.settings.shotSpeed };
     this.world = new MatchWorld(court, this.athletes[0], { x: 0, y: 0, z: 0 }, settings, this.rng);
     this.world.autoRestart = !setup && !this.inspectorEnabled;
-    if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes));
+    if (n === 5) this.world.startFullCourt(this.athletes, this.opponents, quarterFromUrl(this.settings.quarterMinutes), this.setup ? worldGamePlans(this.setup) : []);
     else this.world.startTeams(this.athletes.slice(0, n), this.opponents.slice(0, n), this.target);
     // En 1 contre 1, un seul joueur de chaque côté (les autres servent aux touches 1-3).
     const bakeStart = performance.now();
@@ -588,17 +589,25 @@ export class MatchScene extends Phaser.Scene {
     const onPause = (value: boolean) => this.setPaused(value);
     const onSpeed = (value: number) => (this.speed = WATCH_SPEEDS.includes(value as 1) ? value : 1);
     const onFinish = () => this.startFinishing();
+    const onCoach = (command: CoachCommand) => {
+      const errors = !this.paused || this.setup?.mode !== 'regarder'
+        ? ['Le coaching en match est disponible dans la pause du mode Regarder.']
+        : command.kind === 'plan' ? this.world.requestCoachingPlan(0, command.plan) : this.world.requestCoachingFive(0, command.ids);
+      this.game.events.emit('coach-state', coachSnapshot(this.world, 0), errors);
+    };
     this.registry.events.on('changedata-settings', onSettings);
     this.registry.events.on('changedata-inputBlocked', onBlocked);
     this.game.events.on('pause-request', onPause);
     this.game.events.on('watch-speed', onSpeed);
     this.game.events.on('finish-request', onFinish);
+    this.game.events.on('coach-command', onCoach);
     this.events.once('shutdown', () => {
       this.registry.events.off('changedata-settings', onSettings);
       this.registry.events.off('changedata-inputBlocked', onBlocked);
       this.game.events.off('pause-request', onPause);
       this.game.events.off('watch-speed', onSpeed);
       this.game.events.off('finish-request', onFinish);
+      this.game.events.off('coach-command', onCoach);
       this.controls.destroy();
     });
     if (this.registry.get('inputBlocked')) this.setBlocked(true);
@@ -721,6 +730,8 @@ export class MatchScene extends Phaser.Scene {
       inspection: { player: this.inspectedPlayer, marks: this.inspectorMarks },
       score: [...this.world.points],
       holder: this.world.holder, controlled: this.world.controlled, matchOver: this.world.matchOver,
+      tactics: [this.world.tactics.peek(0), this.world.tactics.peek(1)],
+      coachingEvents: [...this.world.coachingEvents],
       lineupVersion: this.world.lineupVersion, netPassages: { ...this.netCounts },
       boxPoints: this.world.squads?.map((squad) => squad.members.reduce((sum, member) => sum + member.line.pts, 0)),
       playersUsed: this.world.squads?.map((squad) => squad.members.filter((member) => member.line.gp > 0).length),
@@ -894,6 +905,7 @@ export class MatchScene extends Phaser.Scene {
     this.paused = paused;
     if (paused) {
       this.game.events.emit('pause-box', this.boxView());
+      if (this.setup?.mode === 'regarder') this.game.events.emit('coach-state', coachSnapshot(this.world, 0), []);
       this.scene.pause();
       return;
     }

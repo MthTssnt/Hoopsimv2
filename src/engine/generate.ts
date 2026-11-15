@@ -232,6 +232,7 @@ export function generateLeague(rng: Rng, seed: number, userTeamId: string, seaso
   });
 
   return {
+    schemaVersion: 2,
     seed,
     rngState: rng.state,
     season,
@@ -279,4 +280,17 @@ export function generateDraftClass(rng: Rng, size: number, startId: number, take
     out.push(p);
   }
   return out.sort((a, b) => b.potential + b.overall - (a.potential + a.overall));
+}
+
+/** Market veterans / emergency depth, generated independently from the league sports RNG. */
+export function generateMarketPlayers(rng: Rng, size: number, startId: number, takenLastNames: Iterable<string>, replacementPosition?: Position): Player[] {
+  const names = new NameGenerator(rng.int(0, 0x7fffffff), takenLastNames);
+  let counter = startId;
+  return Array.from({ length: size }, () => {
+    const p = makePlayer(rng, names, replacementPosition ?? rng.pick(ROSTER_POSITIONS), replacementPosition ? 49 : rng.normal(59, 4), () => `r${(counter++).toString(36)}`);
+    p.age = rng.int(23, 31); p.potential = Math.max(p.overall, Math.min(75, p.overall + rng.int(0, 5)));
+    p.teamId = null; p.contract = { salary: 0, years: 0 };
+    if (replacementPosition) p.replacement = true;
+    return p;
+  });
 }
