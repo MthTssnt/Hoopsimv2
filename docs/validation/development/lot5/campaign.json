@@ -1,0 +1,292 @@
+{
+  "games": 19656,
+  "records": [
+    {
+      "seed": 31,
+      "season": 2026,
+      "gamesCumulative": 1306,
+      "players": 495,
+      "freeAgents": 75,
+      "reports": 1,
+      "saveCharacters": 890361,
+      "cap": 250,
+      "maxPayroll": 184.3,
+      "events": 227,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 31,
+      "season": 2027,
+      "gamesCumulative": 2623,
+      "players": 541,
+      "freeAgents": 122,
+      "reports": 2,
+      "saveCharacters": 984974,
+      "cap": 250,
+      "maxPayroll": 176.3,
+      "events": 512,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 31,
+      "season": 2028,
+      "gamesCumulative": 3929,
+      "players": 590,
+      "freeAgents": 171,
+      "reports": 3,
+      "saveCharacters": 1083685,
+      "cap": 250,
+      "maxPayroll": 184.7,
+      "events": 834,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 31,
+      "season": 2029,
+      "gamesCumulative": 5247,
+      "players": 628,
+      "freeAgents": 209,
+      "reports": 4,
+      "saveCharacters": 1166659,
+      "cap": 250,
+      "maxPayroll": 161.6,
+      "events": 1349,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 31,
+      "season": 2030,
+      "gamesCumulative": 6559,
+      "players": 649,
+      "freeAgents": 230,
+      "reports": 5,
+      "saveCharacters": 1229322,
+      "cap": 250,
+      "maxPayroll": 181.6,
+      "events": 1806,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2026,
+      "gamesCumulative": 7867,
+      "players": 490,
+      "freeAgents": 70,
+      "reports": 1,
+      "saveCharacters": 885143,
+      "cap": 250,
+      "maxPayroll": 223.6,
+      "events": 238,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2027,
+      "gamesCumulative": 9175,
+      "players": 542,
+      "freeAgents": 123,
+      "reports": 2,
+      "saveCharacters": 989665,
+      "cap": 250,
+      "maxPayroll": 223.2,
+      "events": 529,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2028,
+      "gamesCumulative": 10486,
+      "players": 588,
+      "freeAgents": 169,
+      "reports": 3,
+      "saveCharacters": 1082269,
+      "cap": 250,
+      "maxPayroll": 216.4,
+      "events": 824,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2029,
+      "gamesCumulative": 11800,
+      "players": 623,
+      "freeAgents": 204,
+      "reports": 4,
+      "saveCharacters": 1163172,
+      "cap": 250,
+      "maxPayroll": 194.5,
+      "events": 1313,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2030,
+      "gamesCumulative": 13111,
+      "players": 645,
+      "freeAgents": 226,
+      "reports": 5,
+      "saveCharacters": 1225806,
+      "cap": 250,
+      "maxPayroll": 196.2,
+      "events": 1764,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2026,
+      "gamesCumulative": 14414,
+      "players": 494,
+      "freeAgents": 75,
+      "reports": 1,
+      "saveCharacters": 888919,
+      "cap": 250,
+      "maxPayroll": 200.2,
+      "events": 244,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2027,
+      "gamesCumulative": 15718,
+      "players": 541,
+      "freeAgents": 122,
+      "reports": 2,
+      "saveCharacters": 987040,
+      "cap": 250,
+      "maxPayroll": 207.3,
+      "events": 535,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2028,
+      "gamesCumulative": 17031,
+      "players": 581,
+      "freeAgents": 162,
+      "reports": 3,
+      "saveCharacters": 1073712,
+      "cap": 250,
+      "maxPayroll": 203.1,
+      "events": 861,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2029,
+      "gamesCumulative": 18346,
+      "players": 622,
+      "freeAgents": 203,
+      "reports": 4,
+      "saveCharacters": 1161742,
+      "cap": 250,
+      "maxPayroll": 186.4,
+      "events": 1334,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2030,
+      "gamesCumulative": 19656,
+      "players": 649,
+      "freeAgents": 230,
+      "reports": 5,
+      "saveCharacters": 1230363,
+      "cap": 250,
+      "maxPayroll": 190.4,
+      "events": 1756,
+      "retainedTrades": 0
+    }
+  ],
+  "draftChoices": [
+    {
+      "seed": 31,
+      "season": 2026,
+      "rebuildPotential": 91,
+      "contendPotential": 85
+    },
+    {
+      "seed": 31,
+      "season": 2027,
+      "rebuildPotential": 93,
+      "contendPotential": 93
+    },
+    {
+      "seed": 31,
+      "season": 2028,
+      "rebuildPotential": 86,
+      "contendPotential": 86
+    },
+    {
+      "seed": 31,
+      "season": 2029,
+      "rebuildPotential": 87,
+      "contendPotential": 82
+    },
+    {
+      "seed": 31,
+      "season": 2030,
+      "rebuildPotential": 88,
+      "contendPotential": 88
+    },
+    {
+      "seed": 8126,
+      "season": 2026,
+      "rebuildPotential": 94,
+      "contendPotential": 94
+    },
+    {
+      "seed": 8126,
+      "season": 2027,
+      "rebuildPotential": 93,
+      "contendPotential": 93
+    },
+    {
+      "seed": 8126,
+      "season": 2028,
+      "rebuildPotential": 95,
+      "contendPotential": 95
+    },
+    {
+      "seed": 8126,
+      "season": 2029,
+      "rebuildPotential": 91,
+      "contendPotential": 91
+    },
+    {
+      "seed": 8126,
+      "season": 2030,
+      "rebuildPotential": 95,
+      "contendPotential": 95
+    },
+    {
+      "seed": 919,
+      "season": 2026,
+      "rebuildPotential": 94,
+      "contendPotential": 94
+    },
+    {
+      "seed": 919,
+      "season": 2027,
+      "rebuildPotential": 88,
+      "contendPotential": 87
+    },
+    {
+      "seed": 919,
+      "season": 2028,
+      "rebuildPotential": 90,
+      "contendPotential": 90
+    },
+    {
+      "seed": 919,
+      "season": 2029,
+      "rebuildPotential": 97,
+      "contendPotential": 97
+    },
+    {
+      "seed": 919,
+      "season": 2030,
+      "rebuildPotential": 89,
+      "contendPotential": 86
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import type { TrainingPlan, OffseasonState, SeasonReview } from './development/types';
 import type { ManagementState, FrontOfficePlan, TradeStatus, ContractOffer } from './management/types';
 import type { TacticalReport } from './coaching/analytics';
 import type { GamePlan } from './gamePlan';
@@ -87,6 +88,9 @@ export interface StatLine {
 }
 
 export interface Player {
+  training?: TrainingPlan;
+  /** Regular-season experience normalized to 48-minute physical games; legacy falls back to recorded seconds. */
+  developmentSeconds?: number;
   tradeStatus?: TradeStatus;
   extension?: ContractOffer;
   promisedRole?: ContractOffer['promisedRole'];
@@ -230,6 +234,7 @@ export interface SeasonAward {
 }
 
 export interface SeasonHistory {
+  playerNames?: Record<string, string>;
   season: number;
   championId: string;
   runnerUpId: string;
@@ -243,6 +248,9 @@ export interface SeasonHistory {
 export type Phase = 'regular' | 'playoffs' | 'offseason';
 
 export interface League {
+  offseason?: OffseasonState;
+  seasonReviews?: SeasonReview[];
+  lastTrainingDay?: string;
   management?: ManagementState;
   schemaVersion?: 2;
   seed: number;

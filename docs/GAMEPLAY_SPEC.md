@@ -1,7 +1,15 @@
+> Développement du 15 novembre 2026 : draft en deux tours sauvegardable, consultation
+> des 60 prospects avant les CPU, scouting estimé, choix humains et décisions CPU selon
+> projet/budget/besoins. Six focus individuels accumulent des journées réelles sans gain
+> au clic ; la progression annuelle utilise âge, potentiel et minutes équivalentes à 48 min.
+> Les dix derniers bilans conservent les évolutions et noms historiques. Les négociations
+> sont suspendues pendant la draft puis rouvertes avant le lancement de saison.
+> Voir [le bilan du lot 5](DEVELOPMENT_LOT_5.md) pour les règles et preuves.
+
 > Management du 15 novembre 2026 : l’onglet Marché gère les échanges atomiques,
 > agents libres et prolongations. Les contrats non prolongés expirent réellement ;
 > les renforts minimaux sont tracés. Économie fictive en M€, effectifs 13–15,
-> engagements futurs contrôlés, projets GM et fenêtres CPU. La draft reste automatique.
+> engagements futurs contrôlés, projets GM et fenêtres CPU. La draft est désormais interactive (voir mise à jour du lot 5 ci-dessus).
 > Voir [le bilan du lot 4](MANAGEMENT_LOT_4.md) pour les règles et preuves.
 
 > Coaching du 15 novembre 2026 : cinq explicite, minutes équivalentes à 48 minutes, rôles,

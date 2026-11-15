@@ -1,0 +1,58 @@
+
+> hoopsim@0.0.0 calibrate
+> tsx scripts/calibrate.ts
+
+Calendrier : 1230 matchs sur 138 journées
+Matchs par équipe : min 82 / max 82
+
+--- Saison régulière (1230 matchs, 3.8s) ---
+Points par équipe et par match : 115.5
+Victoires à domicile : 53.9 %
+FG : 43.9/91.5 (48.0 %)
+3 pts : 12.9/36.1 (35.7 %) — 39.5 % des tirs
+LF : 14.9/18.7 (79.7 %)
+Rebonds 49.6 (dont 11.1 off.) — Passes 26.0 — Pertes 12.7
+Interceptions 7.1 — Contres 4.2 — Fautes 17.8
+Minutes cumulées par équipe et par match : 240.4 (attendu ~240)
+
+Notes : moyenne 64.4, max 96, top10 96 94 93 93 92 91 91 91 90 89, min 41
+
+--- Meilleurs marqueurs ---
+Baran Halvorsen          PHI  42.4 pts  8.3 rbds  6.2 pd  38.9 min  (92)
+Raul Bellini             ORL  36.1 pts  8.8 rbds  6.5 pd  40.9 min  (86)
+Mario Woodard            BKN  36.0 pts  12.8 rbds  5.1 pd  37.6 min  (88)
+Louis Rivas              WAS  34.6 pts  8.0 rbds  5.9 pd  39.2 min  (91)
+Magnus Perrin            SLC  34.4 pts  17.8 rbds  3.6 pd  43.0 min  (88)
+Robin Novotný            BOS  32.8 pts  14.7 rbds  3.7 pd  39.1 min  (93)
+Samuel Savić             IND  32.8 pts  13.7 rbds  2.9 pd  33.4 min  (86)
+Mika Procházka           PHX  30.0 pts  7.6 rbds  5.4 pd  36.8 min  (84)
+
+--- Rotation de Boston Ironsides (69-13) ---
+Robin Novotný            PF  93  39.1 min  32.8 pts  14.7 rbds
+Quincy Dade              SF  78  33.9 min  19.7 pts  7.3 rbds
+Jude Pokorný             SF  75  27.8 min  10.7 pts  6.2 rbds
+Zane Afolabi             PG  73  22.0 min  7.7 pts  2.2 rbds
+Igor Bondarenko          SG  67  17.8 min  6.0 pts  2.2 rbds
+Devin Ashford            PF  64  4.9 min  2.0 pts  1.5 rbds
+Léo Sheldon              C  64  22.1 min  7.7 pts  4.8 rbds
+Sami Delorme             PG  89  24.4 min  14.1 pts  5.1 rbds
+Jalen Fontaine           PF  70  18.8 min  9.0 pts  4.3 rbds
+Ruben Ravel              SF  60  3.1 min  1.9 pts  0.3 rbds
+
+--- Classement Est ---
+1. BOS 69-13 (+1555)
+2. ATL 64-18 (+1388)
+3. ORL 64-18 (+1323)
+4. DET 60-22 (+1258)
+5. IND 57-25 (+827)
+6. WAS 56-26 (+929)
+7. TOR 49-33 (+620)
+8. PHI 39-43 (+58)
+
+Champion : Orlando Comets — MVP des finales : Raul Bellini
+Durée totale : 4.1s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

@@ -1,3 +1,4 @@
+import { accrueTraining } from './development/training';
 import { runFrontOffices } from './management/aiGm';
 import { refreshRotations } from './coach';
 import { Rng } from './rng';
@@ -108,6 +109,11 @@ function applyBoxScore(league: League, result: GameResult, isPlayoffs: boolean):
     for (const row of rows) {
       const player = league.players[row.playerId];
       if (!player) continue;
+      if (!isPlayoffs) {
+        const raw = result.box.tactics?.normalizationFactor ?? 1;
+        const factor = result.box.tactics?.source === 'physical' && Number.isFinite(raw) && raw > 0 ? raw : 1;
+        player.developmentSeconds = (player.developmentSeconds ?? player.stats.secs) + row.line.secs * factor;
+      }
       addStatLine(isPlayoffs ? player.playoffStats : player.stats, row.line);
       addStatLine(player.career, row.line);
     }
@@ -228,6 +234,7 @@ export function simulateDay(league: League, options: DayOptions = {}): DaySummar
 
   restIdleTeams(league, playing);
   const summary: DaySummary = { day: league.day, games: played, userGame };
+  accrueTraining(league);
   league.day += 1;
   runFrontOffices(league);
   return summary;

@@ -88,7 +88,7 @@ les moyennes obtenues. Les valeurs actuelles :
 
 ## Limites connues
 
-- La draft reste automatique ; les picks ne sont pas encore négociables. Le marché utilise
+- Les picks ne sont pas encore négociables. Le marché utilise
   une économie fictive et une IA GM minimale, sans clauses ni enchères concurrentes.
 - Les feuilles de match ne sont archivées que pour votre équipe et pour les playoffs, afin de
   garder la sauvegarde légère.
@@ -141,7 +141,7 @@ de un à trois joueurs par côté, comprendre les refus et négocier salaire/dur
 Les finances affichent le plafond et les engagements futurs. Les clubs CPU gèrent aussi
 leurs effectifs et peuvent envoyer des offres lors des fenêtres de marché.
 
-Avant **Lancer la saison**, négociez les prolongations dans **Contrats** : sans accord,
+Avant **Préparer la draft**, négociez les prolongations dans **Contrats** : sans accord,
 les joueurs expirants quittent réellement le club. Les éventuels renforts de secours
 pour atteindre 13 joueurs sont identifiés dans les transactions.
 
@@ -151,4 +151,23 @@ python scripts/smoke-market.py        # Vite démarré, Playwright Python et Chr
 ```
 
 Voir le [bilan du lot 4](docs/MANAGEMENT_LOT_4.md) pour les règles économiques,
-les preuves et les limites. Les lots 5–6 restent à développer.
+les preuves et les limites. Le lot 6 reste à développer.
+
+## Draft et développement
+
+L’onglet **Développement** permet de choisir un focus individuel, suivre les journées
+réellement entraînées et consulter les dix derniers bilans de saison. Les effets sont
+appliqués une seule fois à l’intersaison, selon âge, potentiel, expérience et durée ;
+changer de focus ne donne aucun gain immédiat.
+
+Après les playoffs, négociez vos prolongations puis **Préparer la draft** : consultez
+les 60 prospects avant de faire avancer les CPU, sélectionnez vos joueurs à chaque tour,
+ou passez/déléguez vos choix. La draft reprend au même endroit après recharge.
+Une fois terminée, vous pouvez encore recruter dans Marché avant **Lancer la saison**.
+
+```bash
+npx tsx scripts/validate-development.ts # trois graines × cinq saisons, drafts rechargées
+python scripts/smoke-development.py   # Vite, Playwright Python et Chromium système
+```
+
+Le [bilan du lot 5](docs/DEVELOPMENT_LOT_5.md) précise les règles, preuves et limites.

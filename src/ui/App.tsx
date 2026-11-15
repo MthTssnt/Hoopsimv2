@@ -16,6 +16,7 @@ import { NewGameScreen } from './NewGameScreen';
 import { PlayerModal } from './PlayerModal';
 import { TeamModal } from './TeamModal';
 import { TeamLogo, teamFullName } from './common';
+import { DevelopmentTab } from './tabs/DevelopmentTab';
 import { Dashboard } from './tabs/Dashboard';
 import { HistoryTab } from './tabs/HistoryTab';
 import { PlayoffsTab } from './tabs/PlayoffsTab';
@@ -36,6 +37,7 @@ const TABS = [
   { id: 'effectif', label: 'Effectif' },
   { id: 'tactiques', label: 'Tactiques' },
   { id: 'marche', label: 'Marché' },
+  { id: 'developpement', label: 'Développement' },
   { id: 'calendrier', label: 'Calendrier' },
   { id: 'classement', label: 'Classement' },
   { id: 'stats', label: 'Statistiques' },
@@ -76,7 +78,7 @@ export default function App() {
   return (
     <UiContext.Provider value={ui}>
       <div className="app">
-        <TopBar league={league} userTeam={userTeam} />
+        <TopBar league={league} userTeam={userTeam} onDevelopment={() => setTab('developpement')} />
         <nav className="nav">
           <div className="nav-inner">
             {TABS.map((t) => (
@@ -89,8 +91,10 @@ export default function App() {
 
         <main className="app-main">
           {state.actionError && <p role="alert">{state.actionError}</p>}
-          {league.phase === 'offseason' && <p className="panel" role="status">{budget(league, userTeam).expiringIds.length} contrat(s) sans prolongation arrivent à expiration. <button className="btn btn-sm" onClick={() => setTab('marche')}>Négocier avant la saison suivante</button></p>}
+          {league.phase === 'offseason' && !league.offseason && <p className="panel" role="status">{budget(league, userTeam).expiringIds.length} contrat(s) sans prolongation arrivent à expiration. <button className="btn btn-sm" onClick={() => setTab('marche')}>Négocier avant la draft</button></p>}
           {tab === 'accueil' && <Dashboard league={league} team={userTeam} onNavigate={setTab} />}
+          {league.offseason && <p className="panel" role="status">{league.offseason.stage === 'draft' ? 'Draft en cours : votre prochain choix attend dans Développement.' : 'Draft terminée : complétez votre effectif dans Marché puis lancez la saison.'} <button className="btn btn-sm" onClick={() => setTab('developpement')}>Voir l’intersaison</button></p>}
+          {tab === 'developpement' && <DevelopmentTab key={`${league.phase}:${league.offseason?.stage ?? 'none'}`} league={league} team={userTeam} />}
           {tab === 'marche' && <MarketTab league={league} team={userTeam} />}
           {tab === 'tactiques' && (userTeam.gamePlan ? <TacticsTab key={JSON.stringify(userTeam.gamePlan)} league={league} team={userTeam} /> : <p role="alert">Au moins cinq joueurs aptes sont nécessaires pour préparer un plan tactique.</p>)}
           {tab === 'effectif' && <RosterTab league={league} team={userTeam} />}
@@ -112,7 +116,7 @@ export default function App() {
   );
 }
 
-function TopBar({ league, userTeam }: { league: League; userTeam: Team }) {
+function TopBar({ league, userTeam, onDevelopment }: { league: League; userTeam: Team; onDevelopment: () => void }) {
   const [confirmNew, setConfirmNew] = useState(false);
   const upcoming = nextUserGame(league);
   const isGameDay = upcoming?.day === league.day;
@@ -180,8 +184,8 @@ function TopBar({ league, userTeam }: { league: League; userTeam: Team }) {
           )}
 
           {league.phase === 'offseason' && (
-            <button className="btn btn-primary" onClick={() => store.nextSeason()}>
-              Lancer la saison {league.season + 1}
+            <button className="btn btn-primary" onClick={onDevelopment}>
+              {league.offseason ? 'Reprendre l’intersaison' : 'Préparer la draft'}
             </button>
           )}
 

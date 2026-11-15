@@ -1,3 +1,7 @@
+import { beginOffseason, finishOffseason } from '../engine/offseason';
+import { advanceCPUDraft, chooseDraftPlayer } from '../engine/development/draft';
+import { setTrainingFocus } from '../engine/development/training';
+import type { TrainingFocus } from '../engine/development/types';
 import { executeTrade, extendContract, signFreeAgent } from '../engine/management/transactions';
 import type { ContractOffer, FrontOfficeDirection, TradeOffer, TradeStatus } from '../engine/management/types';
 import { useSyncExternalStore } from 'react';
@@ -218,16 +222,61 @@ class GameStore {
 
   nextSeason(): void {
     const league = this.league_();
+    if (this.liveMatch || this.busy || league.offseason?.stage === 'draft') return;
     startNextSeason(league);
     this.watched = null;
     this.save();
     this.emit();
   }
 
+  private developmentAction(action: (league: League) => string[]): string[] {
+    if (this.liveMatch || this.busy) return ['Terminez le match ou la simulation avant cette action.'];
+    try {
+      const errors = action(this.league_());
+      if (!errors.length) { this.actionError = null; this.save(); this.emit(); }
+      return errors;
+    } catch (error) { return [error instanceof Error ? error.message : 'Action impossible.']; }
+  }
+  setTraining(playerId: string, focus: TrainingFocus): string[] {
+    return this.developmentAction(league => setTrainingFocus(league, playerId, focus));
+  }
+  prepareDraft(): string[] {
+    return this.developmentAction(league => {
+      beginOffseason(league); this.watched = null; return [];
+    });
+  }
+  advanceDraft(pickId: string): string[] {
+    return this.developmentAction(league => {
+      const d = league.offseason, pick = d?.picks[d.cursor];
+      if (d?.stage !== 'draft' || !pick || pick.id !== pickId) return ['Ce choix n’est plus courant.'];
+      if (pick.ownerTeamId === league.userTeamId) return ['Choisissez un prospect ou passez votre choix.'];
+      advanceCPUDraft(league); return [];
+    });
+  }
+  selectRookie(pickId: string, playerId: string | null): string[] {
+    return this.developmentAction(league => {
+      const d = league.offseason, pick = d?.picks[d.cursor];
+      if (!pick || pick.ownerTeamId !== league.userTeamId || pick.id !== pickId) return ['Ce n’est pas votre choix courant.'];
+      const errors = chooseDraftPlayer(league, pickId, playerId); if (errors.length) return errors;
+      advanceCPUDraft(league); return [];
+    });
+  }
+  delegateDraft(pickId: string): string[] {
+    return this.developmentAction(league => {
+      const d = league.offseason;
+      if (d?.stage !== 'draft' || d.picks[d.cursor]?.id !== pickId) return ['Ce choix n’est plus courant.'];
+      advanceCPUDraft(league, true); return [];
+    });
+  }
+  launchSeason(): string[] {
+    return this.developmentAction(league => { finishOffseason(league); this.watched = null; return []; });
+  }
+
   // --- Gestion d'effectif ---
 
   private marketAction(action: (league: League) => string[]): string[] {
     if (this.liveMatch || this.busy) return ['Terminez le match ou la simulation avant de modifier le marché.'];
+    if (this.league_().offseason?.stage === 'draft') return ['Terminez la draft avant de modifier le marché.'];
     const errors = action(this.league_());
     if (!errors.length) { this.save(); this.emit(); }
     return errors;

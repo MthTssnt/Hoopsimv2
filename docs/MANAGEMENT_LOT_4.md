@@ -85,3 +85,5 @@ Pour tester manuellement les expirations : finir la saison et les playoffs, ouvr
 ## 7. Suite
 
 **Lot 5** : draft interactive, modèle de choix/picks avant leur négociation, focus d’entraînement, développement et décisions GM/coach plus riches, rapports et historique. **Lot 6** : calibrage de la difficulté économique et des stratégies, saisons très longues, exploits, finition UX et validation complète de la checklist §17.
+
+Suite livrée : [lot 5 — draft et développement](DEVELOPMENT_LOT_5.md). La draft automatique et le passage direct de saison décrits ici sont remplacés dans l’interface par les étapes du lot 5.

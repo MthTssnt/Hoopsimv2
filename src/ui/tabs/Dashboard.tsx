@@ -71,7 +71,7 @@ export function Dashboard({
             <NextGameCard league={league} team={team} game={upcoming} />
           ) : league.phase === 'offseason' ? (
             <p className="muted" style={{ margin: 0 }}>
-              La saison est terminée. Négociez vos prolongations dans Marché avant de lancer l’intersaison depuis la barre du haut.
+              La saison est terminée. Négociez vos prolongations dans Marché avant de préparer la draft dans Développement.
             </p>
           ) : (
             <p className="muted" style={{ margin: 0 }}>

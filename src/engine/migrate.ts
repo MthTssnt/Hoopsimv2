@@ -1,3 +1,4 @@
+import { migrateDevelopment } from './development/migrate';
 import { ensureManagement } from './management/state';
 import { repairGamePlan } from './gamePlan';
 import { refreshRotations } from './coach';
@@ -20,6 +21,7 @@ export function migrateLeague(league: League): League {
   for (const team of league.teams) repairGamePlan(team, league.players);
   league.schemaVersion = 2;
   ensureManagement(league);
+  migrateDevelopment(league);
   return league;
 }
 

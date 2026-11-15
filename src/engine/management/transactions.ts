@@ -6,6 +6,7 @@ import { logMarket } from './state';
 import type { ContractOffer, Decision, TradeOffer } from './types';
 
 export function marketOpen(league: League): boolean {
+  if (league.offseason?.stage === 'draft') return false;
   const end = Math.max(0, ...league.schedule.map(g => g.day));
   return league.phase === 'offseason' || league.phase === 'regular' && league.day <= Math.floor(end * 0.75);
 }
@@ -106,6 +107,7 @@ export function evaluateContract(league: League, teamId: string, playerId: strin
   const team = league.teams.find(t => t.id === teamId), player = Object.hasOwn(league.players, playerId) ? league.players[playerId] : undefined;
   if (!team || !player) return { accepted: false, reasons: ['Équipe ou joueur absent.'], askingSalary: 0, projectedPayroll: [] };
   if (!PLAYER_ROLES.includes(offer.promisedRole)) return { accepted: false, reasons: ['Rôle promis inconnu.'], askingSalary: 0, projectedPayroll: [] };
+  if (league.offseason?.stage === 'draft') return { accepted: false, reasons: ['Terminez la draft avant de négocier des contrats.'], askingSalary: 0, projectedPayroll: [] };
   if (league.phase === 'playoffs') return { accepted: false, reasons: ['Signatures fermées pendant les playoffs.'], askingSalary: 0, projectedPayroll: [] };
   return contractDecision(league, team, player, offer);
 }

@@ -28,6 +28,7 @@ export function commitmentAt(player: Player, offset: number): number {
   if (player.extension && offset < player.contract.years + player.extension.years) return player.extension.salary;
   return 0;
 }
+export function contractSeason(league: League): number { return league.season + (league.offseason ? 1 : 0); }
 export function budget(league: League, team: Team) {
   const cap = league.management?.salaryCap ?? initialSalaryCap(league);
   const commitments = Array.from({ length: 5 }, (_, year) => Math.round(team.roster.reduce((s, id) => s + commitmentAt(league.players[id], year), 0) * 10) / 10);

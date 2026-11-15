@@ -47,8 +47,8 @@ export function HistoryTab({ league }: { league: League }) {
                         )}
                       </td>
                       <td className="left faint">{runner?.name ?? '—'}</td>
-                      <td className="left">{mvp ? playerName(mvp) : '—'}</td>
-                      <td className="left">{fmvp ? playerName(fmvp) : '—'}</td>
+                      <td className="left">{entry.playerNames?.[entry.mvpId] ?? (mvp ? playerName(mvp) : '—')}</td>
+                      <td className="left">{entry.playerNames?.[entry.finalsMvpId] ?? (fmvp ? playerName(fmvp) : '—')}</td>
                     </tr>
                   );
                 })}

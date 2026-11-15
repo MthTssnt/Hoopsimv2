@@ -17,7 +17,8 @@ export function fillRosters(league: League): void {
       const missing = POSITIONS.find(pos => !team.roster.some(id => league.players[id].pos === pos));
       if (team.id !== league.userTeamId) {
         const reserve = Math.max(0, CONFIG.minRoster - team.roster.length - 1) * CONFIG.minimumSalary;
-        const candidates = Object.values(league.players).filter(p => p.teamId === null && (!missing || p.pos === missing) && expectedSalary(p) <= budget(league, team).space - reserve + 1e-6)
+        const available = budget(league, team).space - reserve;
+        const candidates = Object.values(league.players).filter(p => p.teamId === null && (!missing || p.pos === missing) && expectedSalary(p) <= available + 1e-6)
           .sort((a, b) => (playerValue(b, team.frontOffice?.direction) - expectedSalary(b) * 0.15) - (playerValue(a, team.frontOffice?.direction) - expectedSalary(a) * 0.15) || a.id.localeCompare(b.id));
         const player = candidates.find(p => evaluateContract(league, team.id, p.id, contractFor(p)).accepted);
         if (player && !signFreeAgent(league, team.id, player.id, contractFor(player)).length) { changed = true; continue; }
@@ -95,7 +96,18 @@ function tradeCandidates(league: League, team: Team): Player[] {
 export function updateCPUProjects(league: League): void {
   for (const team of league.teams) if (team.id !== league.userTeamId) {
     const next = defaultFrontOffice(league, team);
-    if (team.wins + team.losses >= 50 && team.wins / (team.wins + team.losses) < 0.35) next.direction = 'rebuild';
+    const roster = team.roster.map(id => league.players[id]);
+    const age = roster.reduce((n, p) => n + p.age, 0) / Math.max(1, roster.length);
+    const record = team.wins + team.losses, rate = team.wins / Math.max(1, record);
+    const young = roster.filter(p => p.age <= 25 && p.potential - p.overall >= 8).length;
+    if (record >= 50) {
+      next.direction = rate >= 0.6 ? 'contend' : rate < 0.35 ? 'rebuild' : age >= 29 && rate < 0.5 ? 'retool' : 'compete';
+      next.decisionReason = `${team.wins}-${team.losses}, âge moyen ${age.toFixed(1)}, ${young} jeunes à développer : ${next.direction === 'rebuild' ? 'privilégier l’avenir' : next.direction === 'contend' ? 'renforcer les résultats immédiats' : next.direction === 'retool' ? 'rajeunir progressivement le noyau' : 'conserver un effectif compétitif'}.`;
+    } else next.decisionReason = `Évaluation de l’effectif : note moyenne et ${young} jeunes à développer ; bilan insuffisant pour décider sur les résultats.`;
+    next.directionSinceSeason = team.frontOffice?.direction === next.direction ? team.frontOffice.directionSinceSeason ?? league.season : league.season + 1;
+    next.budgetDiscipline = next.direction === 'rebuild' ? 80 : next.direction === 'contend' ? 45 : 65;
+    next.priorities = next.direction === 'rebuild' ? ['youth', 'depth'] : next.direction === 'retool' ? ['youth', 'defense'] : ['shooting', 'defense'];
     team.frontOffice = next;
+    logMarket(league, { type: 'project', teamIds: [team.id], playerIds: [], description: `${team.abbr} réévalue son projet : ${next.decisionReason}` });
   }
 }
