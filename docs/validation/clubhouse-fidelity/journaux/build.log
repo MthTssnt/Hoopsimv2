@@ -1,0 +1,134 @@
+
+> hoopsim@0.0.0 build
+> tsc -b && vite build
+
+vite v8.2.1 building client environment for production...
+[2K
+transforming...✓ 266 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 1.43 kB │ gzip:   0.69 kB
+dist/assets/hoopsim-mark-DSjHOuvv.svg                           7.89 kB │ gzip:   0.64 kB
+dist/assets/dal-kpoMCv7P.svg                                   11.32 kB │ gzip:   1.05 kB
+dist/assets/orl-DIgcLfjd.svg                                   11.42 kB │ gzip:   1.06 kB
+dist/assets/tor-CFkI7Je3.svg                                   11.61 kB │ gzip:   1.05 kB
+dist/assets/chi-CpEmbwZ9.svg                                   11.81 kB │ gzip:   1.13 kB
+dist/assets/press-start-2p-latin-400-normal-_wFEWmAB.woff2     12.51 kB
+dist/assets/bos-JeWH-_bE.svg                                   12.56 kB │ gzip:   1.18 kB
+dist/assets/mia-DKKDNBGd.svg                                   12.79 kB │ gzip:   1.15 kB
+dist/assets/atl-BWAAbOGr.svg                                   12.81 kB │ gzip:   1.13 kB
+dist/assets/nyk-C7HKkIKr.svg                                   12.89 kB │ gzip:   1.17 kB
+dist/assets/min-CbvgX4nX.svg                                   13.23 kB │ gzip:   1.19 kB
+dist/assets/bkn-B35fp97w.svg                                   13.39 kB │ gzip:   1.19 kB
+dist/assets/sfo-HDwe79bO.svg                                   13.63 kB │ gzip:   1.25 kB
+dist/assets/cha-DtUAjhbW.svg                                   13.94 kB │ gzip:   1.22 kB
+dist/assets/lal-D5vlwHH_.svg                                   14.09 kB │ gzip:   1.23 kB
+dist/assets/was-C5lL0pDb.svg                                   14.44 kB │ gzip:   1.22 kB
+dist/assets/den-wdrUIyHV.svg                                   14.72 kB │ gzip:   1.26 kB
+dist/assets/sac-BHPQRWPV.svg                                   14.79 kB │ gzip:   1.30 kB
+dist/assets/phx-DAs7NftG.svg                                   15.00 kB │ gzip:   1.32 kB
+dist/assets/mem-BBuT0fE9.svg                                   15.17 kB │ gzip:   1.30 kB
+dist/assets/ind-DqMqpZKr.svg                                   15.55 kB │ gzip:   1.30 kB
+dist/assets/sas-C7TqeKJn.svg                                   15.64 kB │ gzip:   1.30 kB
+dist/assets/sdg-gPuAXv9-.svg                                   16.08 kB │ gzip:   1.35 kB
+dist/assets/phi-DuCFG-u2.svg                                   16.31 kB │ gzip:   1.39 kB
+dist/assets/por-CCw2Fh-N.svg                                   16.48 kB │ gzip:   1.37 kB
+dist/assets/hoopsim-lockup-Bc_0vfGf.svg                        16.54 kB │ gzip:   1.14 kB
+dist/assets/nol-C6KBGEtG.svg                                   16.68 kB │ gzip:   1.45 kB
+dist/assets/mil-BnNMuVuW.svg                                   17.06 kB │ gzip:   1.42 kB
+dist/assets/det-DwE5gYau.svg                                   17.25 kB │ gzip:   1.44 kB
+dist/assets/slc-BXFCRj0q.svg                                   17.43 kB │ gzip:   1.47 kB
+dist/assets/cle-C-Norlgf.svg                                   17.72 kB │ gzip:   1.47 kB
+dist/assets/sea-DZ4TxPyT.svg                                   17.82 kB │ gzip:   1.48 kB
+dist/assets/hou-BZLmdhgi.svg                                   19.64 kB │ gzip:   1.57 kB
+dist/assets/nyk-OOGP0C5N.svg                                   32.18 kB │ gzip:   2.79 kB
+dist/assets/chi-DzZOXStG.svg                                   32.61 kB │ gzip:   2.91 kB
+dist/assets/portrait-45-jR5ym0r9.png                           32.71 kB
+dist/assets/sprite-45-DKjz8OSa.png                             32.94 kB
+dist/assets/dal-C16T3JCj.svg                                   33.28 kB │ gzip:   2.85 kB
+dist/assets/tor-CFCGWfro.svg                                   35.21 kB │ gzip:   2.88 kB
+dist/assets/sfo-Dw-2Xuv1.svg                                   35.41 kB │ gzip:   3.10 kB
+dist/assets/bos-DVGyjkGx.svg                                   35.60 kB │ gzip:   3.11 kB
+dist/assets/atl-DhlS5G7r.svg                                   36.10 kB │ gzip:   2.99 kB
+dist/assets/mia-H0QbpF-M.svg                                   36.27 kB │ gzip:   3.10 kB
+dist/assets/orl-Bz-FHnGc.svg                                   37.37 kB │ gzip:   3.14 kB
+dist/assets/bkn-CIy2xi5X.svg                                   37.72 kB │ gzip:   3.11 kB
+dist/assets/den-DGighOh-.svg                                   38.42 kB │ gzip:   3.20 kB
+dist/assets/was-CQrUpZS3.svg                                   38.92 kB │ gzip:   3.09 kB
+dist/assets/cha-BnpeRHwg.svg                                   40.38 kB │ gzip:   3.25 kB
+dist/assets/sac-DzUetwbo.svg                                   40.50 kB │ gzip:   3.50 kB
+dist/assets/min-ByS0oU2E.svg                                   41.55 kB │ gzip:   3.37 kB
+dist/assets/lal-Cba4nrSD.svg                                   42.80 kB │ gzip:   3.53 kB
+dist/assets/phx-wYCbnMqz.svg                                   43.11 kB │ gzip:   3.56 kB
+dist/assets/ind-CIXBo_iJ.svg                                   43.56 kB │ gzip:   3.51 kB
+dist/assets/det-DxmW7-yS.svg                                   43.58 kB │ gzip:   3.54 kB
+dist/assets/mem-DMeUBw4U.svg                                   43.89 kB │ gzip:   3.40 kB
+dist/assets/sas-6G5165ir.svg                                   44.90 kB │ gzip:   3.52 kB
+dist/assets/phi-CIPaqi1U.svg                                   45.60 kB │ gzip:   3.69 kB
+dist/assets/por-D1Awc_25.svg                                   47.59 kB │ gzip:   3.78 kB
+dist/assets/nol-1KcX6pK8.svg                                   49.43 kB │ gzip:   3.95 kB
+dist/assets/sdg-BMfrpg8A.svg                                   49.66 kB │ gzip:   3.98 kB
+dist/assets/slc-pF2uOWnc.svg                                   50.78 kB │ gzip:   4.05 kB
+dist/assets/cle-Cu_UBvRG.svg                                   51.17 kB │ gzip:   4.11 kB
+dist/assets/mil-CGbov5vj.svg                                   51.39 kB │ gzip:   4.10 kB
+dist/assets/sea-CPnohaf6.svg                                   52.62 kB │ gzip:   4.23 kB
+dist/assets/hou-tm0psXIH.svg                                   57.59 kB │ gzip:   4.45 kB
+dist/assets/heads-C940VB8E.png                                 82.57 kB
+dist/assets/almanac-courtside-DADjSt2t.svg                     98.96 kB │ gzip:   7.17 kB
+dist/assets/arcade-courtside-BBfLDb5e.svg                      98.96 kB │ gzip:   7.16 kB
+dist/assets/compose.worker-DURV5LAs.js                        551.74 kB
+dist/assets/0-2-up-B0_r0QBo.png                               796.82 kB
+dist/assets/body-CwxANck2.png                                 802.95 kB
+dist/assets/0-2-down-CcE8RxL8.png                             803.67 kB
+dist/assets/0-1-up-D0otv4c7.png                               850.78 kB
+dist/assets/0-0-up-h_6M1Wtx.png                               853.16 kB
+dist/assets/1-0-up-DiYNOljm.png                               857.28 kB
+dist/assets/1-2-up-bbBQHROb.png                               876.43 kB
+dist/assets/1-1-up-BNgKaUb-.png                               889.73 kB
+dist/assets/1-2-down-E87Y0_AX.png                             890.43 kB
+dist/assets/1-1-down-CMVt313w.png                             902.22 kB
+dist/assets/0-0-down-D2Jv38jZ.png                             903.80 kB
+dist/assets/0-1-down-DYlvylM6.png                             907.02 kB
+dist/assets/0-4-up-BZ9ljlrX.png                               912.42 kB
+dist/assets/0-3-up-WqMXfSM6.png                               920.36 kB
+dist/assets/1-0-down-DYTVpAnE.png                             922.23 kB
+dist/assets/0-3-down-CgIbC63f.png                             932.56 kB
+dist/assets/1-3-up-Df96QBKH.png                               950.33 kB
+dist/assets/0-4-down-BBZfmCka.png                             954.75 kB
+dist/assets/1-3-down-DeXwgBvp.png                             961.83 kB
+dist/assets/1-4-up-4OY5dWsG.png                               973.73 kB
+dist/assets/1-4-down-Bpzkcq1b.png                             987.74 kB
+dist/assets/ball-spin-Cw_XGbj9.png                          1,265.21 kB
+dist/assets/team-navy-Hfe-XK-6.png                          1,359.39 kB
+dist/assets/0-0-up-B6zPVFQr.png                             1,394.55 kB
+dist/assets/0-0-down-D-OAUGR8.png                           1,416.70 kB
+dist/assets/maple-PYb8THnf.png                              1,605.93 kB
+dist/assets/team-ivory-Fam7Nay_.png                         1,939.45 kB
+dist/assets/AnimationLab-Bez5ujga.css                           4.60 kB │ gzip:   1.45 kB
+dist/assets/index-C3dVfv_7.css                                 46.02 kB │ gzip:   9.65 kB
+dist/assets/PlayerDesigns-nwDsTWI3.js                           0.06 kB │ gzip:   0.08 kB
+dist/assets/jsx-runtime-DmyinQmY.js                             0.45 kB │ gzip:   0.30 kB
+dist/assets/was-CnHAXEpi.js                                     1.08 kB │ gzip:   0.53 kB
+dist/assets/BrandGallery-CiJAc8PV.js                            1.21 kB │ gzip:   0.66 kB
+dist/assets/team-navy-2THLZaoR.js                               1.34 kB │ gzip:   0.77 kB
+dist/assets/teamsData-BXj7s-ea.js                               4.17 kB │ gzip:   1.12 kB
+dist/assets/LocomotionWitness-DD7Mgdpk.js                       7.27 kB │ gzip:   2.79 kB
+dist/assets/react-Cc4TGfWn.js                                   7.52 kB │ gzip:   2.88 kB
+dist/assets/AnimationLab-kSm8MrjJ.js                           12.53 kB │ gzip:   4.52 kB
+dist/assets/heads-CzR5iw38.js                                  37.59 kB │ gzip:  11.21 kB
+dist/assets/gameResult-STG0XHCT.js                             99.76 kB │ gzip:  37.41 kB
+dist/assets/index-Utdvhhv0.js                                 356.29 kB │ gzip: 103.74 kB
+dist/assets/motionArt-DNthswEt.js                             519.67 kB │ gzip: 112.88 kB
+dist/assets/PhaserGame-DVDcV8Uq.js                          1,577.97 kB │ gzip: 425.56 kB
+
+✓ built in 1.07s
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 1500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

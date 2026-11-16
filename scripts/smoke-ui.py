@@ -21,7 +21,7 @@ with sync_playwright() as p:
  print('Discovery, player dialog Escape/focus, rotation draft guard/cancel and save: OK',flush=True)
  for width in [1440,768,390]:
   page.set_viewport_size({'width':width,'height':1000})
-  for group,section in [('Bureau',None),('Équipe','Effectif'),('Équipe','Rotation'),('Équipe','Tactiques'),('Équipe','Développement'),('Marché',None),('Ligue','Classement'),('Ligue','Statistiques')]:
+  for group,section in [('Franchise',None),('Équipe','Effectif'),('Équipe','Rotation'),('Équipe','Tactiques'),('Équipe','Développement'),('Marché',None),('Ligue','Classement'),('Ligue','Statistiques')]:
    primary(group)
    if section:sub(section)
    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),(width,group,section)

@@ -1,3 +1,5 @@
+import {useState} from 'react';
+import {AppearanceWorkshop} from './clubhouse/AppearanceWorkshop';
 import { useUi } from './uiContext';
 import { PlayerIdentity } from './PlayerIdentity';
 import { contractSeason, expectedSalary, playerValue, tradeStatus, DIRECTION_LABELS } from '../engine/management/economy';
@@ -54,6 +56,7 @@ const ATTRIBUTE_GROUPS: { title: string; keys: [keyof Player['attrs'], string][]
 
 export function PlayerModal({ league, player, onClose }: { league: League; player: Player; onClose: () => void }) {
   const ui=useUi();
+  const [editing,setEditing]=useState(false);
   const team = league.teams.find((t) => t.id === player.teamId);
 
   const title = (
@@ -77,8 +80,9 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
   );
 
   return (
-    <Modal title={title} onClose={onClose} wide>
-      <PlayerIdentity player={player} />
+    <Modal title={title} onClose={()=>{if(!editing || window.dispatchEvent(new Event('hoopsim:before-navigate',{cancelable:true})))onClose();}} wide>
+      {editing ? <AppearanceWorkshop player={player} onClose={()=>setEditing(false)}/> : <><PlayerIdentity player={player} />{player.teamId===league.userTeamId && <button className="btn" onClick={()=>setEditing(true)}>Modifier l’apparence</button>}</>}
+      {!editing && <>
       {player.teamId === league.userTeamId && <section className="contract-shortcut"><h3>Votre décision</h3>{player.extension ? <p>Déjà prolongé : {player.extension.salary.toFixed(1)} M€/an pendant {player.extension.years} an(s), à partir de {contractSeason(league)+1}.</p> : player.contract.years===1 ? <button className="btn btn-primary" onClick={()=>ui.navigateTo({area:'market',view:'contracts',playerId:player.id,intent:'extensions'})}>Prolonger son contrat</button> : <p>Contrat encore valable {player.contract.years} an(s).</p>}</section>}
       {player.teamId===null && <button className="btn" onClick={()=>ui.navigateTo({area:'market',view:'contracts',playerId:player.id,intent:'free'})}>Négocier avec cet agent libre</button>}
       {player.injuryGames > 0 && (
@@ -169,6 +173,7 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
         <span>3 points : {pctShort(player.tendencies.three)} %</span>
       </div>
       </details>
+      </>}
     </Modal>
   );
 }

@@ -4,6 +4,9 @@ import { WORLD_DT } from '../world/MatchWorld';
 import { useState } from 'react';
 
 export interface InspectorApi {
+  world:MatchScene['inspectorWorld'];
+  inputs:MatchScene['inspectorInputs'];
+  options:MatchScene['inspectorOptions'];
   snapshot: MatchScene['inspect'];
   step: (inputs?: readonly WorldInput[]) => void;
   play: (play: boolean) => void;

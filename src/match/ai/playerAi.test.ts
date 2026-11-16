@@ -458,8 +458,7 @@ describe('IA sur terrain entier (5 contre 5)', () => {
     expect(won).toBeGreaterThanOrEqual(8);
   });
 
-  it('match de contrôle IA contre IA (4 × 1 min) : il se termine, sans 8 s ni 5 s, peu de 24 s, la défense revient', () => {
-    const seed = 4;
+  it.each([1, 4])('match de contrôle IA contre IA (4 × 1 min, graine %i) : il se termine, sans 8 s ni 5 s, peu de 24 s, la défense revient', (seed) => {
     const w = fiveOnFive(seed);
     const ais = brains(w, seed);
     const full = w.full!;
@@ -523,8 +522,10 @@ describe('IA sur terrain entier (5 contre 5)', () => {
     expect(back / (crossings * 5)).toBeGreaterThan(0.8);
     // Lancers francs : l'IA les tire à temps, avec une réussite plausible.
     const fts = [...shots].filter((s) => s.kind === 'lancer');
-    expect(fts.length).toBeGreaterThan(0);
-    expect(fts.filter((s) => s.scored).length / fts.length).toBeGreaterThan(0.4);
+    // Un match peut finir sans faute sur tir. La graine 1 couvre réellement les lancers ;
+    // la graine 4 conserve le scénario historique de retour défensif.
+    if(seed===1)expect(fts.length).toBeGreaterThan(0);
+    if(fts.length)expect(fts.filter((s) => s.scored).length / fts.length).toBeGreaterThan(0.4);
     expect(maxFreeThrow).toBeLessThan(6);
   });
 });

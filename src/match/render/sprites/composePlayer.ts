@@ -7,6 +7,7 @@ import type { Appearance } from './appearance';
 import type { BakedPlayer, PortraitPixel } from './bake';
 
 export interface ComposedPlayer {
+  arms:ArtCanvas|ImageBitmap;blockArms:BakedPlayer['blockArms'];
   atlas: ArtCanvas | ImageBitmap; hands: ArtCanvas | ImageBitmap;
   cells: { x: number; y: number; width: number; height: number; left: number; top: number }[];
   palms: BakedPlayer['palms'];
@@ -30,11 +31,13 @@ export function composePlayer(sources: readonly ArtSource[], look: Appearance, t
   const handSize = 16 * D, columns = 32;
   const hands = artCanvas(columns * handSize, Math.ceil(frames.length / columns) * handSize), hc = hands.getContext('2d')!;
   ac.imageSmoothingEnabled = hc.imageSmoothingEnabled = false;
+  const arms=artCanvas(512,Math.max(128,Math.ceil(frames.filter(f=>f.arm).length/4)*128)),armContext=arms.getContext('2d')!;const blockArms:BakedPlayer['blockArms']=[];let armCount=0;
   const anchors: BakedPlayer['anchors'] = [], handCenters: BakedPlayer['handCenters'] = [];
   const palms: BakedPlayer['palms'] = [];
   let headTop: number = FRAME.groundY, raisedHandTop: number = FRAME.groundY;
   frames.forEach((art, index) => {
     const cell = cells[index], b = art.bounds;
+    if(art.arm){armContext.drawImage(art.arm.canvas,armCount%4*128,Math.floor(armCount/4)*128);blockArms.push({shoulder:art.arm.shoulder,tip:art.arm.tip,cell:armCount++});}else blockArms.push(null);
     ac.drawImage(art.canvas, b.left, b.top, cell.width, cell.height, cell.x, cell.y, cell.width, cell.height);
 
     const hx = index % columns * handSize, hy = Math.floor(index / columns) * handSize;
@@ -51,8 +54,8 @@ export function composePlayer(sources: readonly ArtSource[], look: Appearance, t
   const pc = portraitCanvas.getContext('2d')!; pc.imageSmoothingEnabled = false;
   const rect = design.frames[0], hh = Math.round(rect.height * 0.35), size = 18 * D;
   const ratio = Math.min((size - 2) / rect.width, (size - 2) / hh), pw = rect.width * ratio, ph = hh * ratio;
-  pc.drawImage(sources[team], rect.x, rect.y, rect.width, hh, (size - pw) / 2, size - ph - 1, pw, ph);
+  if(look.cosmetics){const top=frames[0].bounds.top;pc.drawImage(frames[0].canvas,(FRAME.centerX-10)*D,top,20*D,15*D,0,0,size,size);}else pc.drawImage(sources[team], rect.x, rect.y, rect.width, hh, (size - pw) / 2, size - ph - 1, pw, ph);
   const data = pc.getImageData(0, 0, size, size).data; const portrait: PortraitPixel[] = [];
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const i = (y * size + x) * 4; if (data[i + 3] >= 160) portrait.push({ x: x / D, y: y / D, size: 1 / D, color: data[i] << 16 | data[i + 1] << 8 | data[i + 2] }); }
-  return { atlas, hands, cells, anchors, palms, handCenters, portrait, metrics: { headTop, raisedHandTop } };
+  return { arms,blockArms,atlas, hands, cells, anchors, palms, handCenters, portrait, metrics: { headTop, raisedHandTop } };
 }

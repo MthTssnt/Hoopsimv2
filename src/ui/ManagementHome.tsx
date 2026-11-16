@@ -1,3 +1,4 @@
+import {ClubhouseHome} from './clubhouse/ClubhouseHome';
 import { nextUserGame, userGameToday, buildStandings, playerName, type League, type Team } from '../engine';
 import { validateGamePlan } from '../engine/gamePlan';
 import { OFFENSE_LABELS, DEFENSE_LABELS, PLAYS, type PlayId, scoutLineup } from '../engine/coaching/tactics';
@@ -21,6 +22,7 @@ export function ManagementHome({ league, team, onNavigate, preparing = false }: 
  const rank = buildStandings(league,team.conference).find(r => r.team.id === team.id)?.rank;
  const scouts = scoutLineup(opponent?.gamePlan?.rotation.starterIds.map(id => league.players[id]).filter(Boolean) ?? []);
  const ready = game && game.day <= league.day;
+ if(!preparing)return <ClubhouseHome league={league} team={team}/>;
  return <div className="grid" style={{ gap:24 }}>
   <section className="fixture-poster">
    <p className="match-readiness">{errors.length ? "Votre plan demande une correction avant le match." : "✓ Plan enregistré • prêt pour le prochain match"}</p><div className="eyebrow">{preparing ? 'Préparation du match' : 'Votre prochain rendez-vous'} · Saison {league.season}</div>

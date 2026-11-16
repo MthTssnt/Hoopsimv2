@@ -9,7 +9,8 @@ self.onmessage = (event: MessageEvent<{ sources?: ImageBitmap[]; id: number; loo
     const result = composePlayer(sources, request.look, request.team);
     const atlas = (result.atlas as OffscreenCanvas).transferToImageBitmap();
     const hands = (result.hands as OffscreenCanvas).transferToImageBitmap();
-    self.postMessage({ id: request.id, result: { ...result, atlas, hands } }, { transfer: [atlas, hands] });
+    const arms=(result.arms as OffscreenCanvas).transferToImageBitmap();
+    self.postMessage({ id: request.id, result: { ...result, atlas, hands,arms } }, { transfer: [atlas, hands,arms] });
   } catch (error) {
     self.postMessage({ id: request.id, error: error instanceof Error ? error.message : String(error) });
   }

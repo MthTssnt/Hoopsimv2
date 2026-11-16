@@ -1,0 +1,727 @@
+{
+  "seed": 2700642369,
+  "step": 1000,
+  "clock": 8.333333333333501,
+  "paused": true,
+  "phase": "jeu",
+  "inspection": {
+    "player": 0,
+    "marks": true
+  },
+  "score": [
+    0,
+    2
+  ],
+  "lastShot": {
+    "demo": false,
+    "shooter": 6,
+    "kind": "layup",
+    "zone": "rim",
+    "start": {
+      "x": 2.4218322725835657,
+      "y": 7.29503477666682,
+      "z": 2.7020603358003457
+    },
+    "distance": 2.3778665123701903,
+    "three": false,
+    "hoop": "left",
+    "contest": {
+      "distance": 1.2792433685270628,
+      "facing": 0
+    },
+    "cleared": true,
+    "wanted": true,
+    "probability": 0.5951425582240086,
+    "grade": "green",
+    "timingError": -0.04999999999999949,
+    "forced": false,
+    "scored": true,
+    "invalid": false,
+    "live": true,
+    "block": null,
+    "foul": null,
+    "goaltend": false
+  },
+  "dribblePhase": 0.12365950756864175,
+  "holder": 1,
+  "controlled": 1,
+  "matchOver": false,
+  "tactics": [
+    {
+      "key": "1:5.891666666666749:1:0",
+      "play": {
+        "playId": "default",
+        "handlerId": "pj",
+        "usageByPlayerId": {
+          "pj": 1,
+          "ph": 1,
+          "pf": 1,
+          "pe": 1,
+          "po": 1
+        },
+        "zoneWeights": {
+          "rim": 1,
+          "mid": 1,
+          "three": 1
+        },
+        "passFactor": 1,
+        "turnoverFactor": 1,
+        "reboundFactor": 1,
+        "fatiguePlayerId": null,
+        "switchedDefenderId": null
+      },
+      "handler": 1,
+      "partner": 3,
+      "spots": {
+        "0": {
+          "x": 20.945429222788185,
+          "y": 2.7825191609852
+        },
+        "1": {
+          "x": 19.261400000000002,
+          "y": 7.62
+        },
+        "2": {
+          "x": 20.945429222788185,
+          "y": 12.4574808390148
+        },
+        "3": {
+          "x": 25.2514,
+          "y": 9.32
+        },
+        "4": {
+          "x": 22.2514,
+          "y": 5.32
+        }
+      },
+      "phase": "transition",
+      "started": 7.141666666666811,
+      "phaseAt": 7.141666666666811,
+      "countedScreen": false
+    },
+    {
+      "key": "1:1.3166666666666644:1:0",
+      "play": {
+        "playId": "default",
+        "handlerId": "p1",
+        "usageByPlayerId": {
+          "p0": 1,
+          "p7": 1,
+          "p1": 1,
+          "p2": 1,
+          "p3": 1
+        },
+        "zoneWeights": {
+          "rim": 1,
+          "mid": 1,
+          "three": 1
+        },
+        "passFactor": 1,
+        "turnoverFactor": 1,
+        "reboundFactor": 1,
+        "fatiguePlayerId": null,
+        "switchedDefenderId": null
+      },
+      "handler": 6,
+      "partner": 9,
+      "spots": {
+        "5": {
+          "x": 7.704570777211816,
+          "y": 2.7825191609852
+        },
+        "6": {
+          "x": 9.3886,
+          "y": 7.62
+        },
+        "7": {
+          "x": 7.704570777211816,
+          "y": 12.4574808390148
+        },
+        "8": {
+          "x": 6.3986,
+          "y": 5.32
+        },
+        "9": {
+          "x": 3.3986,
+          "y": 9.32
+        }
+      },
+      "phase": "fallback",
+      "started": 2.0333333333333288,
+      "phaseAt": 3.874999999999989,
+      "countedScreen": false
+    }
+  ],
+  "coachingEvents": [],
+  "lineupVersion": 1,
+  "netPassages": {
+    "left": 1,
+    "right": 0
+  },
+  "boxPoints": [
+    0,
+    2
+  ],
+  "playersUsed": [
+    5,
+    5
+  ],
+  "preparation": {
+    "starterMs": 0.009999999403953552,
+    "startersMs": 0.09999999403953552,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 30148.59999999404,
+    "mode": "worker"
+  },
+  "audio": {
+    "state": "locked",
+    "played": {},
+    "muted": false,
+    "volume": 0.35
+  },
+  "performance": {
+    "actualFps": 58.52587588959766,
+    "worstFrameMs": 43.31999999999971
+  },
+  "ball": {
+    "physical": {
+      "x": 11.523794101220467,
+      "y": 10.690771974816315,
+      "z": 0.6825950115324689
+    },
+    "drawn": {
+      "x": 480.71382303661403,
+      "y": 402.35234686610073
+    }
+  },
+  "players": [
+    {
+      "id": "pj",
+      "number": 45,
+      "appearance": {
+        "version": 1,
+        "skin": 2,
+        "face": 0,
+        "hair": 0,
+        "hairColor": 0,
+        "beard": 1,
+        "headband": 1,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 5.697656741129306,
+        "y": -1.8044858256845764,
+        "z": 0
+      },
+      "feet": {
+        "x": 361.5,
+        "y": 343.5
+      },
+      "ground": {
+        "x": 361.5,
+        "y": 343.5
+      },
+      "stride": 24.587635082007385,
+      "variant": 0,
+      "position": {
+        "x": 7.54457338260696,
+        "y": 7.0266594302806205,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 173,
+      "anchor": {
+        "x": 59.26872685714286,
+        "y": 69.49497142857143,
+        "behind": true
+      },
+      "palm": {
+        "x": 59.26872685714286,
+        "y": 69.49497142857143
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "ph",
+      "number": 49,
+      "appearance": {
+        "version": 1,
+        "skin": 4,
+        "face": 1,
+        "hair": 1,
+        "hairColor": 0,
+        "beard": 0,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 6.627520459489727,
+        "y": -0.08193446549241706,
+        "z": 0
+      },
+      "feet": {
+        "x": 470.5,
+        "y": 417.5
+      },
+      "ground": {
+        "x": 470.5,
+        "y": 417.5
+      },
+      "stride": 32.99045013738096,
+      "variant": 1,
+      "position": {
+        "x": 11.185329828330834,
+        "y": 10.743903287947628,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "dribble",
+        "facing": "right",
+        "heading": "down"
+      },
+      "frame": 12,
+      "anchor": {
+        "x": 59.017082706766914,
+        "y": 70.61281203007519,
+        "behind": false
+      },
+      "palm": {
+        "x": 59.017082706766914,
+        "y": 70.61281203007519
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "pf",
+      "number": 32,
+      "appearance": {
+        "version": 1,
+        "skin": 0,
+        "face": 2,
+        "hair": 2,
+        "hairColor": 3,
+        "beard": 0,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": 0
+      },
+      "feet": {
+        "x": 763,
+        "y": 451
+      },
+      "ground": {
+        "x": 763,
+        "y": 451
+      },
+      "stride": 30.84257414310929,
+      "variant": 2,
+      "position": {
+        "x": 20.9333497561619,
+        "y": 12.451224949376972,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "left",
+        "heading": "up",
+        "phase": 0.9923333333335016
+      },
+      "frame": 255,
+      "anchor": {
+        "x": 38.70761904761905,
+        "y": 72.84914285714285,
+        "behind": true
+      },
+      "palm": {
+        "x": 38.70761904761905,
+        "y": 72.84914285714285
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "pe",
+      "number": 3,
+      "appearance": {
+        "version": 1,
+        "skin": 1,
+        "face": 0,
+        "hair": 3,
+        "hairColor": 0,
+        "beard": 1,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 5.863324051198406,
+        "y": -0.5545513164627291,
+        "z": 0
+      },
+      "feet": {
+        "x": 747.5,
+        "y": 398
+      },
+      "ground": {
+        "x": 747.5,
+        "y": 398
+      },
+      "stride": 31.261827884826438,
+      "variant": 3,
+      "position": {
+        "x": 20.423686938469128,
+        "y": 9.776603559755333,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "down"
+      },
+      "frame": 5,
+      "anchor": {
+        "x": 59.61443577639752,
+        "y": 67.30573913043479,
+        "behind": false
+      },
+      "palm": {
+        "x": 59.61443577639752,
+        "y": 67.30573913043479
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "po",
+      "number": 51,
+      "appearance": {
+        "version": 1,
+        "skin": 3,
+        "face": 1,
+        "hair": 4,
+        "hairColor": 0,
+        "beard": 2,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 4.544824274243719,
+        "y": -1.5438600886835903,
+        "z": 0
+      },
+      "feet": {
+        "x": 682,
+        "y": 337
+      },
+      "ground": {
+        "x": 682,
+        "y": 337
+      },
+      "stride": 27.035353831467262,
+      "variant": 4,
+      "position": {
+        "x": 18.225168087427203,
+        "y": 6.687696170967953,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "run",
+        "facing": "right",
+        "heading": "up"
+      },
+      "frame": 179,
+      "anchor": {
+        "x": 58.13583193277311,
+        "y": 67.43357983193278,
+        "behind": true
+      },
+      "palm": {
+        "x": 58.13583193277311,
+        "y": 67.43357983193278
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p0",
+      "number": 21,
+      "appearance": {
+        "version": 1,
+        "skin": 1,
+        "face": 1,
+        "hair": 3,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 3
+      },
+      "velocity": {
+        "x": 5.373712610571575,
+        "y": 3.9809604969924766,
+        "z": 0
+      },
+      "feet": {
+        "x": 645,
+        "y": 366.5
+      },
+      "ground": {
+        "x": 645,
+        "y": 366.5
+      },
+      "stride": 41.638625658469216,
+      "variant": 1,
+      "position": {
+        "x": 16.99229312903062,
+        "y": 8.166477017339718,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "backpedal",
+        "phase": 0.24665460543212347,
+        "facing": "left",
+        "heading": "down"
+      },
+      "frame": 94,
+      "anchor": {
+        "x": 39.966955102040814,
+        "y": 73.49795918367347,
+        "behind": false
+      },
+      "palm": {
+        "x": 39.966955102040814,
+        "y": 73.49795918367347
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p7",
+      "number": 38,
+      "appearance": {
+        "version": 1,
+        "skin": 4,
+        "face": 1,
+        "hair": 0,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 1,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 6.00475062429925,
+        "y": 0.3203881219227449,
+        "z": 0
+      },
+      "feet": {
+        "x": 513,
+        "y": 401.5
+      },
+      "ground": {
+        "x": 513,
+        "y": 401.5
+      },
+      "stride": 30.087119157474607,
+      "variant": 0,
+      "position": {
+        "x": 12.592008694971318,
+        "y": 9.944592633650505,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "backpedal",
+        "phase": 0.8491526933748847,
+        "facing": "left",
+        "heading": "down"
+      },
+      "frame": 89,
+      "anchor": {
+        "x": 36.951815155279505,
+        "y": 68.11965217391305,
+        "behind": false
+      },
+      "palm": {
+        "x": 36.951815155279505,
+        "y": 68.11965217391305
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p1",
+      "number": 42,
+      "appearance": {
+        "version": 1,
+        "skin": 0,
+        "face": 0,
+        "hair": 3,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 1.1887269013428368,
+        "y": 0.22997330180817924,
+        "z": 0
+      },
+      "feet": {
+        "x": 737.5,
+        "y": 426.5
+      },
+      "ground": {
+        "x": 737.5,
+        "y": 426.5
+      },
+      "stride": 25.99853917585551,
+      "variant": 2,
+      "position": {
+        "x": 20.08723717398437,
+        "y": 11.217813448834436,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "backpedal",
+        "phase": 0.6466291693692678,
+        "facing": "left",
+        "heading": "down"
+      },
+      "frame": 90,
+      "anchor": {
+        "x": 35.70574436090226,
+        "y": 66.32700751879699,
+        "behind": false
+      },
+      "palm": {
+        "x": 35.70574436090226,
+        "y": 66.32700751879699
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p2",
+      "number": 0,
+      "appearance": {
+        "version": 1,
+        "skin": 0,
+        "face": 1,
+        "hair": 4,
+        "hairColor": 2,
+        "beard": 2,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 3
+      },
+      "velocity": {
+        "x": 4.239522585644538,
+        "y": 0.17830977595421138,
+        "z": 0
+      },
+      "feet": {
+        "x": 703.5,
+        "y": 394
+      },
+      "ground": {
+        "x": 703.5,
+        "y": 394
+      },
+      "stride": 38.895050747442404,
+      "variant": 1,
+      "position": {
+        "x": 18.94518024465983,
+        "y": 9.563462390771505,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "backpedal",
+        "phase": 0.43972080807129643,
+        "facing": "left",
+        "heading": "down"
+      },
+      "frame": 92,
+      "anchor": {
+        "x": 37.33820150375939,
+        "y": 70.67007518796993,
+        "behind": false
+      },
+      "palm": {
+        "x": 37.33820150375939,
+        "y": 70.67007518796993
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p3",
+      "number": 15,
+      "appearance": {
+        "version": 1,
+        "skin": 4,
+        "face": 2,
+        "hair": 0,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 1,
+        "sleeve": 0,
+        "shoes": 2
+      },
+      "velocity": {
+        "x": 1.3112081810862302,
+        "y": -0.6891816203338292,
+        "z": 0
+      },
+      "feet": {
+        "x": 677.5,
+        "y": 361
+      },
+      "ground": {
+        "x": 677.5,
+        "y": 361
+      },
+      "stride": 32.64330229193715,
+      "variant": 2,
+      "position": {
+        "x": 18.08901081701031,
+        "y": 7.897808431053042,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "backpedal",
+        "phase": 0.6009712623344559,
+        "facing": "left",
+        "heading": "down"
+      },
+      "frame": 91,
+      "anchor": {
+        "x": 37.700028571428575,
+        "y": 65.96862857142858,
+        "behind": false
+      },
+      "palm": {
+        "x": 37.700028571428575,
+        "y": 65.96862857142858
+      },
+      "drawnHand": null
+    }
+  ],
+  "errors": []
+}

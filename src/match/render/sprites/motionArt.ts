@@ -1,3 +1,4 @@
+import {paintClubhouse} from './clubhouseArt';
 import { POSE_CONTACTS, contactPoint } from './poseContacts';
 import { artCanvas, type ArtCanvas, type ArtSource } from './artCanvas';
 import { COURT_DESIGNS, playerScale } from '../../../assets/players/courtDesigns';
@@ -10,6 +11,7 @@ import { cleanPose, repairContact } from './contactPixels';
 import { dribbleFlightY, type MotionId, type MotionPose, type Point } from './motion';
 
 export interface MotionArtFrame {
+  arm?:{canvas:ArtCanvas;shoulder:Point;tip:Point};
   canvas: ArtCanvas; hand: ArtCanvas; pose: MotionPose; handCenter: Point;
   bounds: { left: number; right: number; top: number; bottom: number };
 }
@@ -35,6 +37,7 @@ export function pixelBounds(c: ArtCanvas): MotionArtFrame['bounds'] {
 
 /** Une seule image complète par pose, gardée à double résolution jusqu'au rendu en match. */
 export function paintMotion(images: readonly ArtSource[], look: Appearance, team: number, id: MotionId, frame: number, heading: Heading = 'down', facing: Facing = 'right'): MotionArtFrame {
+  if(look.cosmetics)return paintClubhouse(images,look,team,id,frame,heading,facing);
   const atlasIndex = PAINTED_ATLASES.findIndex((a) => a.team === team && a.variant === look.variant && a.heading === heading);
   if (atlasIndex < 0) throw new Error(`Planche peinte manquante : ${team}/${look.variant}/${heading}`);
   const indices = MOTION_INDICES[id];

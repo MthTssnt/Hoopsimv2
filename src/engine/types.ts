@@ -1,3 +1,4 @@
+import type { PlayerAppearance } from './appearance';
 import type { TrainingPlan, OffseasonState, SeasonReview } from './development/types';
 import type { ManagementState, FrontOfficePlan, TradeStatus, ContractOffer } from './management/types';
 import type { TacticalReport } from './coaching/analytics';
@@ -88,6 +89,7 @@ export interface StatLine {
 }
 
 export interface Player {
+  appearance?: PlayerAppearance;
   training?: TrainingPlan;
   /** Regular-season experience normalized to 48-minute physical games; legacy falls back to recorded seconds. */
   developmentSeconds?: number;

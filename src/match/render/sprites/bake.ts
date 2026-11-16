@@ -7,6 +7,7 @@ import type { Appearance } from './appearance';
 
 export interface PortraitPixel { x: number; y: number; color: number; size?: number }
 export interface BakedPlayer {
+  armKey:string;blockArms:({shoulder:{x:number;y:number};tip:{x:number;y:number};cell:number}|null)[];
   key: string; layout: SheetLayout;
   anchors: ({ x: number; y: number; behind?: boolean } | null)[];
   palms: ({ x: number; y: number } | null)[];
@@ -23,9 +24,11 @@ export function animationKey(key: string, name: AnimationName, facing: Facing, h
 
 /** Upload an already composed player; no pose composition occurs when substitutes enter. */
 export function installPlayer(scene: Phaser.Scene, key: string, data: ComposedPlayer): BakedPlayer {
-  const handKey = `${key}-hand`;
-  for (const k of [key, handKey]) if (scene.textures.exists(k)) scene.textures.remove(k);
+  const handKey = `${key}-hand`,armKey=`${key}-arm`;
+  for (const k of [key, handKey,armKey]) if (scene.textures.exists(k)) scene.textures.remove(k);
   const texture = scene.textures.createCanvas(key, data.atlas.width, data.atlas.height)!;
+  const arms=scene.textures.createCanvas(armKey,data.arms.width,data.arms.height)!;arms.context.drawImage(data.arms,0,0);
+  data.blockArms.forEach((arm,index)=>{if(arm)arms.add(index,0,arm.cell%4*128,Math.floor(arm.cell/4)*128,128,128);});arms.refresh();
   const hands = scene.textures.createCanvas(handKey, data.hands.width, data.hands.height)!;
   texture.context.drawImage(data.atlas, 0, 0); hands.context.drawImage(data.hands, 0, 0);
   const handSize = 16 * D, columns = 32;
@@ -41,8 +44,8 @@ export function installPlayer(scene: Phaser.Scene, key: string, data: ComposedPl
     }
   });
   texture.refresh(); hands.refresh();
-  for (const image of [data.atlas, data.hands]) if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) image.close();
-  return { key, layout: OFFICIAL_LAYOUT, handKey, anchors: data.anchors, palms: data.palms, handCenters: data.handCenters, metrics: data.metrics, portrait: data.portrait };
+  for (const image of [data.atlas, data.hands,data.arms]) if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) image.close();
+  return { armKey,blockArms:data.blockArms,key, layout: OFFICIAL_LAYOUT, handKey, anchors: data.anchors, palms: data.palms, handCenters: data.handCenters, metrics: data.metrics, portrait: data.portrait };
 }
 
 /** Synchronous compatibility path for tools; matches the worker's composer exactly. */

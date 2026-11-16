@@ -39,13 +39,13 @@ export interface ScoreboardData {
 
 /** Tableau de score compact (haut à gauche) : pastilles + scores, puis période, chrono et horloge des tirs. */
 export function drawScoreboard(g: Phaser.GameObjects.Graphics, x: number, y: number, d: ScoreboardData): void {
-  const w = 116;
+  const w = 142;
   panel(g, x, y, w, 25);
-  let cx = x + 3;
+  let cx = x + 16;
   cx += chip(g, d.home, cx, y + 3) + 3;
   g.fillStyle(PALETTE.chalk);
   drawText(g, String(d.homeScore), cx, y + 4);
-  cx = x + w / 2 + 2;
+  cx = x + w / 2 + 15;
   cx += chip(g, d.away, cx, y + 3) + 3;
   drawText(g, String(d.awayScore), cx, y + 4);
   if (d.note) {

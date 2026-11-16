@@ -1,0 +1,104 @@
+{
+  "games": 11767,
+  "records": [
+    {
+      "seed": 31,
+      "season": 2026,
+      "gamesCumulative": 1306,
+      "players": 499,
+      "freeAgents": 79,
+      "cap": 250,
+      "maxPayroll": 191.2,
+      "events": 230,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 31,
+      "season": 2027,
+      "gamesCumulative": 2619,
+      "players": 539,
+      "freeAgents": 120,
+      "cap": 250,
+      "maxPayroll": 195.3,
+      "events": 516,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 31,
+      "season": 2028,
+      "gamesCumulative": 3921,
+      "players": 581,
+      "freeAgents": 162,
+      "cap": 250,
+      "maxPayroll": 185.5,
+      "events": 849,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2026,
+      "gamesCumulative": 5229,
+      "players": 489,
+      "freeAgents": 69,
+      "cap": 250,
+      "maxPayroll": 223.6,
+      "events": 238,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2027,
+      "gamesCumulative": 6534,
+      "players": 540,
+      "freeAgents": 121,
+      "cap": 250,
+      "maxPayroll": 226.8,
+      "events": 524,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 8126,
+      "season": 2028,
+      "gamesCumulative": 7843,
+      "players": 585,
+      "freeAgents": 166,
+      "cap": 250,
+      "maxPayroll": 208.8,
+      "events": 821,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2026,
+      "gamesCumulative": 9145,
+      "players": 499,
+      "freeAgents": 80,
+      "cap": 250,
+      "maxPayroll": 188.7,
+      "events": 242,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2027,
+      "gamesCumulative": 10460,
+      "players": 548,
+      "freeAgents": 129,
+      "cap": 250,
+      "maxPayroll": 205.3,
+      "events": 527,
+      "retainedTrades": 0
+    },
+    {
+      "seed": 919,
+      "season": 2028,
+      "gamesCumulative": 11767,
+      "players": 592,
+      "freeAgents": 173,
+      "cap": 250,
+      "maxPayroll": 208.7,
+      "events": 841,
+      "retainedTrades": 0
+    }
+  ]
+}

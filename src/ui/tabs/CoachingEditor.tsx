@@ -1,3 +1,5 @@
+import {PlayerPortrait} from '../clubhouse/PlayerPortrait';
+import {useUi} from '../uiContext';
 import { ActionFeedback } from '../ActionFeedback';
 import { useDraftGuard } from '../useDraftGuard';
 import { PlanLibrary } from './PlanLibrary';
@@ -10,6 +12,8 @@ const ROLES = ['Créateur principal', 'Créateur secondaire', 'Tireur', 'Pénét
 const PRESETS: [CoachingPreset, string][] = [['auto', 'Auto'], ['development', 'Développement'], ['competitive', 'Compétitif'], ['smallBall', 'Small Ball'], ['defensive', 'Défensif']];
 
 export function CoachingEditor({ league, team }: { league: League; team: Team }) {
+  const ui=useUi();
+  const [allPlayers,setAllPlayers]=useState(false);
   const [draft, setDraft] = useState<GamePlan>(() => structuredClone(team.gamePlan ?? defaultGamePlan(team, league.players)));
   const dirty = JSON.stringify(draft) !== JSON.stringify(team.gamePlan);
   useDraftGuard(dirty);
@@ -52,18 +56,17 @@ export function CoachingEditor({ league, team }: { league: League; team: Team })
     <label>Nom du plan <input aria-label="Nom du plan" value={draft.name} maxLength={80} onChange={e => change(p => { p.name = e.target.value; })} /></label>
     <PlanLibrary league={league} team={team} draft={draft} onLoad={plan => { setDraft(plan); setLockedIds([]); }} />
     </details><h3>Cinq majeur</h3>
-    <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
-      {POSITIONS.map((pos, i) => {
-        const player = league.players[draft.rotation.starterIds[i]];
-        const gap = player ? Math.abs(POSITIONS.indexOf(player.pos) - i) : 0;
-        return <label key={pos} style={{ flex: '1 1 180px' }}>{pos} <select aria-label={`Titulaire ${pos}`} value={draft.rotation.starterIds[i]} onChange={e => selectStarter(i, e.target.value)}>
-          {ids.map(id => <option key={id} value={id}>{playerName(league.players[id])} ({league.players[id].pos})</option>)}
-        </select><span className="faint small" style={{ display: 'block' }}>{gap ? `Hors poste : écart ${gap}. Le coach automatique pénalise chaque cran de 6,5 points dans son choix ; le cinq explicite est respecté.` : 'Poste naturel'}</span></label>;
+    <div className="rotation-court" aria-label="Demi-terrain du cinq majeur">
+      <svg viewBox="0 0 640 420" preserveAspectRatio="none" aria-hidden="true"><rect width="640" height="420" fill="#d4ad70"/><path d="M0 0H640M0 418H640M1 0V420M639 0V420"/><path d="M240 0V190H400V0" fill="#285640"/><path d="M240 190H400M240 190A80 80 0 0 0 400 190M240 190A80 80 0 0 1 400 190" strokeDasharray="8 7"/><path d="M278 0V72A42 42 0 0 0 362 72V0M70 0V70A260 260 0 0 0 570 70V0"/><path d="M295 25H345M320 25V40"/><circle cx="320" cy="49" r="10"/></svg>
+      {POSITIONS.map((pos,i)=>{const player=league.players[draft.rotation.starterIds[i]],gap=player?Math.abs(POSITIONS.indexOf(player.pos)-i):0;const point=[[50,67],[82,52],[18,52],[30,17],[68,17]][i];
+       return <article className="court-starter" key={pos} style={{left:point[0]+'%',top:point[1]+'%'}}><button className="portrait-link" aria-label={`Fiche de ${playerName(player)}`} onClick={()=>ui.openPlayer(player.id)}><PlayerPortrait player={player} size={52}/></button><strong>{pos} · #{player.number}</strong><label><span className="sr-only">Titulaire {pos}</span><select aria-label={`Titulaire ${pos}`} value={player.id} onChange={e=>selectStarter(i,e.target.value)}>{ids.map(id=><option key={id} value={id}>{playerName(league.players[id])} ({league.players[id].pos})</option>)}</select></label><label className="small">Minutes <input aria-label={`Minutes titulaire ${pos}`} type="number" min={0} max={48} value={Number.isFinite(draft.rotation.minutesByPlayerId[player.id])?draft.rotation.minutesByPlayerId[player.id]:''} onChange={e=>{setLockedIds(current=>[...new Set([...current,player.id])]);change(p=>{p.rotation.minutesByPlayerId[player.id]=e.target.value===''?NaN:Number(e.target.value);});}}/></label>{gap>0 && <small>Hors poste : écart {gap}</small>}</article>;
       })}
     </div>
+    <h3>Banc et temps de jeu</h3><p className="faint small">Choisissez un titulaire sur le terrain pour le remplacer par un joueur actif. Les minutes et les rôles restent ajustables ci-dessous.</p>
+    <button className="btn btn-sm" onClick={()=>setAllPlayers(!allPlayers)} aria-expanded={allPlayers}>{allPlayers?'Afficher seulement le banc actif':'Voir tous les rôles et les joueurs hors rotation'}</button>
     <div className="table-wrap" tabIndex={0} role="region" aria-label="Tableau défilant"><table><thead><tr><th className="left">Joueur</th><th>Actif</th><th>Minutes</th><th>Rôle</th><th>Énergie</th></tr></thead><tbody>
-      {team.roster.map(id => league.players[id]).filter(Boolean).map(player => <tr key={player.id}>
-        <td className="left">{playerName(player)} <span className="faint small">{player.pos} · {player.overall}{player.injuryGames > 0 ? ` · Blessé ${player.injuryGames} m.` : ''}</span></td>
+      {team.roster.map(id => league.players[id]).filter(player=>player && (allPlayers || ids.includes(player.id) && !draft.rotation.starterIds.includes(player.id))).map(player => <tr key={player.id}>
+        <td className="left"><button className="player-link" onClick={()=>ui.openPlayer(player.id)}>{playerName(player)}</button> <span className="faint small">{player.pos} · {player.overall}{player.injuryGames > 0 ? ` · Blessé ${player.injuryGames} m.` : ''}</span></td>
         <td><input type="checkbox" aria-label={`Actif ${playerName(player)}`} checked={ids.includes(player.id)} disabled={!available.includes(player.id) || (ids.includes(player.id) ? ids.length <= 5 : ids.length >= 10)} onChange={() => toggleActive(player.id)} /></td>
         <td>{ids.includes(player.id) && <input style={{ width: 65 }} aria-label={`Minutes ${playerName(player)}`} type="number" min={0} max={48} step={1} value={Number.isFinite(draft.rotation.minutesByPlayerId[player.id]) ? draft.rotation.minutesByPlayerId[player.id] : ''} onChange={e => { const n = e.target.value === '' ? NaN : Number(e.target.value); setLockedIds(current => [...new Set([...current, player.id])]); change(p => { p.rotation.minutesByPlayerId[player.id] = n; }); }} />}</td>
         <td>{ids.includes(player.id) && <select aria-label={`Rôle ${playerName(player)}`} value={draft.rolesByPlayerId[player.id] ?? 'rolePlayer'} onChange={e => change(p => { p.rolesByPlayerId[player.id] = e.target.value as typeof PLAYER_ROLES[number]; })}>{PLAYER_ROLES.map((r, i) => <option key={r} value={r}>{ROLES[i]}</option>)}</select>}</td>

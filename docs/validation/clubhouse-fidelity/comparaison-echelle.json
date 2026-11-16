@@ -1,0 +1,33 @@
+{
+  "pose": {
+    "kind": "anim",
+    "name": "idle",
+    "facing": "right",
+    "heading": "down",
+    "phase": 0.5746666666666607
+  },
+  "camera": {
+    "x": 465,
+    "y": 330,
+    "zoom": 1,
+    "renderScale": 2,
+    "left": 145,
+    "top": 150,
+    "screenZoom": 2
+  },
+  "heightCm": 185,
+  "referenceCrop": {
+    "x": 25,
+    "y": 51,
+    "w": 79,
+    "h": 135
+  },
+  "referenceScale": 0.5007407407407407,
+  "gameCrop": {
+    "left": 575,
+    "top": 243,
+    "size": 128
+  },
+  "commonLoupe": 4,
+  "note": "Le jeu conserve son ombre et son indicateur de s\u00e9lection. La r\u00e9f\u00e9rence est d\u00e9tour\u00e9e sur fond uni. Le gabarit lourd conserve son \u00e9largissement de 4 % au rendu."
+}

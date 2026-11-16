@@ -91,7 +91,7 @@ export default function PhaserGame({ match, onMatchOver, coachingVariants = [] }
       setCanFinish(game.registry.get('canFinish') === true);
       if (new URLSearchParams(location.search).has('atelier')) {
         const scene = game.scene.getScene('Match') as MatchScene;
-        inspectorApi = { snapshot: () => scene.inspect(), step: (inputs) => scene.inspectorStep(inputs), play: (play) => scene.inspectorPlay(play), recording: () => scene.inspectorRecording(), advance: (count) => scene.inspectorAdvance(count) };
+        inspectorApi = { world:()=>scene.inspectorWorld(),inputs:(inputs)=>scene.inspectorInputs(inputs),options:(player,marks)=>scene.inspectorOptions(player,marks),snapshot: () => scene.inspect(), step: (inputs) => scene.inspectorStep(inputs), play: (play) => scene.inspectorPlay(play), recording: () => scene.inspectorRecording(), advance: (count) => scene.inspectorAdvance(count) };
         window.__hoopsim = inspectorApi;
       }
     });

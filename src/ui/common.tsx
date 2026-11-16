@@ -4,7 +4,7 @@ import type { Player, Team } from '../engine';
 
 export function TeamLogo({ team, size = 32 }: { team: { id?: string; abbr: string; colors: { primary: string; secondary: string } }; size?: number }) {
   const brand = brandFor(team);
-  return brand?.logo ? <img className="team-emblem" src={brand.logo} width={size} height={size} alt={brand.name} style={{ objectFit: 'contain', imageRendering: 'pixelated', flexShrink: 0 }} /> : <span className="logo" aria-label={team.abbr} style={{ width: size, height: size, background: team.colors.primary, color: '#f6f1de', fontSize: size * .3 }}>{team.abbr}</span>;
+  return brand?.logo ? <img className="team-emblem" src={size<=32?brand.compact??brand.logo:brand.logo} width={size} height={size} alt={brand.name} style={{ objectFit: 'contain', imageRendering: 'pixelated', flexShrink: 0 }} /> : <span className="logo" aria-label={team.abbr} style={{ width: size, height: size, background: team.colors.primary, color: '#f6f1de', fontSize: size * .3 }}>{team.abbr}</span>;
 }
 
 export function teamFullName(team: Team): string {
@@ -76,12 +76,14 @@ export function Modal({
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close.current(); }
       if (e.key === 'Tab') {
         const list = controls(), first = list[0], last = list.at(-1);
+        if(!root?.contains(document.activeElement)){e.preventDefault();(e.shiftKey?last:first)?.focus();return;}
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
       }
     };
-    root?.addEventListener('keydown', key);
-    return () => { root?.removeEventListener('keydown', key); previous?.focus(); };
+    const topKey=(e:KeyboardEvent)=>{if(Array.from(document.querySelectorAll('[role=dialog]')).at(-1)===root)key(e);};
+    window.addEventListener('keydown', topKey);
+    return () => { window.removeEventListener('keydown', topKey); previous?.focus(); };
   }, []);
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">

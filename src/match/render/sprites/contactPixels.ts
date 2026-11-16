@@ -7,10 +7,10 @@ export function skinPixel(r: number, g: number, b: number): boolean {
 }
 
 /** Nettoyage natif : poussière détachée, repères résiduels, micro-trous fermés du détourage. */
-export function cleanPose(data: Uint8ClampedArray, width: number, height: number): void {
+export function cleanPose(data: Uint8ClampedArray, width: number, height: number, removeMarkers = true, maxSpeck = 3): void {
   const seen = new Uint8Array(width * height);
   for (let i = 0; i < seen.length; i++) {
-    if (markerPixel(data[i * 4], data[i * 4 + 1], data[i * 4 + 2])) data[i * 4 + 3] = 0;
+    if (removeMarkers && markerPixel(data[i * 4], data[i * 4 + 1], data[i * 4 + 2])) data[i * 4 + 3] = 0;
   }
   // Une composante de 1–3 pixels, sans liaison au corps, est un débris de l'ancien marqueur.
   for (let start = 0; start < seen.length; start++) {
@@ -24,7 +24,7 @@ export function cleanPose(data: Uint8ClampedArray, width: number, height: number
         seen[n] = 1; component.push(n);
       }
     }
-    if (component.length <= 3) for (const i of component) data[i * 4 + 3] = 0;
+    if (component.length <= maxSpeck) for (const i of component) data[i * 4 + 3] = 0;
   }
 }
 

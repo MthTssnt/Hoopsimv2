@@ -1,3 +1,5 @@
+import {APPEARANCE_PRESETS} from '../engine/appearance';
+import {appearanceIdentity,normalizeAppearance,type PlayerAppearance} from '../engine/appearance';
 import { beginOffseason, finishOffseason } from '../engine/offseason';
 import { advanceCPUDraft, chooseDraftPlayer } from '../engine/development/draft';
 import { setTrainingFocus } from '../engine/development/training';
@@ -129,6 +131,12 @@ class GameStore {
     this.loadError = null;
     this.save();
     this.emit();
+  }
+
+  newClubhouseDemo():void {
+    const league=createNewGame('bos',2861),team=league.teams.find(t=>t.id==='bos')!;
+    team.gamePlan!.rotation.starterIds.forEach((id,i)=>{league.players[id].appearance={...APPEARANCE_PRESETS[i]};});
+    this.league=league;this.watched=null;this.loadError=null;this.actionError=null;this.save();this.emit();
   }
 
   private league_(): League {
@@ -301,6 +309,16 @@ class GameStore {
   offerContract(playerId: string, offer: ContractOffer): string[] {
     return this.marketAction(league => league.players[playerId]?.teamId === league.userTeamId ? extendContract(league, league.userTeamId, playerId, offer) : signFreeAgent(league, league.userTeamId, playerId, offer));
   }
+  setAppearance(playerId:string,appearance:PlayerAppearance):string[] {
+    if(this.liveMatch || this.busy)return ['Terminez le match avant de modifier une apparence.'];
+    const player=this.league_().players[playerId];
+    if(!player || player.teamId!==this.league_().userTeamId)return ['Ce joueur n’appartient pas à votre équipe.'];
+    const previous=player.appearance;
+    player.appearance=normalizeAppearance(appearance,appearanceIdentity(player));
+    if(!this.save()){if(previous)player.appearance=previous;else delete player.appearance;this.emit();return ['Apparence non enregistrée. Le brouillon est conservé ; réessayez après avoir libéré du stockage.'];}
+    this.emit();return [];
+  }
+
   setTradeStatus(playerId: string, status: TradeStatus): string[] {
     return this.marketAction(league => {
       if (!['normal', 'listed', 'core', 'unavailable'].includes(status) || league.players[playerId]?.teamId !== league.userTeamId) return ['Statut ou propriétaire invalide.'];

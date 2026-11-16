@@ -1,3 +1,6 @@
+import {clubhouseContact,CLUBHOUSE_BALL_RADIUS} from '../render/sprites/clubhouseGeometry';
+import {MOTION_FRAMES} from '../render/sprites/layout';
+import {appearanceKey,appearanceIdentity} from '../../engine/appearance';
 import { COURT_DESIGNS, playerScale } from '../../assets/players/courtDesigns';
 import { appearanceFor } from '../render/sprites/appearance';
 import { POSE_CONTACTS, contactPoint } from '../render/sprites/poseContacts';
@@ -13,10 +16,12 @@ import type { PlayerBody } from './player';
 export class BallControlRig {
   private rigs = new Map<string, { anchors: ({ x: number; y: number } | null)[]; key: string }>();
   private anchors(body: PlayerBody, team: number) {
-    const p = body.athlete, key = `${team}:${p.heightCm}:${p.weightKg}:${p.number}`;
+    const p = body.athlete, key = `${team}:${p.heightCm}:${p.weightKg}:${p.number}:${appearanceKey(appearanceIdentity(p))}`;
     const old = this.rigs.get(p.id);
     if (old?.key === key) return old.anchors;
-    const look = appearanceFor(p), h = playerScale(look.heightCm, look.heavy, COURT_DESIGNS[team][look.variant]).height;
+    const look = appearanceFor(p);
+    if(look.cosmetics){const anchors=(['down','down','up','up'] as const).flatMap((heading,block)=>MOTION_FRAMES.map(({motion,frame})=>clubhouseContact(motion,frame,heading,p.heightCm,look.heavy,block%2===1)));this.rigs.set(p.id,{key,anchors});return anchors;}
+    const h = playerScale(look.heightCm, look.heavy, COURT_DESIGNS[team][look.variant]).height;
     const sy = h / 48, sx = sy * (look.heavy ? 1.1 : 1);
     const anchors = (['down', 'down', 'up', 'up'] as const).flatMap((heading, block) => {
       const source = POSE_CONTACTS.find((s) => s.file === `${team}-${look.variant}-${heading}.png`);
@@ -35,7 +40,7 @@ export class BallControlRig {
     } else {
       const frames = layout.animations[state.name].frames;
       if (state.name === 'dribble' || state.name === 'dribbleIdle') {
-        anchor = dribbleBallAt(dribblePhase, frames.map((f) => anchors[sheetIndexIn(layout, f, state.facing, state.heading)]), FRAME.groundY - 5);
+        anchor = dribbleBallAt(dribblePhase, frames.map((f) => anchors[sheetIndexIn(layout, f, state.facing, state.heading)]), FRAME.groundY - CLUBHOUSE_BALL_RADIUS);
       } else {
         const phase = state.phase ?? (state.name === 'run' ? body.strideDistance / 3.4 % 1 : clock % 1);
         anchor = anchors[sheetIndexIn(layout, frames[Math.floor(phase * frames.length)], state.facing, state.heading)];
@@ -43,7 +48,7 @@ export class BallControlRig {
     }
     if (!anchor) return null;
     const depthPx = ART_PPM * ART_DEPTH_SCALE, heightPx = ART_PPM * ART_HEIGHT_SCALE;
-    const dy = (BALL_RADIUS * heightPx - 5) / depthPx;
+    const dy = (BALL_RADIUS * heightPx - CLUBHOUSE_BALL_RADIUS) / depthPx;
     return { x: body.pos.x + (anchor.x - FRAME.centerX) / ART_PPM, y: body.pos.y + dy,
       z: Math.max(BALL_RADIUS, body.pos.z + (FRAME.groundY - anchor.y + dy * depthPx) / heightPx) };
   }

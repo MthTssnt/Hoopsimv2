@@ -1,0 +1,50 @@
+{
+  "durationMs": 6607.0999999940395,
+  "recordedFramesPerSecond": 30,
+  "runtimeFpsRange": [
+    55.650729950096334,
+    57.20097326679511
+  ],
+  "physicsSeconds": 6.566666666666293,
+  "wallSeconds": 6.574,
+  "physicsWallRatio": 0.9988844944731204,
+  "phases": [
+    {
+      "label": "01-dribble-sur-place",
+      "ms": 2021.5,
+      "step": 1366
+    },
+    {
+      "label": "02-dribble-en-deplacement",
+      "ms": 4551.5999999940395,
+      "step": 1670
+    },
+    {
+      "label": "03-arret",
+      "ms": 6606.899999991059,
+      "step": 1914
+    }
+  ],
+  "holderPreserved": true,
+  "stoppedVelocity": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "lastPose": {
+    "kind": "anim",
+    "name": "dribbleIdle",
+    "facing": "right",
+    "heading": "down"
+  },
+  "browserErrors": [],
+  "renderer": "Phaser Canvas fallback (Chromium cloud --disable-webgl); normal game camera, no speed correction",
+  "preparation": {
+    "starterMs": 0.029999999701976775,
+    "startersMs": 0.29999999701976776,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 19283.70000000298,
+    "mode": "worker"
+  }
+}

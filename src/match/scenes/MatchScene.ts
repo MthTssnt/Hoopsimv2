@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PALETTE, teamRamp } from '../../assets/palette';
+import { PALETTE } from '../../assets/palette';
 import { createNewGame, TEAM_SEEDS, type Player } from '../../engine';
 import { DUNK_TUNING, dunkScore, greenWindow, shotSkill, type ShotZone, type TimingGrade } from '../../engine/shot';
 import { hashSeed, randomSeed, Rng } from '../../engine/rng';
@@ -221,6 +221,7 @@ interface BodySprite {
   sprite: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Image;
   hand: Phaser.GameObjects.Image;
+  arm:Phaser.GameObjects.Container;armImage:Phaser.GameObjects.Image;armPoint?:Point;
   /** Position : diagonale haut quand il monte, bas quand il descend ; gardée à l'horizontale et à l'arrêt. */
   heading: Heading;
   /** Pieds dessinés (relevés pendant l'accroche d'un dunk) et point au sol. */
@@ -305,6 +306,7 @@ export class MatchScene extends Phaser.Scene {
   private tracker!: GestureTracker;
   private stepNumber = 0;
   private inspectorEnabled = false;
+  private witnessInputs:readonly WorldInput[]|null=null;
   private inspectorPaused = false;
   private inspectorMarks = true;
   private inspectedPlayer = 0;
@@ -473,12 +475,7 @@ export class MatchScene extends Phaser.Scene {
     const visitors = setup ? awayLook(setup.home, setup.away) : null;
     const home = !setup || this.homeSeed === setup.home ? teamLook(this.homeSeed) : visitors!;
     const away = !setup ? teamLook(this.awaySeed) : this.awaySeed === setup.home ? arena : visitors!;
-    {
-      home.primary = teamRamp('#203764');
-      home.secondary = teamRamp('#fff5e5');
-      away.primary = teamRamp('#fff5e5');
-      away.secondary = teamRamp('#702437');
-    }
+
     for (const level of LEVELS) {
       createArena(this, `arena-${level}`, MATCH_PROJECTION, makeCourt(level), arena, {
         size: { width: WORLD_WIDTH, height: WORLD_HEIGHT },
@@ -516,7 +513,7 @@ export class MatchScene extends Phaser.Scene {
         const key = this.castKey(item.team, item.player), look = appearanceFor(item.player);
         const data = await this.composer.compose(look, item.team);
         if (this.disposed) {
-          for (const image of [data.atlas, data.hands]) if (image instanceof ImageBitmap) image.close();
+          for (const image of [data.atlas, data.hands,data.arms]) if (image instanceof ImageBitmap) image.close();
           return;
         }
         const baked = installPlayer(this, key, data);
@@ -563,7 +560,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.bodies = onCourt.map((member) => this.createBodySprite(member));
     this.ballShadow = this.add.image(0, 0, BALL_SHADOW_TEXTURE).setDepth(1);
-    this.ballImage = this.add.image(0, 0, BALL_TEXTURE).setScale(1 / RENDER_SCALE);
+    this.ballImage = this.add.image(0, 0, BALL_TEXTURE).setScale(.7 / RENDER_SCALE);
     this.gauge = this.add.graphics().setDepth(950);
     this.tag = this.add.image(0, 0, 'grade-perfect').setOrigin(0.5, 1).setDepth(960).setVisible(false);
     this.clearTag = this.add.image(0, 0, 'tag-clear').setOrigin(0.5, 1).setDepth(960).setVisible(false);
@@ -675,8 +672,9 @@ export class MatchScene extends Phaser.Scene {
         const thought = ai.think(this.world, WORLD_DT);
         return i === controlled && !this.watching ? controlledInput(mine, thought, defending, untouched) : thought;
       });
-      this.world.step(WORLD_DT, inputs);
-      this.afterWorldStep(inputs);
+      const replay=this.inspectorEnabled && this.witnessInputs?this.witnessInputs:inputs;
+      this.world.step(WORLD_DT, replay);
+      this.afterWorldStep(replay);
       this.pendingJump = false;
       this.pendingRelease = false;
       this.pendingPass = false;
@@ -706,7 +704,7 @@ export class MatchScene extends Phaser.Scene {
     const list = inputs ?? thoughts;
     this.world.step(WORLD_DT, list);
     this.afterWorldStep(list);
-    this.renderWorld(0);
+    this.renderWorld(1000/60);
   }
 
   inspectorPlay(play: boolean) {
@@ -723,12 +721,20 @@ export class MatchScene extends Phaser.Scene {
     if (this.ready) this.drawInspector();
   }
 
+  /** Development-only access for reproducible real-physics witnesses, never a pose player. */
+  inspectorWorld(){return import.meta.env.DEV && this.inspectorEnabled?this.world:undefined;}
+  inspectorInputs(inputs:readonly WorldInput[]|null){
+    if(import.meta.env.DEV && this.inspectorEnabled && (inputs===null || inputs.length===this.world.players.length))this.witnessInputs=inputs;
+  }
+
   inspect() {
     return {
       seed: this.seed, step: this.stepNumber, clock: this.world.clock,
+      camera: {x:Math.round(this.cam.x),y:Math.round(this.cam.y),zoom:this.cam.zoom,renderScale:RENDER_SCALE,left:this.cameras.main.worldView.x,top:this.cameras.main.worldView.y,screenZoom:this.cameras.main.zoom},
       paused: this.inspectorPaused, phase: this.world.full?.phase ?? 'demi-terrain',
       inspection: { player: this.inspectedPlayer, marks: this.inspectorMarks },
       score: [...this.world.points],
+      lastShot:this.world.lastShot?{...this.world.lastShot}:null, dribblePhase:this.world.dribblePhase,
       holder: this.world.holder, controlled: this.world.controlled, matchOver: this.world.matchOver,
       tactics: [this.world.tactics.peek(0), this.world.tactics.peek(1)],
       coachingEvents: [...this.world.coachingEvents],
@@ -740,10 +746,10 @@ export class MatchScene extends Phaser.Scene {
       performance: { actualFps: this.game.loop.actualFps, worstFrameMs: this.worstFrameMs },
       ball: { physical: { ...this.world.ball.pos }, drawn: { ...this.ballDrawn } },
       players: this.bodies.map((view, i) => ({
-        id: view.member.player.id, variant: view.member.look.variant,
+        id: view.member.player.id, number:view.member.player.number, appearance:appearanceFor(view.member.player).cosmetics, velocity:{...this.world.players[i].vel}, feet:{...view.feet}, ground:{...view.ground}, stride:this.world.players[i].strideDistance, variant: view.member.look.variant,
         position: { ...this.world.players[i].pos }, state: this.tracker.states[i],
         frame: Number(view.sprite.frame.name), anchor: view.member.baked.anchors[Number(view.sprite.frame.name)],
-        palm: view.member.baked.palms[Number(view.sprite.frame.name)],
+        palm: view.member.baked.palms[Number(view.sprite.frame.name)],drawnHand:view.armPoint,
       })),
     };
   }
@@ -762,7 +768,7 @@ export class MatchScene extends Phaser.Scene {
       const inputs = this.ais.map((ai) => ai.think(this.world, WORLD_DT));
       this.world.step(WORLD_DT, inputs); this.afterWorldStep(inputs);
     }
-    this.renderWorld(0);
+    this.renderWorld(Math.min(100,steps*WORLD_DT*1000));
   }
 
   private drawInspector() {
@@ -774,7 +780,7 @@ export class MatchScene extends Phaser.Scene {
       point(view.feet, 0x79edb9);
       const anchor = view.member.baked.anchors[frame], palm = view.member.baked.palms[frame];
       if (anchor) point(heldBallPoint(view.feet, anchor), 0xffc65b);
-      if (palm) point(heldBallPoint(view.feet, palm), 0xff7ad9);
+      if (palm) point(view.armPoint ?? heldBallPoint(view.feet, palm), 0xff7ad9);
       point(project(this.world.ball.pos.x, this.world.ball.pos.y, this.world.ball.pos.z), 0x69e8ff);
     }
     if (this.inspectorPaused || performance.now() - this.inspectorPublished > 100) {
@@ -812,11 +818,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private createBodySprite(member: CastMember): BodySprite {
+    const armImage=this.add.image(0,0,member.baked.armKey).setScale(1/SPRITE_DETAIL);
+    const arm=this.add.container(0,0,[armImage]).setVisible(false);
     return {
       member,
       shadow: this.add.image(0, 0, member.shadow).setDepth(1),
       // Tourné vers la gauche : images dédiées (numéro à l'endroit), jamais de retournement du sprite.
       sprite: this.add.sprite(0, 0, member.baked.key, 0).setScale(1 / SPRITE_DETAIL).setOrigin(FRAME.centerX / FRAME.width, (FRAME.groundY + 1) / FRAME.height),
+      arm,armImage,
       hand: this.add.image(0, 0, member.baked.handKey, 0).setScale(1 / SPRITE_DETAIL).setVisible(false),
       heading: 'down',
       feet: { x: 0, y: 0 },
@@ -1079,6 +1088,20 @@ export class MatchScene extends Phaser.Scene {
     // Les déplacements, et non une horloge minimale, font avancer les appuis.
     view.sprite.setPosition(view.feet.x, view.feet.y + 1).setDepth(depthOf(pos.y));
     const image = Number(view.sprite.frame.name);
+    const arm=view.member.baked.blockArms[image];view.arm.setVisible(!!arm);view.armPoint=undefined;
+    if(arm){
+      const root=heldBallPoint(view.feet,arm.shoulder),ball=project(this.world.ball.pos.x,this.world.ball.pos.y,this.world.ball.pos.z);
+      const delta={x:ball.x-root.x,y:ball.y-root.y},length=Math.hypot(arm.tip.x,arm.tip.y);
+      const distance=Math.hypot(pos.x-this.world.ball.pos.x,pos.y-this.world.ball.pos.y),air=this.tracker.views[index]?.air;
+      const opposing=this.world.lastShot && this.world.team[this.world.lastShot.shooter]!==this.world.team[index] || this.world.shot && this.world.team[this.world.shot.shooter]!==this.world.team[index];
+      const weight=opposing && this.world.holder===null && this.world.ball.pos.z>pos.z+1.4?Phaser.Math.Clamp((2.2-distance)/.8,0,1)*Math.min(1,(air?.progress??0)/.65):0;
+      const target={x:arm.tip.x+(delta.x-arm.tip.x)*weight,y:arm.tip.y+(delta.y-arm.tip.y)*weight},scale=Phaser.Math.Clamp(Math.hypot(target.x,target.y)/length,.7,1.8);
+      // Stretch along the painted arm, preserving its width and the slim silhouette.
+      // Parent/child transforms compose in one draw; the source raster is not resampled twice.
+      view.armImage.setTexture(view.member.baked.armKey,image).setRotation(-Math.atan2(arm.tip.y,arm.tip.x));
+      view.arm.setPosition(root.x,root.y).setScale(scale,1).setRotation(Math.atan2(target.y,target.x)).setDepth(depthOf(pos.y)+.07);
+      view.armPoint={x:root.x+Math.cos(Math.atan2(target.y,target.x))*length*scale,y:root.y+Math.sin(Math.atan2(target.y,target.x))*length*scale};
+    }
     const center = view.member.baked.handCenters[image];
     view.hand.setVisible(holding && !!center);
     if (holding && center) {

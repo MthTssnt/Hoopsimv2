@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-16",
+  "unitTests": 479,
+  "unitTestFiles": 51,
+  "composedArt": {
+    "checked": 2016,
+    "idleHeights": [
+      {
+        "heightCm": 175,
+        "paintedHeight": 32
+      },
+      {
+        "heightCm": 195,
+        "paintedHeight": 34
+      },
+      {
+        "heightCm": 222,
+        "paintedHeight": 37.5
+      }
+    ],
+    "maxContactGap": 1.835491864729331,
+    "stationaryFeetIdentical": true,
+    "failures": []
+  },
+  "preparation": {
+    "starterMs": 0.009999999403953552,
+    "startersMs": 0.09999999403953552,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 30148.59999999404,
+    "mode": "worker"
+  },
+  "realBlock": {
+    "step": 15461,
+    "block": {
+      "blocker": 9,
+      "contact": 0.046333619638607715,
+      "probability": 0.3118432582446519,
+      "success": true
+    },
+    "drawnHandGap": 0.0
+  },
+  "managementGames": 11767,
+  "managementSeasonTransitions": 9,
+  "videos": {
+    "player45": {
+      "file": "45-dribble-tir.mp4",
+      "size": [
+        1280,
+        720
+      ],
+      "fps": 30,
+      "mode": "real-time scripted inputs in GM match"
+    },
+    "block": {
+      "file": "contre-match-reel.mp4",
+      "mode": "real-time AI game, naturally resolved block"
+    }
+  }
+}

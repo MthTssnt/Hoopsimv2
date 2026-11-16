@@ -195,3 +195,7 @@ python scripts/smoke-release.py # Vite démarré, Playwright Python et Chromium 
 Les résultats sont écrits sous `/tmp`. Les règles fictives de budget, les limites
 du journal, du scouting et des stratégies physiques sont précisées dans le bilan ;
 les échanges de picks, zone/press et la psychologie ne sont pas annoncés comme disponibles.
+
+## Clubhouse
+
+L’interface Clubhouse, les cinq identités, l’atelier et les écussons des trente franchises sont intégrés. Sur l’écran de création, **Découvrir Clubhouse • le #45 à Boston** lance la carrière témoin. [Parcours, captures, vidéos et validation](docs/CLUBHOUSE.md).

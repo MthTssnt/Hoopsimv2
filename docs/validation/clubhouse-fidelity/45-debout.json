@@ -1,0 +1,655 @@
+{
+  "seed": 2700642369,
+  "step": 287,
+  "clock": 2.391666666666661,
+  "camera": {
+    "x": 465,
+    "y": 330,
+    "zoom": 1,
+    "renderScale": 2,
+    "left": 145,
+    "top": 150,
+    "screenZoom": 2
+  },
+  "paused": true,
+  "phase": "jeu",
+  "inspection": {
+    "player": 0,
+    "marks": false
+  },
+  "score": [
+    0,
+    0
+  ],
+  "lastShot": null,
+  "dribblePhase": 0.44444444444444353,
+  "holder": 6,
+  "controlled": 0,
+  "matchOver": false,
+  "tactics": [
+    null,
+    {
+      "key": "1:1.3166666666666644:1:0",
+      "play": {
+        "playId": "default",
+        "handlerId": "p1",
+        "usageByPlayerId": {
+          "p0": 1,
+          "p7": 1,
+          "p1": 1,
+          "p2": 1,
+          "p3": 1
+        },
+        "zoneWeights": {
+          "rim": 1,
+          "mid": 1,
+          "three": 1
+        },
+        "passFactor": 1,
+        "turnoverFactor": 1,
+        "reboundFactor": 1,
+        "fatiguePlayerId": null,
+        "switchedDefenderId": null
+      },
+      "handler": 6,
+      "partner": 9,
+      "spots": {
+        "5": {
+          "x": 7.704570777211816,
+          "y": 2.7825191609852
+        },
+        "6": {
+          "x": 9.3886,
+          "y": 7.62
+        },
+        "7": {
+          "x": 7.704570777211816,
+          "y": 12.4574808390148
+        },
+        "8": {
+          "x": 6.3986,
+          "y": 5.32
+        },
+        "9": {
+          "x": 3.3986,
+          "y": 9.32
+        }
+      },
+      "phase": "transition",
+      "started": 1.3166666666666644,
+      "phaseAt": 1.3166666666666644,
+      "countedScreen": false
+    }
+  ],
+  "coachingEvents": [],
+  "lineupVersion": 1,
+  "netPassages": {
+    "left": 0,
+    "right": 0
+  },
+  "boxPoints": [
+    0,
+    0
+  ],
+  "playersUsed": [
+    5,
+    5
+  ],
+  "preparation": {
+    "starterMs": 0.029999999701976775,
+    "startersMs": 0.29999999701976776,
+    "syncEntries": 0,
+    "prepared": 20,
+    "preparationMs": 19283.70000000298,
+    "mode": "worker"
+  },
+  "audio": {
+    "state": "locked",
+    "played": {},
+    "muted": false,
+    "volume": 0.35
+  },
+  "performance": {
+    "actualFps": 54.6489839982753,
+    "worstFrameMs": 45
+  },
+  "ball": {
+    "physical": {
+      "x": 16.19059341092964,
+      "y": 6.257154011989329,
+      "z": 0.2773730177942256
+    },
+    "drawn": {
+      "x": 620.7178023278892,
+      "y": 322.83323987438655
+    }
+  },
+  "players": [
+    {
+      "id": "pj",
+      "number": 45,
+      "appearance": {
+        "version": 1,
+        "skin": 2,
+        "face": 0,
+        "hair": 0,
+        "hairColor": 0,
+        "beard": 1,
+        "headband": 1,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "feet": {
+        "x": 464.5,
+        "y": 327.5
+      },
+      "ground": {
+        "x": 464.5,
+        "y": 327.5
+      },
+      "stride": 3.0880516634464423,
+      "variant": 0,
+      "position": {
+        "x": 10.981357819194047,
+        "y": 6.197855202410798,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "right",
+        "heading": "down",
+        "phase": 0.5746666666666607
+      },
+      "frame": 2,
+      "anchor": {
+        "x": 57.701952,
+        "y": 73.33851428571428,
+        "behind": false
+      },
+      "palm": {
+        "x": 57.701952,
+        "y": 73.33851428571428
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "ph",
+      "number": 49,
+      "appearance": {
+        "version": 1,
+        "skin": 4,
+        "face": 1,
+        "hair": 1,
+        "hairColor": 0,
+        "beard": 0,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 0,
+        "y": -0.0,
+        "z": 0
+      },
+      "feet": {
+        "x": 574,
+        "y": 322.5
+      },
+      "ground": {
+        "x": 574,
+        "y": 322.5
+      },
+      "stride": 2.6229329753016475,
+      "variant": 1,
+      "position": {
+        "x": 14.632398199671817,
+        "y": 5.954722215466974,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "right",
+        "heading": "down",
+        "phase": 0.8126666666666607
+      },
+      "frame": 3,
+      "anchor": {
+        "x": 56.016685714285714,
+        "y": 73.90491428571428,
+        "behind": false
+      },
+      "palm": {
+        "x": 56.016685714285714,
+        "y": 73.90491428571428
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "pf",
+      "number": 32,
+      "appearance": {
+        "version": 1,
+        "skin": 0,
+        "face": 2,
+        "hair": 2,
+        "hairColor": 3,
+        "beard": 0,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "feet": {
+        "x": 569,
+        "y": 374
+      },
+      "ground": {
+        "x": 569,
+        "y": 374
+      },
+      "stride": 2.494775772845515,
+      "variant": 2,
+      "position": {
+        "x": 14.465458224960562,
+        "y": 8.556938288864005,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "right",
+        "heading": "up",
+        "phase": 0.05066666666666109
+      },
+      "frame": 168,
+      "anchor": {
+        "x": 56.16402040816327,
+        "y": 71.9259387755102,
+        "behind": true
+      },
+      "palm": {
+        "x": 56.16402040816327,
+        "y": 71.9259387755102
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "pe",
+      "number": 3,
+      "appearance": {
+        "version": 1,
+        "skin": 1,
+        "face": 0,
+        "hair": 3,
+        "hairColor": 0,
+        "beard": 1,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": 0
+      },
+      "feet": {
+        "x": 465,
+        "y": 384
+      },
+      "ground": {
+        "x": 465,
+        "y": 384
+      },
+      "stride": 2.9152874448829684,
+      "variant": 3,
+      "position": {
+        "x": 10.993833353731834,
+        "y": 9.050897532884527,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "left",
+        "heading": "up",
+        "phase": 0.6696666666666609
+      },
+      "frame": 254,
+      "anchor": {
+        "x": 36.869499047619044,
+        "y": 73.34154761904762,
+        "behind": true
+      },
+      "palm": {
+        "x": 36.869499047619044,
+        "y": 73.34154761904762
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "po",
+      "number": 51,
+      "appearance": {
+        "version": 1,
+        "skin": 3,
+        "face": 1,
+        "hair": 4,
+        "hairColor": 0,
+        "beard": 2,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": 0
+      },
+      "feet": {
+        "x": 555.5,
+        "y": 350.5
+      },
+      "ground": {
+        "x": 555.5,
+        "y": 350.5
+      },
+      "stride": 0.3202738085252055,
+      "variant": 4,
+      "position": {
+        "x": 14.010982333788395,
+        "y": 7.3712542723676915,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "left",
+        "heading": "up",
+        "phase": 0.4796666666666609
+      },
+      "frame": 253,
+      "anchor": {
+        "x": 38.44230857142857,
+        "y": 72.48496,
+        "behind": true
+      },
+      "palm": {
+        "x": 38.44230857142857,
+        "y": 72.48496
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p0",
+      "number": 21,
+      "appearance": {
+        "version": 1,
+        "skin": 1,
+        "face": 1,
+        "hair": 3,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 3
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "feet": {
+        "x": 670.5,
+        "y": 321
+      },
+      "ground": {
+        "x": 670.5,
+        "y": 321
+      },
+      "stride": 2.8234365525311373,
+      "variant": 1,
+      "position": {
+        "x": 17.847891300076412,
+        "y": 5.867928157068221,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "right",
+        "heading": "down",
+        "phase": 0.2846666666666611
+      },
+      "frame": 1,
+      "anchor": {
+        "x": 56.556939130434785,
+        "y": 72.96770186335402,
+        "behind": false
+      },
+      "palm": {
+        "x": 56.556939130434785,
+        "y": 72.96770186335402
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p7",
+      "number": 38,
+      "appearance": {
+        "version": 1,
+        "skin": 4,
+        "face": 1,
+        "hair": 0,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 1,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": -0.0,
+        "y": 0,
+        "z": 0
+      },
+      "feet": {
+        "x": 632,
+        "y": 329.5
+      },
+      "ground": {
+        "x": 632,
+        "y": 329.5
+      },
+      "stride": 0,
+      "variant": 0,
+      "position": {
+        "x": 16.574007184474613,
+        "y": 6.310285325120643,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "dribbleIdle",
+        "facing": "left",
+        "heading": "down"
+      },
+      "frame": 107,
+      "anchor": {
+        "x": 36.672774757763975,
+        "y": 73.99892063492062,
+        "behind": false
+      },
+      "palm": null,
+      "drawnHand": null
+    },
+    {
+      "id": "p1",
+      "number": 42,
+      "appearance": {
+        "version": 1,
+        "skin": 0,
+        "face": 0,
+        "hair": 3,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 0
+      },
+      "velocity": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": 0
+      },
+      "feet": {
+        "x": 605.5,
+        "y": 342
+      },
+      "ground": {
+        "x": 605.5,
+        "y": 342
+      },
+      "stride": 0.9605886894381845,
+      "variant": 2,
+      "position": {
+        "x": 15.687882987192022,
+        "y": 6.934376620282317,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "left",
+        "heading": "up",
+        "phase": 0.6656666666666609
+      },
+      "frame": 254,
+      "anchor": {
+        "x": 37.784595238095235,
+        "y": 73.82654761904762,
+        "behind": true
+      },
+      "palm": {
+        "x": 37.784595238095235,
+        "y": 73.82654761904762
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p2",
+      "number": 0,
+      "appearance": {
+        "version": 1,
+        "skin": 0,
+        "face": 1,
+        "hair": 4,
+        "hairColor": 2,
+        "beard": 2,
+        "headband": 0,
+        "sleeve": 0,
+        "shoes": 3
+      },
+      "velocity": {
+        "x": 0,
+        "y": -0.0,
+        "z": 0
+      },
+      "feet": {
+        "x": 660.5,
+        "y": 389.5
+      },
+      "ground": {
+        "x": 660.5,
+        "y": 389.5
+      },
+      "stride": 2.6042187631856186,
+      "variant": 1,
+      "position": {
+        "x": 17.524852215820186,
+        "y": 9.350168176568577,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "right",
+        "heading": "up",
+        "phase": 0.04666666666666064
+      },
+      "frame": 168,
+      "anchor": {
+        "x": 56.519297959183675,
+        "y": 71.88510204081632,
+        "behind": true
+      },
+      "palm": {
+        "x": 56.519297959183675,
+        "y": 71.88510204081632
+      },
+      "drawnHand": null
+    },
+    {
+      "id": "p3",
+      "number": 15,
+      "appearance": {
+        "version": 1,
+        "skin": 4,
+        "face": 2,
+        "hair": 0,
+        "hairColor": 1,
+        "beard": 1,
+        "headband": 1,
+        "sleeve": 0,
+        "shoes": 2
+      },
+      "velocity": {
+        "x": -0.0,
+        "y": 0,
+        "z": 0
+      },
+      "feet": {
+        "x": 587.5,
+        "y": 351.5
+      },
+      "ground": {
+        "x": 587.5,
+        "y": 351.5
+      },
+      "stride": 0.3950388362764671,
+      "variant": 2,
+      "position": {
+        "x": 15.088904366355196,
+        "y": 7.411182607091084,
+        "z": 0
+      },
+      "state": {
+        "kind": "anim",
+        "name": "idle",
+        "facing": "left",
+        "heading": "up",
+        "phase": 0.42766666666666087
+      },
+      "frame": 253,
+      "anchor": {
+        "x": 38.56820571428572,
+        "y": 72.63664,
+        "behind": true
+      },
+      "palm": {
+        "x": 38.56820571428572,
+        "y": 72.63664
+      },
+      "drawnHand": null
+    }
+  ]
+}

@@ -36,6 +36,7 @@ export function NewGameScreen({ onLoad, hasSave, error }: { onLoad: () => void; 
 
         <p><a className="btn" href="?court">Tester un match jouable</a> <a className="btn" href="?style">Voir les designs des joueurs</a> <a className="btn" href="?anims">Animations</a></p>
 
+        <p><button className="btn btn-primary" onClick={()=>{if(!hasSave || confirm('Démarrer la carrière de démonstration Clubhouse remplacera la sauvegarde locale. Exportez votre carrière actuelle avant de continuer.'))store.newClubhouseDemo();}}>Découvrir Clubhouse • le #45 à Boston</button></p>
         {error && <p role="alert" className="panel">{error}</p>}
         <div className="toolbar" style={{ marginTop: 18 }}>
           <button className="btn" onClick={() => setSeed(randomSeed())}>

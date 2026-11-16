@@ -1,0 +1,21 @@
+{
+  "checked": 2016,
+  "idleHeights": [
+    {
+      "heightCm": 175,
+      "paintedHeight": 32
+    },
+    {
+      "heightCm": 195,
+      "paintedHeight": 34
+    },
+    {
+      "heightCm": 222,
+      "paintedHeight": 37.5
+    }
+  ],
+  "maxContactGap": 1.9773814730496242,
+  "coherentDribblePoses": 64,
+  "stationaryFeetIdentical": true,
+  "failures": []
+}

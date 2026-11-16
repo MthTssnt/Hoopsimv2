@@ -6,7 +6,7 @@ import { useUi } from './uiContext';
 export type HelpMode='complete'|'discreet'|'off';
 export interface UiPreferences { help:HelpMode; detailed:boolean; tour:number }
 export function readPreferences():UiPreferences {
- try {const p=JSON.parse(localStorage.getItem('hoopsim.ui.v1') ?? '{}');return {help:['complete','discreet','off'].includes(p.help)?p.help:'complete',detailed:p.detailed===true,tour:Number.isInteger(p.tour)&&p.tour>=0&&p.tour<=5?p.tour:0};} catch{return {help:'complete',detailed:false,tour:0};}
+ try {const p=JSON.parse(localStorage.getItem('hoopsim.ui.v1') ?? '{}');return {help:['complete','discreet','off'].includes(p.help)?p.help:'discreet',detailed:p.detailed===true,tour:Number.isInteger(p.tour)&&p.tour>=0&&p.tour<=5?p.tour:0};} catch{return {help:'discreet',detailed:false,tour:0};}
 }
 export function taskActions(league:League):{label:string;description:string;destination:ManagementDestination}[] {
  return [

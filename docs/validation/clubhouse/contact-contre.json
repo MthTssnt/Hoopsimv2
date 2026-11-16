@@ -1,0 +1,1377 @@
+{
+  "contact": {
+    "seed": 2700642369,
+    "step": 15461,
+    "clock": 128.84166666671382,
+    "paused": true,
+    "phase": "jeu",
+    "inspection": {
+      "player": 0,
+      "marks": false
+    },
+    "score": [
+      10,
+      15
+    ],
+    "lastShot": {
+      "demo": false,
+      "shooter": 1,
+      "kind": "layup",
+      "zone": "rim",
+      "start": {
+        "x": 26.215757075750595,
+        "y": 7.102362822874927,
+        "z": 2.7688516971097408
+      },
+      "distance": 2.387031458632538,
+      "three": false,
+      "hoop": "right",
+      "contest": {
+        "distance": 1.5219740692803236,
+        "facing": 0
+      },
+      "cleared": true,
+      "wanted": false,
+      "probability": 0.4623396223194947,
+      "grade": "late",
+      "timingError": 0.09166666666666667,
+      "forced": false,
+      "scored": false,
+      "invalid": false,
+      "live": false,
+      "block": {
+        "blocker": 9,
+        "contact": 0.046333619638607715,
+        "probability": 0.3118432582446519,
+        "success": true
+      },
+      "foul": null,
+      "goaltend": false
+    },
+    "dribblePhase": 0,
+    "holder": null,
+    "controlled": 1,
+    "matchOver": false,
+    "tactics": [
+      {
+        "key": "1:122.31666666671008:9:0",
+        "play": {
+          "playId": "default",
+          "handlerId": "pj",
+          "usageByPlayerId": {
+            "pj": 1,
+            "ph": 1,
+            "pf": 1,
+            "pi": 1,
+            "po": 1
+          },
+          "zoneWeights": {
+            "rim": 1,
+            "mid": 1,
+            "three": 1
+          },
+          "passFactor": 1,
+          "turnoverFactor": 1,
+          "reboundFactor": 1,
+          "fatiguePlayerId": null,
+          "switchedDefenderId": null
+        },
+        "handler": 1,
+        "partner": 4,
+        "spots": {
+          "0": {
+            "x": 20.945429222788185,
+            "y": 2.7825191609852
+          },
+          "1": {
+            "x": 19.261400000000002,
+            "y": 7.62
+          },
+          "2": {
+            "x": 20.945429222788185,
+            "y": 12.4574808390148
+          },
+          "3": {
+            "x": 22.2514,
+            "y": 5.32
+          },
+          "4": {
+            "x": 25.2514,
+            "y": 9.32
+          }
+        },
+        "phase": "fallback",
+        "started": 125.90000000004626,
+        "phaseAt": 127.62500000004763,
+        "countedScreen": false
+      },
+      {
+        "key": "1:115.5666666667047:7:0",
+        "play": {
+          "playId": "default",
+          "handlerId": "p3",
+          "usageByPlayerId": {
+            "pc": 1,
+            "p8": 1,
+            "p1": 1,
+            "p2": 1,
+            "p3": 1
+          },
+          "zoneWeights": {
+            "rim": 1,
+            "mid": 1,
+            "three": 1
+          },
+          "passFactor": 1,
+          "turnoverFactor": 1,
+          "reboundFactor": 1,
+          "fatiguePlayerId": null,
+          "switchedDefenderId": null
+        },
+        "handler": 8,
+        "partner": 9,
+        "spots": {
+          "5": {
+            "x": 7.704570777211816,
+            "y": 2.7825191609852
+          },
+          "6": {
+            "x": 7.704570777211816,
+            "y": 12.4574808390148
+          },
+          "7": {
+            "x": 6.3986,
+            "y": 5.32
+          },
+          "8": {
+            "x": 9.3886,
+            "y": 7.62
+          },
+          "9": {
+            "x": 3.3986,
+            "y": 9.32
+          }
+        },
+        "phase": "fallback",
+        "started": 118.09166666670671,
+        "phaseAt": 119.50000000004117,
+        "countedScreen": false
+      }
+    ],
+    "coachingEvents": [
+      {
+        "team": 0,
+        "time": 26.79999999999912,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 1,
+        "time": 26.79999999999912,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 0,
+        "time": 52.02499999999769,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 1,
+        "time": 52.02499999999769,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 0,
+        "time": 85.12500000001381,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 1,
+        "time": 85.12500000001381,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 0,
+        "time": 121.5083333333761,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      },
+      {
+        "team": 1,
+        "time": 121.5083333333761,
+        "kind": "rotation",
+        "status": "applied",
+        "message": "Rotation automatique : minutes cibles et \u00e9quilibre des postes."
+      }
+    ],
+    "lineupVersion": 9,
+    "netPassages": {
+      "left": 6,
+      "right": 4
+    },
+    "boxPoints": [
+      10,
+      15
+    ],
+    "playersUsed": [
+      9,
+      10
+    ],
+    "preparation": {
+      "starterMs": 0.020000000298023225,
+      "startersMs": 0.20000000298023224,
+      "syncEntries": 0,
+      "prepared": 20,
+      "preparationMs": 42824,
+      "mode": "worker"
+    },
+    "audio": {
+      "state": "locked",
+      "played": {},
+      "muted": false,
+      "volume": 0.35
+    },
+    "performance": {
+      "actualFps": 37.18880265851149,
+      "worstFrameMs": 63.340000000000146
+    },
+    "ball": {
+      "physical": {
+        "x": 26.716281017638305,
+        "y": 7.322801385924247,
+        "z": 2.982703164531678
+      },
+      "drawn": {
+        "x": 936.4884305291491,
+        "y": 288.7443228848539
+      }
+    },
+    "players": [
+      {
+        "id": "pj",
+        "number": 45,
+        "appearance": {
+          "version": 1,
+          "skin": 2,
+          "face": 0,
+          "hair": 0,
+          "hairColor": 0,
+          "beard": 1,
+          "headband": 1,
+          "sleeve": 0,
+          "shoes": 0
+        },
+        "velocity": {
+          "x": -5.399345455056914,
+          "y": 2.563310908696053,
+          "z": 0
+        },
+        "feet": {
+          "x": 819.5,
+          "y": 238
+        },
+        "ground": {
+          "x": 819.5,
+          "y": 238
+        },
+        "stride": 523.2770229839227,
+        "variant": 0,
+        "position": {
+          "x": 22.808674478446676,
+          "y": 1.693441079558491,
+          "z": 0
+        },
+        "state": {
+          "kind": "anim",
+          "name": "run",
+          "facing": "left",
+          "heading": "down"
+        },
+        "frame": 95,
+        "anchor": {
+          "x": 36.80157714285714,
+          "y": 69.5867142857143,
+          "behind": false
+        },
+        "palm": {
+          "x": 36.80157714285714,
+          "y": 69.5867142857143
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "ph",
+        "number": 49,
+        "appearance": {
+          "version": 1,
+          "skin": 4,
+          "face": 1,
+          "hair": 1,
+          "hairColor": 0,
+          "beard": 0,
+          "headband": 0,
+          "sleeve": 0,
+          "shoes": 0
+        },
+        "velocity": {
+          "x": 0.25395965850958296,
+          "y": -0.14106570950719943,
+          "z": 3.4263750068327976
+        },
+        "feet": {
+          "x": 925.5,
+          "y": 335
+        },
+        "ground": {
+          "x": 925.5,
+          "y": 337
+        },
+        "stride": 526.8928975194885,
+        "variant": 1,
+        "position": {
+          "x": 26.346869983027776,
+          "y": 6.686525719602174,
+          "z": 0.08770312517081993
+        },
+        "state": {
+          "kind": "frame",
+          "gesture": "rebound",
+          "step": 0,
+          "facing": "right",
+          "heading": "down"
+        },
+        "frame": 48,
+        "anchor": {
+          "x": 59.48589473684211,
+          "y": 78.55657142857143,
+          "behind": false
+        },
+        "palm": {
+          "x": 59.48589473684211,
+          "y": 78.55657142857143
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "pf",
+        "number": 32,
+        "appearance": {
+          "version": 1,
+          "skin": 0,
+          "face": 2,
+          "hair": 2,
+          "hairColor": 3,
+          "beard": 0,
+          "headband": 0,
+          "sleeve": 0,
+          "shoes": 0
+        },
+        "velocity": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0
+        },
+        "feet": {
+          "x": 742.5,
+          "y": 428.5
+        },
+        "ground": {
+          "x": 742.5,
+          "y": 428.5
+        },
+        "stride": 375.1921171920808,
+        "variant": 2,
+        "position": {
+          "x": 20.257684939329383,
+          "y": 11.319576176546247,
+          "z": 0
+        },
+        "state": {
+          "kind": "anim",
+          "name": "idle",
+          "facing": "left",
+          "heading": "up",
+          "phase": 0.500666666713812
+        },
+        "frame": 254,
+        "anchor": {
+          "x": 37.71502380952381,
+          "y": 73.7572619047619,
+          "behind": true
+        },
+        "palm": {
+          "x": 37.71502380952381,
+          "y": 73.7572619047619
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "pi",
+        "number": 1,
+        "appearance": {
+          "version": 1,
+          "skin": 1,
+          "face": 1,
+          "hair": 2,
+          "hairColor": 3,
+          "beard": 0,
+          "headband": 0,
+          "sleeve": 0,
+          "shoes": 3
+        },
+        "velocity": {
+          "x": 3.2859311074064035,
+          "y": 4.623027893300076,
+          "z": 0
+        },
+        "feet": {
+          "x": 810.5,
+          "y": 424
+        },
+        "ground": {
+          "x": 810.5,
+          "y": 424
+        },
+        "stride": 502.94215197903765,
+        "variant": 2,
+        "position": {
+          "x": 22.5214033196013,
+          "y": 11.085093794585116,
+          "z": 0
+        },
+        "state": {
+          "kind": "anim",
+          "name": "run",
+          "facing": "right",
+          "heading": "down"
+        },
+        "frame": 11,
+        "anchor": {
+          "x": 59.494057142857145,
+          "y": 68.61445714285715,
+          "behind": false
+        },
+        "palm": {
+          "x": 59.494057142857145,
+          "y": 68.61445714285715
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "po",
+        "number": 51,
+        "appearance": {
+          "version": 1,
+          "skin": 3,
+          "face": 1,
+          "hair": 4,
+          "hairColor": 0,
+          "beard": 2,
+          "headband": 0,
+          "sleeve": 0,
+          "shoes": 0
+        },
+        "velocity": {
+          "x": 0.7672593123584666,
+          "y": -0.9573114032409845,
+          "z": 1.4079521859545094
+        },
+        "feet": {
+          "x": 937.5,
+          "y": 364
+        },
+        "ground": {
+          "x": 937.5,
+          "y": 369
+        },
+        "stride": 438.28658951270654,
+        "variant": 4,
+        "position": {
+          "x": 26.748329136503216,
+          "y": 8.292220973141527,
+          "z": 0.22625483836135943
+        },
+        "state": {
+          "kind": "frame",
+          "gesture": "rebound",
+          "step": 2,
+          "facing": "right",
+          "heading": "up"
+        },
+        "frame": 218,
+        "anchor": {
+          "x": 54.65174603174603,
+          "y": 65.72215873015872,
+          "behind": true
+        },
+        "palm": {
+          "x": 54.65174603174603,
+          "y": 65.72215873015872
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "p0",
+        "number": 21,
+        "appearance": {
+          "version": 1,
+          "skin": 1,
+          "face": 1,
+          "hair": 3,
+          "hairColor": 1,
+          "beard": 1,
+          "headband": 0,
+          "sleeve": 0,
+          "shoes": 3
+        },
+        "velocity": {
+          "x": 1.7411812882857343,
+          "y": 0.5455707489928476,
+          "z": 3.265718993481607
+        },
+        "feet": {
+          "x": 922,
+          "y": 314
+        },
+        "ground": {
+          "x": 922,
+          "y": 317.5
+        },
+        "stride": 549.2043801625501,
+        "variant": 1,
+        "position": {
+          "x": 26.22871698922864,
+          "y": 5.695635076499974,
+          "z": 0.17350469967408033
+        },
+        "state": {
+          "kind": "frame",
+          "gesture": "blockOff",
+          "step": 0,
+          "facing": "right",
+          "heading": "down"
+        },
+        "frame": 44,
+        "anchor": {
+          "x": 57.06035488721804,
+          "y": 76.58616541353383,
+          "behind": false
+        },
+        "palm": {
+          "x": 57.06035488721804,
+          "y": 76.58616541353383
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "p7",
+        "number": 38,
+        "appearance": {
+          "version": 1,
+          "skin": 4,
+          "face": 1,
+          "hair": 0,
+          "hairColor": 1,
+          "beard": 1,
+          "headband": 1,
+          "sleeve": 0,
+          "shoes": 0
+        },
+        "velocity": {
+          "x": 3.2803614960304053,
+          "y": -3.4407717053157834,
+          "z": 0
+        },
+        "feet": {
+          "x": 881.5,
+          "y": 357
+        },
+        "ground": {
+          "x": 881.5,
+          "y": 357
+        },
+        "stride": 488.84324452182057,
+        "variant": 0,
+        "position": {
+          "x": 24.88186485824042,
+          "y": 7.686669694111817,
+          "z": 0
+        },
+        "state": {
+          "kind": "anim",
+          "name": "shuffle",
+          "phase": 0.7774248593590016,
+          "facing": "right",
+          "heading": "up"
+        },
+        "frame": 178,
+        "anchor": {
+          "x": 58.03664672268907,
+          "y": 67.79757983193278,
+          "behind": true
+        },
+        "palm": {
+          "x": 58.03664672268907,
+          "y": 67.79757983193278
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "p4",
+        "number": 33,
+        "appearance": {
+          "version": 1,
+          "skin": 4,
+          "face": 1,
+          "hair": 3,
+          "hairColor": 1,
+          "beard": 1,
+          "headband": 0,
+          "sleeve": 0,
+          "shoes": 1
+        },
+        "velocity": {
+          "x": 0,
+          "y": -0.0,
+          "z": 0
+        },
+        "feet": {
+          "x": 819,
+          "y": 399
+        },
+        "ground": {
+          "x": 819,
+          "y": 399
+        },
+        "stride": 422.8281700389995,
+        "variant": 1,
+        "position": {
+          "x": 22.79959208348224,
+          "y": 9.828481098426165,
+          "z": 0
+        },
+        "state": {
+          "kind": "anim",
+          "name": "defense",
+          "phase": 0.4903333333710691,
+          "facing": "right",
+          "heading": "up"
+        },
+        "frame": 232,
+        "anchor": {
+          "x": 60.288,
+          "y": 71.34628571428571,
+          "behind": true
+        },
+        "palm": {
+          "x": 60.288,
+          "y": 71.34628571428571
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "p5",
+        "number": 6,
+        "appearance": {
+          "version": 1,
+          "skin": 2,
+          "face": 2,
+          "hair": 0,
+          "hairColor": 1,
+          "beard": 1,
+          "headband": 1,
+          "sleeve": 0,
+          "shoes": 2
+        },
+        "velocity": {
+          "x": -0.022018196948667298,
+          "y": 1.8119664459196272,
+          "z": 0
+        },
+        "feet": {
+          "x": 895,
+          "y": 330
+        },
+        "ground": {
+          "x": 895,
+          "y": 330
+        },
+        "stride": 524.0298726445156,
+        "variant": 0,
+        "position": {
+          "x": 25.335493370404514,
+          "y": 6.322113226537469,
+          "z": 0
+        },
+        "state": {
+          "kind": "anim",
+          "name": "shuffle",
+          "phase": 0.1264331307399118,
+          "facing": "right",
+          "heading": "down"
+        },
+        "frame": 5,
+        "anchor": {
+          "x": 59.13142857142857,
+          "y": 67.36000000000001,
+          "behind": false
+        },
+        "palm": {
+          "x": 59.13142857142857,
+          "y": 67.36000000000001
+        },
+        "drawnHand": null
+      },
+      {
+        "id": "p3",
+        "number": 15,
+        "appearance": {
+          "version": 1,
+          "skin": 4,
+          "face": 2,
+          "hair": 0,
+          "hairColor": 1,
+          "beard": 1,
+          "headband": 1,
+          "sleeve": 0,
+          "shoes": 2
+        },
+        "velocity": {
+          "x": 1.2340489038582476,
+          "y": -0.8648371203077413,
+          "z": 0.11337832117724565
+        },
+        "feet": {
+          "x": 917.5,
+          "y": 349.5
+        },
+        "ground": {
+          "x": 917.5,
+          "y": 360.5
+        },
+        "stride": 460.41745824866956,
+        "variant": 2,
+        "position": {
+          "x": 26.08021361167807,
+          "y": 7.871101410767853,
+          "z": 0.5416542043826047
+        },
+        "state": {
+          "kind": "frame",
+          "gesture": "blockOff",
+          "step": 2,
+          "facing": "right",
+          "heading": "up"
+        },
+        "frame": 214,
+        "anchor": {
+          "x": 56.46276691729323,
+          "y": 35.11603007518797,
+          "behind": true
+        },
+        "palm": {
+          "x": 56.46276691729323,
+          "y": 35.11603007518797
+        },
+        "drawnHand": {
+          "x": 936.4884305291491,
+          "y": 288.7443228848539
+        }
+      }
+    ]
+  },
+  "trace": [
+    {
+      "step": 15421,
+      "block": null,
+      "gap": 67.48011170732684,
+      "dx": 12.990495862951207,
+      "dy": -66.2179167089086,
+      "state": {
+        "kind": "anim",
+        "name": "shuffle",
+        "phase": 0.4021257201969206,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15422,
+      "block": null,
+      "gap": 66.81038481300217,
+      "dx": 11.790673873235164,
+      "dy": -65.76174821639432,
+      "state": {
+        "kind": "anim",
+        "name": "shuffle",
+        "phase": 0.4168994849028138,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15423,
+      "block": null,
+      "gap": 76.40118828116891,
+      "dx": 14.19607317203463,
+      "dy": -75.07072050585941,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15424,
+      "block": null,
+      "gap": 75.3972321236861,
+      "dx": 13.996251182318588,
+      "dy": -74.08675701334516,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15425,
+      "block": null,
+      "gap": 74.87100290520453,
+      "dx": 13.796429192602545,
+      "dy": -73.58889602083082,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15426,
+      "block": null,
+      "gap": 74.42433986247346,
+      "dx": 14.096607202886617,
+      "dy": -73.07713752831648,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15427,
+      "block": null,
+      "gap": 73.37940195153573,
+      "dx": 13.896785213170574,
+      "dy": -72.05148153580222,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15428,
+      "block": null,
+      "gap": 72.90754156626404,
+      "dx": 14.196963223454532,
+      "dy": -71.51192804328798,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15429,
+      "block": null,
+      "gap": 72.32582822258175,
+      "dx": 13.997141233738603,
+      "dy": -70.9584770507737,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15430,
+      "block": null,
+      "gap": 71.73058620997645,
+      "dx": 13.79731924402256,
+      "dy": -70.39112855825931,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15431,
+      "block": null,
+      "gap": 71.21909247300405,
+      "dx": 14.097497254306518,
+      "dy": -69.80988256574511,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15432,
+      "block": null,
+      "gap": 70.10606780915757,
+      "dx": 13.897675264590589,
+      "dy": -68.71473907323076,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 0,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15433,
+      "block": null,
+      "gap": 40.5795155505217,
+      "dx": 13.280550353706076,
+      "dy": -38.34480492345358,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 1,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15434,
+      "block": null,
+      "gap": 40.092086375369746,
+      "dx": 13.580728363990147,
+      "dy": -37.72186643093926,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 1,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15435,
+      "block": null,
+      "gap": 39.42522210484044,
+      "dx": 13.380906374274105,
+      "dy": -37.08503043842501,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 1,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15436,
+      "block": null,
+      "gap": 38.91824846881212,
+      "dx": 13.681084384558062,
+      "dy": -36.43429694591072,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 1,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15437,
+      "block": null,
+      "gap": 38.22582161544928,
+      "dx": 13.481262394842133,
+      "dy": -35.769665953396384,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 1,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15438,
+      "block": null,
+      "gap": 37.52045558803145,
+      "dx": 13.28144040512609,
+      "dy": -35.09113746088212,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 1,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15439,
+      "block": null,
+      "gap": 27.3984875758984,
+      "dx": 15.417599797436651,
+      "dy": -22.64894562518839,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15440,
+      "block": null,
+      "gap": 26.703172610431064,
+      "dx": 15.217777807720609,
+      "dy": -21.94262213267416,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15441,
+      "block": null,
+      "gap": 26.69587353999788,
+      "dx": 15.517955818004566,
+      "dy": -21.722401140159832,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15442,
+      "block": null,
+      "gap": 25.9837109066203,
+      "dx": 15.318133828288637,
+      "dy": -20.98828264764552,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15443,
+      "block": null,
+      "gap": 25.263248942270735,
+      "dx": 15.118311838572595,
+      "dy": -20.24026665513128,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15444,
+      "block": null,
+      "gap": 24.842223554805273,
+      "dx": 15.418489848856552,
+      "dy": -19.47835316261694,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15445,
+      "block": null,
+      "gap": 24.112091054724157,
+      "dx": 15.218667859140623,
+      "dy": -18.702542170102674,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15446,
+      "block": null,
+      "gap": 23.76127469829984,
+      "dx": 15.018845869424581,
+      "dy": -18.412833677588367,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15447,
+      "block": null,
+      "gap": 23.340038395252474,
+      "dx": 15.319023879708539,
+      "dy": -17.609227685074075,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15448,
+      "block": null,
+      "gap": 22.595403673078163,
+      "dx": 15.11920188999261,
+      "dy": -16.791724192559798,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15449,
+      "block": null,
+      "gap": 22.55436801063174,
+      "dx": 15.419379900276567,
+      "dy": -16.46032320004548,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15450,
+      "block": null,
+      "gap": 21.80513562465778,
+      "dx": 15.219557910560638,
+      "dy": -15.615024707531234,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15451,
+      "block": null,
+      "gap": 21.0553306361792,
+      "dx": 15.019735920844596,
+      "dy": -14.75582871501689,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15452,
+      "block": null,
+      "gap": 20.984216497097425,
+      "dx": 15.182101882986899,
+      "dy": -14.4858939804094,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15453,
+      "block": null,
+      "gap": 20.135665132748194,
+      "dx": 14.498053186194625,
+      "dy": -13.973241003734358,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15454,
+      "block": null,
+      "gap": 19.985016917185543,
+      "dx": 14.314004489402237,
+      "dy": -13.946690527059275,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15455,
+      "block": null,
+      "gap": 19.118133649188547,
+      "dx": 13.629955792609962,
+      "dy": -13.406242550384263,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15456,
+      "block": null,
+      "gap": 18.59757150814229,
+      "dx": 12.945907095817574,
+      "dy": -13.351897073709267,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15457,
+      "block": null,
+      "gap": 18.06341168963916,
+      "dx": 12.7618583990253,
+      "dy": -12.78365409703423,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15458,
+      "block": null,
+      "gap": 17.527177053122973,
+      "dx": 12.077809702232912,
+      "dy": -12.701513620359151,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15459,
+      "block": null,
+      "gap": 16.624088859511282,
+      "dx": 11.393761005440524,
+      "dy": -12.105475643684144,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15460,
+      "block": null,
+      "gap": 16.41799725730852,
+      "dx": 11.20971230864825,
+      "dy": -11.995540167009153,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      }
+    },
+    {
+      "step": 15461,
+      "block": {
+        "blocker": 9,
+        "contact": 0.046333619638607715,
+        "probability": 0.3118432582446519,
+        "success": true
+      },
+      "gap": 15.865907666533802,
+      "dx": 10.525663611855862,
+      "dy": -11.871707190334064,
+      "state": {
+        "kind": "frame",
+        "gesture": "blockOff",
+        "step": 2,
+        "facing": "right",
+        "heading": "up"
+      },
+      "drawnHandGap": 0.0
+    }
+  ]
+}

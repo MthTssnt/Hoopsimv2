@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import {TEAM_SEEDS} from '../../engine/teamsData';
+const CRESTS=import.meta.glob('../../assets/branding/teams/small/*.svg',{eager:true,query:'?url',import:'default'}) as Record<string,string>;
 import { PALETTE } from '../../assets/palette';
 import { RENDER_SCALE, VIEW_HEIGHT, VIEW_WIDTH } from '../config';
 import { drawBanner, drawPlayerCard, drawScoreboard, type PlayerCardData, type ScoreboardData } from '../render/hud/hud';
@@ -46,6 +48,7 @@ const BANNER_Y = 112;
  */
 export class HudScene extends Phaser.Scene {
   private transition!: Phaser.GameObjects.Graphics;
+  private crests:Phaser.GameObjects.Image[]=[];
   private board!: Phaser.GameObjects.Graphics;
   private card!: Phaser.GameObjects.Graphics;
   private banner!: Phaser.GameObjects.Graphics;
@@ -56,10 +59,15 @@ export class HudScene extends Phaser.Scene {
     super('Hud');
   }
 
+  preload() {
+    for(const team of TEAM_SEEDS) if(!this.textures.exists(`crest-${team.id}`))this.load.svg(`crest-${team.id}`,CRESTS[`../../assets/branding/teams/small/${team.id}.svg`],{width:32,height:32});
+  }
+
   create() {
     this.cameras.main.setZoom(RENDER_SCALE).centerOn(VIEW_WIDTH / 2, VIEW_HEIGHT / 2);
     this.transition = this.add.graphics();
     this.board = this.add.graphics();
+    this.crests=[0,1].map(i=>this.add.image(SCOREBOARD_AT.x+8+i*72,SCOREBOARD_AT.y+8,'crest-bos').setDisplaySize(12,12).setVisible(false));
     this.card = this.add.graphics();
     this.banner = this.add.graphics();
     this.topText = this.add.text(SCOREBOARD_AT.x, SCOREBOARD_AT.y + 29, '', TEXT_STYLE).setVisible(false);
@@ -100,6 +108,7 @@ export class HudScene extends Phaser.Scene {
   private showScore(data: ScoreboardData) {
     this.board.clear();
     drawScoreboard(this.board, SCOREBOARD_AT.x, SCOREBOARD_AT.y, data);
+    [data.home,data.away].forEach((team,i)=>{const seed=TEAM_SEEDS.find(t=>t.abbr===team.abbr);this.crests[i].setVisible(!!seed);if(seed)this.crests[i].setTexture(`crest-${seed.id}`);});
   }
 
   /** Carte du joueur contrôlé (aucune quand tu regardes un match). */

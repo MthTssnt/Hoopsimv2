@@ -1,0 +1,168 @@
+/* Clubhouse: matte ivory, forest green, one horizontal navigation, restrained amber actions. */
+:is(.app,.start)[data-management-theme=clubhouse] {
+ --bg:#f6efdf;--bg-panel:#fff9ec;--bg-elevated:#fffdf7;--bg-hover:#ece3cf;--border:#b7bda8;
+ --text:#1d3029;--text-dim:#536257;--text-faint:#58695b;--accent:#efaa29;--accent-soft:#214b3410;--win:#236647;--loss:#a43c2e;
+ color:var(--text);background:var(--bg);border:0;font-family:'Segoe UI',system-ui,sans-serif;
+}
+.app[data-management-theme=clubhouse] .topbar { background:#173d2c;color:#fff3d4;border:0;border-bottom:1px solid #496047;position:static; }
+.app[data-management-theme=clubhouse] .topbar-inner {max-width:1440px;padding:12px 24px;gap:18px;flex-wrap:wrap;}
+.app[data-management-theme=clubhouse] .topbar-team {flex:0 1 auto;order:3;}
+.app[data-management-theme=clubhouse] .topbar-team img {display:none;}
+.app[data-management-theme=clubhouse] .topbar-title {display:none;}
+.app[data-management-theme=clubhouse] .topbar-sub {color:#f0e8d3;font-size:12px;max-width:220px;}
+.app[data-management-theme=clubhouse] .topbar>.topbar-inner>.nav {flex:1;background:none;border:0;position:static;order:2;}
+.app[data-management-theme=clubhouse] .nav-inner {padding:0;gap:5px;justify-content:center;overflow:visible;}
+.app[data-management-theme=clubhouse] .nav button {font:700 17px/1.3 'Segoe UI',sans-serif;color:#fff3d4;border:0;padding:11px 17px;min-height:44px;}
+.app[data-management-theme=clubhouse] .nav button::before {display:none;}
+.app[data-management-theme=clubhouse] .nav button.active {background:#efaa29;color:#173325;border:0;border-radius:5px;}
+.app[data-management-theme=clubhouse] .topbar-actions {order:4;margin-left:0;}
+.app[data-management-theme=clubhouse] .topbar-actions .btn {font-size:11px;padding:5px 8px;min-height:34px;border:1px solid #72836c;background:transparent;color:#fff3d4;box-shadow:none;}
+.app[data-management-theme=clubhouse] .app-main {max-width:1320px;padding-top:20px;}
+:is(.app,.start)[data-management-theme=clubhouse] :is(.panel,.stat-tile,.player-card,.series,.rotation-slot,.modal,.coach-help,.action-feedback,.contract-shortcut,.review-offer,.tactic-board,.team-card) {background:var(--bg-panel);color:var(--text);border:1px solid var(--border);box-shadow:none;border-radius:5px;}
+:is(.app,.start)[data-management-theme=clubhouse] :is(h1,h2,h3,.panel-title,.conf-header,.stat-tile-value,.page-heading h1) {font-family:'Segoe UI',system-ui,sans-serif;letter-spacing:0;text-shadow:none;}
+:is(.app,.start)[data-management-theme=clubhouse] .panel-title {font-size:14px;color:#214a34;font-weight:750;}
+:is(.app,.start)[data-management-theme=clubhouse] .btn {border:1px solid #b3bba9;background:#fffaf0;color:#213e2c;box-shadow:none;font-weight:650;border-radius:4px;}
+:is(.app,.start)[data-management-theme=clubhouse] .btn-primary {background:#efaa29;color:#172c22;border-color:#d5962d;}
+:is(.app,.start)[data-management-theme=clubhouse] .btn:hover:not(:disabled) {background:#e9e4d3;color:#213e2c;}
+:is(.app,.start)[data-management-theme=clubhouse] .btn-primary:hover:not(:disabled) {background:#f5bc4b;}
+:is(.app,.start)[data-management-theme=clubhouse] :is(input,select) {background:#fffdf7;color:#243e2e;border:1px solid #b7bea9;border-radius:4px;}
+:is(.app,.start)[data-management-theme=clubhouse] .rating-value {color:#27573c!important;}
+.app[data-management-theme=clubhouse] .page-heading {border:0;margin-bottom:18px;padding:0;}
+.app[data-management-theme=clubhouse] .page-heading h1 {font-size:28px;line-height:1.2;}
+.app[data-management-theme=clubhouse] .eyebrow {color:#596f59;}
+.app[data-management-theme=clubhouse] .subnav {gap:5px;margin-bottom:14px;}
+.app[data-management-theme=clubhouse] .subnav:empty {display:none;}
+.app[data-management-theme=clubhouse] .subnav .btn {background:transparent;border-color:transparent;box-shadow:none;}
+.app[data-management-theme=clubhouse] .subnav .btn[aria-current=page] {background:#e5eadc;border-color:#c3cdb7;color:#214b34;}
+.app[data-management-theme=clubhouse] .quick-actions {justify-content:flex-end;margin-bottom:10px;}
+.app[data-management-theme=clubhouse] .quick-actions .btn {background:transparent;border:0;min-height:30px;padding:2px;font-size:12px;text-decoration:underline;}
+.app[data-management-theme=clubhouse] .quick-actions>.faint {display:none;}
+.app[data-management-theme=clubhouse] .coach-help {border:0;background:transparent;padding:0;}
+.app[data-management-theme=clubhouse] .coach-help summary {font-size:12px;color:#5d6e5b;padding:5px 0;}
+.app[data-management-theme=clubhouse] .fixture-poster {background:#fff9ec;color:#213e2c;border:1px solid #bcc5b0;box-shadow:none;}
+.app[data-management-theme=clubhouse] .fixture-poster::after {display:none;}
+.app[data-management-theme=clubhouse] .fixture-teams {margin-right:0;}
+.app[data-management-theme=clubhouse] .fixture-teams :is(h2,span,.versus) {color:#213e2c;font-family:inherit;}
+.app[data-management-theme=clubhouse] .draft-actions {color:#214b34;}
+.app[data-management-theme=clubhouse] .rotation-total {background:#fff9ec;}
+.player-portrait {image-rendering:pixelated;border-radius:4px;flex-shrink:0;display:block;}
+.portrait-link {padding:0;border:0;background:none;}
+.clubhouse-home {display:grid;gap:24px;}
+.clubhouse-decisions {display:grid;grid-template-columns:1.25fr 1fr;gap:22px;}
+.club-card {border:1px solid #b4bea9;background:#fff9ec;border-radius:6px;overflow:hidden;color:#20392b;}
+.club-card> :is(h1,h2) {background:#204b35;color:#fff3d4;font:750 23px/1.3 'Segoe UI',sans-serif;margin:0;padding:16px 22px;}
+.club-card>p,.club-card>.muted {margin:20px 22px;}
+.club-card>.btn {margin:0 22px 20px;}
+.club-card>details {margin:14px 22px;}
+.club-fixture {display:grid;grid-template-columns:1fr 40px 1fr;align-items:center;padding:24px 22px 0;gap:15px;}
+.club-fixture>div {display:flex;align-items:center;gap:13px;}
+.club-fixture strong {font-size:18px;line-height:1.3;}
+.club-vs {font-weight:800;text-align:center;color:#756f51;}
+.club-card>.btn-primary {display:block;width:calc(100% - 44px);min-height:48px;font-size:18px;}
+.club-decision {display:flex;gap:20px;align-items:center;padding:22px;}
+.club-decision h3 {font-size:20px;line-height:1.35;margin-bottom:10px;}
+.club-decision p {font-size:14px;color:#536257;}
+.club-section-head {display:flex;justify-content:space-between;align-items:center;gap:15px;background:#204b35;color:#fff3d4;padding:13px 22px;}
+.club-section-head h2 {font:750 23px 'Segoe UI',sans-serif;}
+.club-five {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:15px;padding:22px;}
+.club-player {padding:0;border:1px solid #74876d;border-radius:4px;overflow:hidden;background:#eae0c8;color:#fff3d4;display:flex;flex-direction:column;text-align:left;}
+.club-player .player-portrait {width:100%!important;height:auto!important;aspect-ratio:1;border-radius:0;}
+.club-player>span {display:flex;flex-direction:column;gap:5px;background:#204b35;padding:9px 12px;width:100%;flex:1;}
+.club-player strong {font-size:14px;line-height:1.25;}
+.club-player small {color:#f4dca9;font-size:12px;}
+.club-card>summary {padding:15px 22px;}
+.club-card> .grid {padding:22px;}
+.app[data-management-theme=clubhouse] .starting-five .player-card {min-height:0;}
+.app[data-management-theme=clubhouse] .starting-five .eyebrow {background:transparent;color:#536257;font:12px inherit;padding:0;margin:0;}
+.start[data-management-theme=clubhouse] :is(.start-inner>p,.toolbar>.faint,.conf-header) {color:#2e513b;}
+.start[data-management-theme=clubhouse] .conf-header {font:700 14px 'Segoe UI',sans-serif;}
+@media(max-width:1000px){.app[data-management-theme=clubhouse] .topbar-inner{gap:10px;padding:12px;}.app[data-management-theme=clubhouse] .topbar-team{display:none;}.club-fixture>div{flex-direction:column;text-align:center;}.club-fixture strong{font-size:16px;}}
+@media(max-width:700px){.app[data-management-theme=clubhouse] .topbar-inner>.hoopsim-logo{width:115px;}.app[data-management-theme=clubhouse] .topbar>.topbar-inner>.nav{order:5;flex-basis:100%;}.app[data-management-theme=clubhouse] .nav-inner{justify-content:space-between;}.app[data-management-theme=clubhouse] .nav button{font-size:14px;padding:10px 12px;}.app[data-management-theme=clubhouse] .topbar-actions{margin-left:auto;width:auto;}.clubhouse-decisions{grid-template-columns:1fr;}.club-card>:is(h1,h2){font-size:20px;padding:13px 16px;}.club-decision{padding:16px;}.club-five{grid-template-columns:repeat(5,minmax(100px,1fr));overflow-x:auto;padding:14px;gap:10px;}.club-fixture img{width:64px;height:64px;}.app[data-management-theme=clubhouse] .fixture-poster{padding-top:18px;}.club-decision .player-portrait{width:88px!important;height:88px!important;}}
+.appearance-workshop {padding:8px 0;}
+.workshop-preview {display:flex;gap:24px;align-items:center;padding:16px;background:#ede4d0;border-radius:4px;flex-wrap:wrap;}
+.workshop-sprite {flex:1;min-width:192px;}
+.workshop-sprite>canvas {width:384px;max-width:100%;height:auto;image-rendering:pixelated;display:block;border:1px solid #9eab90;}
+.workshop-sprite .row {flex-wrap:wrap;gap:8px;}
+.appearance-options {display:grid;gap:14px;margin:20px 0;}
+.appearance-options fieldset {border:0;border-top:1px solid #b8bfaa;margin:0;padding:10px 0;min-width:0;}
+.appearance-options legend {font-weight:700;padding-right:12px;}
+.appearance-row {display:flex;gap:8px;flex-wrap:wrap;}
+.appearance-choice {display:flex;flex-direction:column;gap:5px;align-items:center;min-width:76px;padding:7px;border:2px solid #b8bfaa;background:#fff9ec;border-radius:4px;color:#23402e;font-size:11px;}
+.appearance-choice[aria-pressed=true] {border-color:#1e5738;background:#e2ead8;box-shadow:inset 0 -3px #1e5738;}
+.appearance-choice:disabled {opacity:.5;}
+.appearance-choice small {max-width:80px;}
+.workshop-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;bottom:0;padding:14px 0;background:var(--bg-panel);border-top:1px solid #b8bfaa;z-index:2;}
+.workshop-actions .action-feedback {flex:1;margin:0;}
+.rotation-court {position:relative;max-width:900px;height:460px;margin:10px auto 25px;border:2px solid #285640;border-radius:4px;}
+.rotation-court>svg {position:absolute;width:100%;height:100%;stroke:#fff2d3;stroke-width:2;fill:none;}
+.court-starter {position:absolute;transform:translate(-50%,-10%);width:145px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;background:#fff9ecf0;border:1px solid #7c9074;border-radius:4px;color:#203e2c;font-size:12px;}
+.court-starter label {width:100%;text-align:center;}
+.court-starter select {max-width:100%;width:100%;font-size:11px;min-height:30px;}
+.court-starter input {width:45px;font-size:12px;padding:2px;min-height:28px;}
+.court-starter .portrait-link {display:flex;}
+@media(max-width:600px){.rotation-court{height:440px;}.court-starter{width:96px;padding:4px;font-size:11px;}.court-starter .player-portrait{width:38px!important;height:38px!important;}.court-starter select{font-size:10px;}.appearance-choice{min-width:65px;}.workshop-preview{padding:10px;}.workshop-actions .action-feedback{flex-basis:100%;}}
+.sr-only {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.court-starter input {width:56px;padding-left:3px;padding-right:0;}
+.app[data-management-theme=clubhouse] .player-link {padding:0;background:none;border:0;text-decoration:underline;text-underline-offset:3px;color:#214b34;}
+.app[data-management-theme=clubhouse] .skip-link:not(:focus) {position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden;}
+.app[data-management-theme=clubhouse] .brand-grid .panel {border-top-width:1px;}
+.club-contract {display:flex;align-items:center;gap:24px;border-block:1px solid #bac2ae;padding:20px 0;margin:20px 0;}
+.club-contract h3 {font-size:25px;line-height:1.2;margin-bottom:10px;}
+.club-contract p {margin:6px 0;}
+.contract-numbers {display:flex;gap:26px;font-size:23px;margin:10px 0;color:#214b34;flex-wrap:wrap;}
+@media(max-width:600px){.club-contract{gap:14px;}.club-contract .player-portrait{width:84px!important;height:84px!important;}.club-contract h3{font-size:19px;}.contract-numbers{font-size:17px;gap:12px;}}
+.app[data-management-theme=clubhouse] .rotation-total {position:static;top:auto;z-index:auto;}
+.court-starter label.small {display:flex;align-items:center;justify-content:center;gap:3px;}
+.court-starter label.small input {width:50px;min-width:0;}
+.app[data-management-theme=clubhouse] .bracket :is(.panel-title,h3) {color:#214b34;}
+@media(max-width:600px){.rotation-court{height:500px;}.court-starter{transform:translate(-50%,-12%);}.court-starter .player-portrait{width:32px!important;height:32px!important;}}
+/* Fidelity pass: reproduce the supplied Franchise hierarchy without displacing decisions. */
+.clubhouse-brand {display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.app[data-management-theme=clubhouse] .clubhouse-brand .team-emblem {width:58px;height:58px;}
+.app[data-management-theme=clubhouse] .topbar-inner {max-width:1480px;gap:16px;padding:12px 20px;flex-wrap:nowrap;}
+.app[data-management-theme=clubhouse] .topbar-team {margin-left:auto;order:3;}
+.app[data-management-theme=clubhouse] .topbar-team>.team-emblem {display:none;}
+.app[data-management-theme=clubhouse] .topbar>.topbar-inner>.nav {flex:1;}
+.app[data-management-theme=clubhouse] .app-main:has(.clubhouse-home) {max-width:1480px;padding-top:28px;}
+.app[data-management-theme=clubhouse] .app-main:has(.clubhouse-home)>.subnav {display:none;}
+.clubhouse-home {gap:24px;}
+.clubhouse-decisions {grid-template-columns:1.22fr 1fr;gap:18px;}
+.club-card {background:#f4e7cb;border-color:#5c715a;border-radius:8px;}
+.club-card>:is(h1,h2),.club-section-head {background:#173e2d;color:#fff1d1;font-size:27px;padding:16px 20px;}
+.club-fixture {padding:20px 24px 0;grid-template-columns:1fr 32px 1fr;gap:14px;}
+.club-fixture img {width:100px;height:100px;}
+.club-fixture strong {font-size:20px;line-height:1.2;}
+.club-fixture>div {gap:14px;}
+.club-card>.muted {margin:15px 24px;color:#53604c;}
+.club-card>.btn-primary {margin:0 24px 20px;width:calc(100% - 48px);min-height:58px;font-size:23px;font-weight:800;background:#f5af25;border-color:#ba842c;}
+.club-decision {padding:18px 20px;gap:20px;}
+.club-decision .player-portrait {width:148px!important;height:148px!important;border:1px solid #6d785c;}
+.club-decision h3 {font-size:20px;}
+.club-section-head h2 {font-size:27px;}
+.club-five {gap:14px;padding:18px;}
+.club-player {border:1px solid #46624c;background:#f1e2c4;border-radius:7px;}
+.club-player>span {display:grid;grid-template-columns:43px 1fr;align-items:center;gap:10px;padding:10px;background:#173e2d;min-height:66px;}
+.club-player small {background:#ead4a3;color:#183c2a;padding:6px 3px;border-radius:4px;text-align:center;font-size:12px;font-weight:750;}
+.club-player strong {font-size:15px;color:#fff3d4;}
+.clubhouse-home-help {display:flex;gap:24px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:14px;}
+.clubhouse-home-help .quick-actions {margin:0;}
+.clubhouse-home-help .coach-help {margin:0;}
+@media(min-width:1200px){.club-five{max-width:calc(100% - 260px);}.club-card:has(.club-five){position:relative;}.club-card:has(.club-five)::after{content:'';position:absolute;right:18px;top:94px;bottom:18px;width:224px;opacity:.7;background:linear-gradient(#f1e2c4,#f1e2c4) center/1px 100% no-repeat,radial-gradient(circle at center,transparent 26px,#f1e2c4 27px,#f1e2c4 28px,transparent 29px),linear-gradient(#173e2d,#173e2d);border:1px solid #b3c39d;border-radius:2px;pointer-events:none;}}
+@media(max-width:1199px){.app[data-management-theme=clubhouse] .topbar-team{display:none;}.app[data-management-theme=clubhouse] .nav button{padding-inline:13px;}.club-fixture>div{flex-direction:row;}.club-fixture img{width:76px;height:76px;}.club-fixture strong{font-size:17px;}.club-decision .player-portrait{width:110px!important;height:110px!important;}.club-decision h3{font-size:18px;}}
+@media(max-width:800px){.app[data-management-theme=clubhouse] .topbar-inner{flex-wrap:wrap;gap:10px;}.app[data-management-theme=clubhouse] .topbar>.topbar-inner>.nav{order:5;flex-basis:100%;}.clubhouse-brand .hoopsim-logo{width:132px;}.app[data-management-theme=clubhouse] .clubhouse-brand .team-emblem{width:44px;height:44px;}.club-fixture{padding-inline:15px;}.club-fixture>div{flex-direction:column;}.club-decision{padding:15px;gap:13px;}.clubhouse-decisions{grid-template-columns:1fr;}.club-card>:is(h1,h2),.club-section-head h2{font-size:23px;}.club-card>.btn-primary{font-size:20px;min-height:48px;}.clubhouse-home-help{justify-content:flex-start;gap:10px;}.club-five{grid-template-columns:repeat(5,minmax(115px,1fr));}.club-player>span{grid-template-columns:1fr;gap:6px;}.club-player small{max-width:60px;}}
+.club-card:has(.club-five)::after {display:none;}
+.clubhouse-court-link {display:none;}
+@media(min-width:1200px){.clubhouse-court-link{display:block;position:absolute;right:18px;top:94px;bottom:18px;width:224px;border:1px solid #a9ba94;background:#173e2d;color:#dfdfb9;border-radius:3px;padding:8px;}.clubhouse-court-link svg{width:100%;height:auto;fill:none;stroke:#9fb48d;stroke-width:1.7;}.clubhouse-court-link span{display:block;font-size:12px;margin-top:12px;}}
+@media(min-width:1200px){
+ .app[data-management-theme=clubhouse] .topbar-inner{max-width:1660px;min-height:106px;}
+ .app[data-management-theme=clubhouse] .clubhouse-brand .team-emblem{width:74px;height:74px;}
+ .app[data-management-theme=clubhouse] .clubhouse-brand .hoopsim-logo{width:180px;}
+ .app[data-management-theme=clubhouse] .app-main:has(.clubhouse-home){max-width:1660px;padding-top:38px;}
+ .clubhouse-decisions{grid-template-columns:1.44fr 1fr;}
+ .club-decision .player-portrait{width:168px!important;height:168px!important;}
+ .club-five{max-width:70%;}
+ .clubhouse-court-link{width:calc(30% - 36px);}
+}
+@media(min-width:1400px){.app[data-management-theme=clubhouse] .nav button{font-size:24px;padding-inline:24px;}.club-fixture img{width:112px;height:112px;}.club-fixture strong{font-size:22px;}}
+
+@media(min-width:1200px){.clubhouse-court-link svg{height:calc(100% - 36px);width:100%;}.clubhouse-court-link span{margin-top:8px;}}

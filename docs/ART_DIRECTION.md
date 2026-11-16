@@ -1,3 +1,7 @@
+# Rendu actuel : Clubhouse
+
+La confirmation utilisateur du 16 novembre 2026 autorise les nouveaux sprites et animations Phaser. [Le bilan Clubhouse](CLUBHOUSE.md) décrit le rendu actuel, les captures, les mesures et les écarts. Les sections suivantes conservent l’historique des validations précédentes.
+
 # Direction artistique — HoopSim
 
 ## Designs validés

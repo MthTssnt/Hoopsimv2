@@ -14,6 +14,12 @@ describe('pixels de contact', () => {
     expect(pixels[(9 * 10 + 8) * 4 + 3]).toBe(0);
     expect(pixels[(2 * 10 + 3) * 4 + 3]).toBe(255);
   });
+  it('conserve les maillots violets Clubhouse quand aucun marqueur n’est attendu', () => {
+    const pixels=new Uint8ClampedArray(10*10*4);
+    for(let y=2;y<8;y++)for(let x=3;x<7;x++)set(pixels,10,x,y,[150,20,150]);
+    set(pixels,10,0,0,[18,18,18]);cleanPose(pixels,10,10,false,12);
+    expect(pixels[(4*10+4)*4+3]).toBe(255);expect(pixels[3]).toBe(0);
+  });
   it('répare les micro-trous sans ponter deux doigts séparés', () => {
     const pixels = new Uint8ClampedArray(8 * 8 * 4);
     for (const [x, y] of [[3, 2], [2, 3], [4, 3]]) set(pixels, 8, x, y, [210, 145, 85]);

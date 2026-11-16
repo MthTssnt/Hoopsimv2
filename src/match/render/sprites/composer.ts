@@ -21,6 +21,7 @@ export class PlayerComposer {
       if (!job) {
         if (data.result?.atlas instanceof ImageBitmap) data.result.atlas.close();
         if (data.result?.hands instanceof ImageBitmap) data.result.hands.close();
+        if(data.result?.arms instanceof ImageBitmap)data.result.arms.close();
         return;
       }
       this.pending.delete(data.id);

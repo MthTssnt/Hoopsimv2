@@ -1,3 +1,7 @@
+import referenceSprite from './clubhouse/reference/sprite-45.png';
+import referencePortrait from './clubhouse/reference/portrait-45.png';
+import clubhouseBody from './clubhouse/body.png';
+import clubhouseHeads from './clubhouse/heads.png';
 import navy from './team-navy.png';
 import ivory from './team-ivory.png';
 import manifest from './painted/manifest.json';
@@ -14,4 +18,4 @@ export const PAINTED_ATLASES: PaintedAtlas[] = manifest;
 export const PAINTED_ORIGIN = { x: 40, y: 84 } as const;
 const urls = import.meta.glob<string>('./painted/*.png', { eager: true, query: '?url', import: 'default' });
 /** Les personnages complets sont peints ; aucune pièce anatomique n'est tournée ou reconstruite. */
-export const PLAYER_SOURCES: string[] = [navy, ivory, ...PAINTED_ATLASES.map((atlas) => urls[`./painted/${atlas.file}`])];
+export const PLAYER_SOURCES: string[] = [navy, ivory, ...PAINTED_ATLASES.map((atlas) => urls[`./painted/${atlas.file}`]),referenceSprite,referencePortrait,clubhouseBody,clubhouseHeads];
