@@ -16,7 +16,7 @@ export function DevelopmentTab({ league, team, initialTab }: { league: League; t
   const yourPick = pick?.ownerTeamId === league.userTeamId;
   const finances = budget(league, team), recommendation = yourPick ? recommendedProspect(league, team) : undefined;
   const review = league.seasonReviews?.find(r => r.season === reviewSeason) ?? league.seasonReviews?.at(-1);
-  const respond = (errors: string[], text: string) => setMessage(errors.length ? errors.join(' ') : text);
+  const respond = (errors: string[], text: string) => {setMessage(errors.length ? errors.join(' ') : text);if(errors.length)ui.reportFailure(errors.join(' '));else ui.reportDecision(text);};
   return <div className="grid" style={{ gap: 16 }}>
     <section className="panel"><h2 className="panel-title">Développement et intersaison</h2>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{([['training', 'Entraînement'], ['draft', 'Draft'], ['reviews', 'Bilans de saison']] as const).map(([id, label]) => <button key={id} className={`btn${tab === id ? ' btn-primary' : ''}`} aria-pressed={tab === id} onClick={() => { setTab(id); setMessage(''); }}>{label}</button>)}</div>

@@ -35,6 +35,7 @@ with sync_playwright() as p:
  if preview['picks'][0]['ownerTeamId']!='bos':page.get_by_role('button',name='Faire avancer les choix CPU',exact=True).click()
  d=saved()['offseason'];assert d['stage']=='draft'
  first_pick=d['picks'][d['cursor']];assert first_pick['ownerTeamId']=='bos'
+ page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Bureau',exact=True).click();page.get_by_role('button',name='Reprendre la draft',exact=True).click();assert saved()['offseason']['cursor']==d['cursor']
  page.wait_for_timeout(250);page.screenshot(path='/tmp/hoopsim-evidence/development-draft.png',full_page=True)
  age=saved()['players'][player_id]['age'] if player_id in saved()['players'] else None
  page.reload(wait_until='networkidle');page.get_by_role('button',name='Reprendre',exact=False).first.click()

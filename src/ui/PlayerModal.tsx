@@ -1,3 +1,4 @@
+import { useUi } from './uiContext';
 import { PlayerIdentity } from './PlayerIdentity';
 import { contractSeason, expectedSalary, playerValue, tradeStatus, DIRECTION_LABELS } from '../engine/management/economy';
 import { PLAYER_ROLE_LABELS } from '../engine/gamePlan';
@@ -52,6 +53,7 @@ const ATTRIBUTE_GROUPS: { title: string; keys: [keyof Player['attrs'], string][]
 ];
 
 export function PlayerModal({ league, player, onClose }: { league: League; player: Player; onClose: () => void }) {
+  const ui=useUi();
   const team = league.teams.find((t) => t.id === player.teamId);
 
   const title = (
@@ -77,6 +79,8 @@ export function PlayerModal({ league, player, onClose }: { league: League; playe
   return (
     <Modal title={title} onClose={onClose} wide>
       <PlayerIdentity player={player} />
+      {player.teamId === league.userTeamId && <section className="contract-shortcut"><h3>Votre décision</h3>{player.extension ? <p>Déjà prolongé : {player.extension.salary.toFixed(1)} M€/an pendant {player.extension.years} an(s), à partir de {contractSeason(league)+1}.</p> : player.contract.years===1 ? <button className="btn btn-primary" onClick={()=>ui.navigateTo({area:'market',view:'contracts',playerId:player.id,intent:'extensions'})}>Prolonger son contrat</button> : <p>Contrat encore valable {player.contract.years} an(s).</p>}</section>}
+      {player.teamId===null && <button className="btn" onClick={()=>ui.navigateTo({area:'market',view:'contracts',playerId:player.id,intent:'free'})}>Négocier avec cet agent libre</button>}
       {player.injuryGames > 0 && (
         <p className="pill pill-injury" style={{ marginTop: 0 }}>
           Blessure : {player.injuryLabel} — absent {player.injuryGames} match(s)

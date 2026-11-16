@@ -11,7 +11,7 @@ with sync_playwright() as p:
  def sub(name):page.get_by_role('navigation',name='Rubriques').get_by_role('button',name=name,exact=True).click()
  def saved():return page.evaluate('JSON.parse(localStorage.getItem("hoopsim.save.v1"))')
  assert page.get_by_role('navigation',name='Espaces de management').get_by_role('button').count()==4
- original=saved();primary('Équipe');assert page.locator('.player-card').count()==14
+ original=saved();primary('Équipe');assert page.locator('.player-cards > .player-card').count()==14
  page.locator('.player-card .player-name').first.click();page.get_by_role('dialog').wait_for();page.keyboard.press('Escape');assert page.get_by_role('dialog').count()==0
  sub('Rotation');page.get_by_label('Titulaire PG',exact=True).wait_for();assert saved()==original
  page.get_by_label('Minutes ',exact=False).first.fill('1');assert saved()==original

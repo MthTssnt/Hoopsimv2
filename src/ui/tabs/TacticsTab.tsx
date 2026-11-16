@@ -1,3 +1,4 @@
+import { ActionFeedback } from '../ActionFeedback';
 import { useDraftGuard } from '../useDraftGuard';
 import { TacticCourt } from '../TacticCourt';
 import { useState } from 'react';
@@ -48,7 +49,7 @@ export function TacticsTab({ league, team }: { league: League; team: Team }) {
         })}><option value="">Selon les tendances du cinq</option>{Object.keys(draft.rotation.minutesByPlayerId).map(id => <option key={id} value={id}>{playerName(league.players[id])}</option>)}</select></label>
       </div>
       <p>{IDENTITIES[draft.offense]}</p>
-      <TacticCourt/><details><summary>Réglages avancés • 6 paramètres de jeu</summary><div className="grid grid-2">{SLIDERS.map(([key, label, help]) => <label key={key} style={{ display: 'block' }}>{label} : {draft[key]}<input style={{ display: 'block', width: '100%' }} type="range" min={0} max={100} aria-label={label} value={draft[key]} onChange={e => change(p => { p[key] = Number(e.target.value); })} /><span className="faint small">{help}</span></label>)}</div></details>
+      <TacticCourt activePlan={team.gamePlan}/><details><summary>Réglages avancés • 6 paramètres de jeu</summary><div className="grid grid-2">{SLIDERS.map(([key, label, help]) => <label key={key} style={{ display: 'block' }}>{label} : {draft[key]}<input style={{ display: 'block', width: '100%' }} type="range" min={0} max={100} aria-label={label} value={draft[key]} onChange={e => change(p => { p[key] = Number(e.target.value); })} /><span className="faint small">{help}</span></label>)}</div></details>
     </section>
     <details className="panel"><summary>Systèmes • playbook et poids relatifs</summary><section>
       <h3 className="panel-title">Playbook — poids relatifs</h3>
@@ -65,7 +66,7 @@ export function TacticsTab({ league, team }: { league: League; team: Team }) {
         </article>;
       })}</div>
     </section></details>
-    <section className="panel"><div className="draft-actions"><span role="status">{dirty ? 'Modifications non enregistrées' : 'Plan actif • enregistré'}</span><button className="btn" onClick={()=>{setDraft(structuredClone(team.gamePlan ?? defaultGamePlan(team,league.players)));setMessage('Brouillon annulé.');}}>Annuler les modifications</button></div>
+    <section className="panel"><div className="draft-actions"><ActionFeedback state={dirty?"draft":"saved"}>{dirty ? "Modifications non enregistrées : votre plan actif reste inchangé." : `Plan « ${draft.name} » utilisé au prochain match.`}</ActionFeedback><button className="btn" onClick={()=>{setDraft(structuredClone(team.gamePlan ?? defaultGamePlan(team,league.players)));setMessage('Brouillon annulé.');}}>Annuler les modifications</button></div>
       {errors.length > 0 && <p role="alert">{errors.join(' ')}</p>}
       <button className="btn btn-primary" disabled={errors.length > 0} onClick={() => { const failures = store.setGamePlan(draft); setMessage(failures.length ? failures.join(' ') : 'Plan tactique enregistré.'); }}>Enregistrer le plan tactique</button>
       {message && <p role="status">{message}</p>}

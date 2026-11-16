@@ -43,7 +43,7 @@ export function ratingColor(rating: number): string {
 
 export function Rating({ value }: { value: number }) {
   return (
-    <span className="mono" style={{ color: ratingColor(value), fontWeight: 700 }}>
+    <span className="mono rating-value" style={{ color: ratingColor(value), fontWeight: 700 }}>
       {value}
     </span>
   );
@@ -127,7 +127,7 @@ export function AttrBar({ label, value }: { label: string; value: number }) {
           <div style={{ width: `${Math.min(100, value)}%`, background: ratingColor(value) }} />
         </div>
       </div>
-      <div className="mono" style={{ textAlign: 'right', color: ratingColor(value), fontWeight: 650 }}>
+      <div className="mono rating-value" style={{ textAlign: 'right', color: ratingColor(value), fontWeight: 650 }}>
         {value}
       </div>
     </div>

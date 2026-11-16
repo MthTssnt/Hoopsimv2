@@ -74,3 +74,24 @@ Les validations restent validateGamePlan, evaluateTrade, evaluateContract, draft
 | Outils Animations et liens ?anims/?style/?court | chemins d’origine préservés | `scripts/smoke-ui.py` (Menu → Outils → Animations) ; points d’entrée main.tsx inchangés hors nouvelle galerie |
 
 Les tests moteur valident les invariants, les smokes valident les interactions citées ; cela ne signifie pas que chaque combinaison de filtre et chaque curseur a été cliqué séparément. Les commandes et contrôles non réécrits restent présents, avec les mêmes handlers. Vérification de diff : aucune suppression de commande store d’origine (26/26).
+
+## Passe UX V3 — liens de tâches et état des décisions
+
+La couverture ci-dessus reste valable. Aucune commande de management n’a été supprimée. Les identifiants/attributs persistants, les 30 franchises, les logos et toutes les règles sont inchangés.
+
+| Entrée de tâche | Destination exacte | Preuve V3 |
+|---|---|---|
+| Carte Contrat de [joueur] | Marché / Contrats / playerId prérempli | smoke-guided-ux : signature réelle, saison d’effet, disparition de la tâche |
+| Fiche joueur / Prolonger | même destination, y compris si Marché est déjà monté | smoke-guided-ux : même page et ID exact |
+| Carte offre CPU | Marché / Transferts / proposalId, carte ciblée en premier | smoke-guided-ux : refus sans modification d’effectif et acceptation avec changement d’équipe |
+| Lanceur / Choisir mon cinq | éditeur de rotation existant | smoke-guided-ux : garde du brouillon et annulation ; smoke-ui : enregistrer |
+| Lanceur / Changer tactiques | éditeur unique et plan enregistré | smoke-ui : sauvegarde des paramètres et rotation inchangée |
+| Carte de draft | Saison / Draft, curseur courant | smoke-development : entrée depuis la tâche sans avancer le curseur |
+| Recruter / Prolonger / Échanger | mêmes opérations et validateurs, choix explicites | smoke-market : refus, échange unique, signature et prolongation différée |
+| Cartes de recherche | 12 résultats/page, tableau détaillé et tous filtres conservés | smoke-guided-ux + smoke-market ; fiche en surimpression conserve la recherche |
+| Décision confirmée/refusée | reçu de session persistant ; contrat signé relu depuis player.extension | smoke-guided-ux : confirmation et quota en échec distingués |
+| Aide / guide | préférences séparées `hoopsim.ui.v1`, sans mutation de carrière | inspection et smoke de navigation/brouillon |
+| Six systèmes | terrain pédagogique, placements/idées, poids du plan réellement enregistré | captures de 6 × 3 largeurs ; stockage inchangé après exploration |
+| Retour d’une nouvelle carrière | contexte UI et reçu précédents réinitialisés | effet limité aux états de présentation, aucun appel métier |
+
+Le style A (Arcade TV) est désormais le défaut provisoire, sur demande du propriétaire le 16 novembre 2026. La comparaison B reste disponible via `ux-style=almanac`. La restauration JSON reste un lot séparé décrit dans `UX_SAVE_RESTORE_FOLLOWUP.md` ; elle n’est pas déclarée livrée.

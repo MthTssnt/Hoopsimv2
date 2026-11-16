@@ -1,3 +1,4 @@
+import { managementTheme } from './managementTheme';
 import { HoopSimLogo } from './branding/HoopSimLogo';
 import { useMemo, useState } from 'react';
 import { createNewGame, randomSeed, teamStrength, type League } from '../engine';
@@ -23,7 +24,7 @@ export function NewGameScreen({ onLoad, hasSave, error }: { onLoad: () => void; 
   }, [preview]);
 
   return (
-    <div className="start">
+    <div className="start" data-management-theme={managementTheme()}>
       <div className="start-inner">
         <div className="start-title">
           <HoopSimLogo width={350} />

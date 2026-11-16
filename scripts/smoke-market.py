@@ -13,7 +13,7 @@ with sync_playwright() as p:
  page.reload(wait_until='networkidle')
  page.get_by_role('button',name='Reprendre',exact=False).first.click()
  page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Marché',exact=True).click()
- page.get_by_role('button',name='Transferts',exact=True).click()
+ page.get_by_role('button',name='Échanger',exact=True).click()
  before=page.evaluate('localStorage.getItem("hoopsim.save.v1")')
  def choose(x):
   for box in page.get_by_role('checkbox').all():
@@ -28,13 +28,13 @@ with sync_playwright() as p:
  print('Refus sans mutation: OK',flush=True)
  choose(fixture['accepted'])
  page.get_by_role('button',name='Vérifier l’offre',exact=True).click();page.get_by_role('button',name='Confirmer l’échange',exact=True).click()
- assert 'Échange accepté' in page.get_by_role('status').inner_text()
+ assert page.get_by_role('status').filter(has_text='Échange effectué').count()>=1,page.locator('body').inner_text()[-5000:]
  saved=json.loads(page.evaluate('localStorage.getItem("hoopsim.save.v1")'))
  offer=fixture['accepted']['offer'];out=offer['outgoingIds'][0];inc=offer['incomingIds'][0]
  assert saved['players'][out]['teamId']==offer['toTeamId'] and saved['players'][inc]['teamId']=='bos'
  assert len([e for e in saved['management']['transactions'] if e['type']=='trade'])==1
  print('Transfert appliqué une seule fois: OK',flush=True)
- page.get_by_role('button',name='Joueurs et agents libres',exact=True).click()
+ page.get_by_role('button',name='Recruter',exact=True).click()
  page.get_by_label('Équipe recherchée',exact=True).select_option('free')
  page.get_by_role('button',name='Offrir un contrat',exact=True).first.click()
  pid=page.get_by_label('Joueur à négocier',exact=True).input_value()
@@ -45,22 +45,22 @@ with sync_playwright() as p:
  assert page.evaluate('localStorage.getItem("hoopsim.save.v1")')==before
  page.get_by_label('Salaire proposé',exact=True).fill(salary)
  page.get_by_role('button',name='Vérifier le contrat',exact=True).click();page.get_by_role('button',name='Confirmer le contrat',exact=True).click()
- assert 'Contrat signé' in page.get_by_role('status').inner_text()
+ assert page.get_by_role('status').filter(has_text='Contrat signé').count()>=1
  saved=json.loads(page.evaluate('localStorage.getItem("hoopsim.save.v1")'))
  assert saved['players'][pid]['teamId']=='bos'
  print('Signature agent libre + refus du salaire invalide: OK',flush=True)
  team=next(t for t in saved['teams'] if t['id']=='bos')
  ext=next(saved['players'][i] for i in team['roster'] if saved['players'][i]['contract']['years']==1)
- page.get_by_label('Joueur à négocier',exact=True).select_option(ext['id'])
+ page.get_by_role('button',name='Mes prolongations',exact=True).click();page.get_by_label('Joueur à négocier',exact=True).select_option(ext['id'])
  page.get_by_role('button',name='Vérifier le contrat',exact=True).click();page.get_by_role('button',name='Confirmer le contrat',exact=True).click()
- assert 'Contrat signé' in page.get_by_role('status').inner_text()
+ assert page.get_by_role('status').filter(has_text='Prolongation signée').count()>=1
  saved=json.loads(page.evaluate('localStorage.getItem("hoopsim.save.v1")'))
  assert saved['players'][ext['id']]['contract']==ext['contract'] and saved['players'][ext['id']]['extension']
  print('Prolongation différée sans remplacer le contrat courant: OK',flush=True)
  page.reload(wait_until='networkidle')
  page.get_by_role('button',name='Reprendre',exact=False).first.click()
  page.get_by_role('navigation',name='Espaces de management').get_by_role('button',name='Marché',exact=True).click()
- page.get_by_role('button',name='Transactions',exact=True).click()
+ page.get_by_text('Toutes les options du marché',exact=True).click();page.get_by_role('button',name='Transactions',exact=True).click()
  page.wait_for_timeout(250)
  page.screenshot(path='/tmp/hoopsim-evidence/market-history.png')
  saved=json.loads(page.evaluate('localStorage.getItem("hoopsim.save.v1")'))

@@ -1,3 +1,4 @@
+import { ActionFeedback } from '../ActionFeedback';
 import { useDraftGuard } from '../useDraftGuard';
 import { PlanLibrary } from './PlanLibrary';
 import { useState } from 'react';
@@ -81,7 +82,7 @@ export function CoachingEditor({ league, team }: { league: League; team: Team })
     <p><label>Fréquence des changements <input aria-label="Fréquence des changements" type="range" min={0} max={100} value={draft.substitutionAggression} onChange={e => change(p => { p.substitutionAggression = Number(e.target.value); })} /> {draft.substitutionAggression < 34 ? 'Patiente' : draft.substitutionAggression > 66 ? 'Fréquente' : 'Équilibrée'}</label></p>
     <p><label><input type="checkbox" checked={!!draft.rotation.closingFiveIds} onChange={e => change(p => { if (e.target.checked) p.rotation.closingFiveIds = [...p.rotation.starterIds]; else delete p.rotation.closingFiveIds; })} /> Choisir un cinq de fin de match</label></p>
     {draft.rotation.closingFiveIds && <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>{POSITIONS.map((pos, i) => <label key={pos}>{pos} <select aria-label={`Fin de match ${pos}`} value={draft.rotation.closingFiveIds![i]} onChange={e => selectStarter(i, e.target.value, true)}>{ids.map(id => <option key={id} value={id}>{playerName(league.players[id])}</option>)}</select></label>)}</div>}
-    </details><div className="draft-actions"><span role="status">{dirty ? "Modifications non enregistrées" : "Plan enregistré • prêt pour le prochain match"}</span><button className="btn btn-sm" onClick={()=>{setDraft(structuredClone(team.gamePlan ?? defaultGamePlan(team,league.players)));setLockedIds([]);setMessage('Brouillon annulé.');}}>Annuler les modifications</button></div>
+    </details><div className="draft-actions"><ActionFeedback state={dirty?"draft":"saved"}>{dirty ? "Modifications non enregistrées : enregistrez pour utiliser ce cinq." : `Plan « ${draft.name} » utilisé au prochain match.`}</ActionFeedback><button className="btn btn-sm" onClick={()=>{setDraft(structuredClone(team.gamePlan ?? defaultGamePlan(team,league.players)));setLockedIds([]);setMessage('Brouillon annulé.');}}>Annuler les modifications</button></div>
     {errors.length > 0 && <p role="alert">{errors.join(' ')}</p>}
     <button className="btn" disabled={!!errors.length} onClick={() => { const failures = store.setGamePlan(draft); setMessage(failures.length ? failures.join(' ') : 'Plan enregistré.'); }}>Enregistrer le plan</button>
     {message && <p role="status">{message}</p>}

@@ -1,0 +1,95 @@
+/* Arcade TV is the provisional management default. Almanach remains available for comparison. */
+:is(.app,.start)[data-management-theme] {
+ --bg:#2356a5; --bg-panel:#f6f0de; --bg-elevated:#fff9ec; --bg-hover:#e5dcc5;
+ --border:#3c5c83; --text:#152840; --text-dim:#38516e; --text-faint:#38516e;
+ --accent:#173b73; --accent-soft:#173b7315; --win:#176a50; --loss:#9d2929;
+ background:var(--bg); color:#fff9ec; border-inline:12px solid #173b73;
+}
+:is(.app,.start)[data-management-theme] :is(.panel,.player-card,.coach-help,.action-feedback,.contract-shortcut,.review-offer,.tactic-board) { background:var(--bg-panel); color:var(--text); border-color:var(--border); }
+:is(.app,.start)[data-management-theme] .panel { border-top:6px solid #173b73; box-shadow:4px 4px 0 #102c59; padding:20px; }
+:is(.app,.start)[data-management-theme] .panel-title { color:#173b73; font-size:14px; letter-spacing:.08em; }
+:is(.app,.start)[data-management-theme] :is(.topbar,.nav) { --text:#fff9ec;--text-dim:#e3ebf4;--accent:#f6f0de;--accent-soft:#ffffff16;background:#173b73;color:var(--text);border-color:#f6f0de; }
+:is(.app,.start)[data-management-theme] .topbar { border-top:8px solid #f6f0de; }
+:is(.app,.start)[data-management-theme] .nav button.active { background:#f6f0de;color:#173b73;border-color:#9d382e; }
+:is(.app,.start)[data-management-theme] .nav button::before { content:'';display:inline-block;width:8px;height:8px;background:currentColor;box-shadow:4px -4px 0 currentColor;margin-right:12px; }
+:is(.app,.start)[data-management-theme] .btn { border:2px solid #173b73; background:#fff9ec; color:#152840; box-shadow:0 3px 0 #132b48; font-weight:750; }
+:is(.app,.start)[data-management-theme] .btn-primary { background:#173b73;color:#fff9ec;border-color:#173b73;box-shadow:0 3px 0 #081c39; }
+:is(.app,.start)[data-management-theme] .btn:hover:not(:disabled) { background:#dfd6bf;color:#152840; }
+:is(.app,.start)[data-management-theme] .topbar .btn-primary { background:#f6f0de;color:#173b73; }
+:is(.app,.start)[data-management-theme] .page-heading { border-bottom:3px solid #f6f0de; padding-bottom:16px; }
+:is(.app,.start)[data-management-theme] .page-heading h1 { letter-spacing:.02em;text-shadow:3px 3px 0 #173b73; }
+:is(.app,.start)[data-management-theme=arcade] :is(.page-heading p,.quick-actions>.faint,.page-heading .eyebrow) { color:#fff9ec; }
+:is(.app,.start)[data-management-theme] .coach-help { border:2px solid #173b73; border-left:8px solid #9d382e; }
+:is(.app,.start)[data-management-theme] .fixture-poster { --text:#fff9ec;--text-dim:#e3ebf4;background:#173b73;color:#fff9ec;border:3px solid #fff9ec;box-shadow:6px 6px 0 #10284b; }
+:is(.app,.start)[data-management-theme] .fixture-poster .btn { background:#f6f0de;color:#173b73;border-color:#fff9ec; }
+:is(.app,.start)[data-management-theme] .fixture-poster .eyebrow { color:#fff9ec; }
+:is(.app,.start)[data-management-theme] .versus { color:#fff9ec; }
+:is(.app,.start)[data-management-theme] .action-ticket { border-top:2px dashed #9caaad; }
+:is(.app,.start)[data-management-theme] .action-ticket h3 { text-transform:uppercase;color:#173b73; }
+:is(.app,.start)[data-management-theme] .player-card { border:2px solid #173b73;border-top:7px solid var(--club-color,#173b73);position:relative;box-shadow:3px 3px 0 #c8c4ae; }
+:is(.app,.start)[data-management-theme] .jersey-number { background:var(--club-color,#173b73);color:#fff9ec; }
+:is(.app,.start)[data-management-theme] .player-rating { border:2px solid #173b73; padding:4px 8px; background:#fff9ec; }
+:is(.app,.start)[data-management-theme] .player-rating .mono { color:#173b73!important; }
+:is(.app,.start)[data-management-theme] .eyebrow { color:#173b73; }
+:is(.app,.start)[data-management-theme] :is(input,select) { background:#fffdf6;color:#152840;border:2px solid #3c5c83;border-radius:0; }
+:is(.app,.start)[data-management-theme] .draft-actions { color:#152840; }
+:is(.app,.start)[data-management-theme] .subnav button[aria-current=page] { color:#173b73;border-color:#173b73;background:#f3d191; }
+:is(.app,.start)[data-management-theme] .pill { background:#fff9ec;color:#173b73;border:1px solid #173b73; }
+:is(.app,.start)[data-management-theme] .stepper li { color:#38516e; }
+:is(.app,.start)[data-management-theme] .stepper li[aria-current=step] { background:#173b73;color:#fff9ec;border-color:#173b73; }
+:is(.app,.start)[data-management-theme] .modal { --text:#152840;--text-dim:#38516e;--text-faint:#38516e;color:#152840;border-color:#173b73;background:#f6f0de; }
+:is(.app,.start)[data-management-theme] .modal summary { color:#152840; }
+:is(.app,.start)[data-management-theme] :is(button,a,input,select,summary):focus-visible { outline-color:#a52f25; }
+:is(.app,.start)[data-management-theme=almanac] { --bg:#f1e9d6;--bg-panel:#fff9ec;--bg-elevated:#f6f0de;--bg-hover:#e4d7be;--border:#334761;--text:#19263c;color:#19263c;border-inline:12px solid #c78a52; }
+:is(.app,.start)[data-management-theme=almanac] .topbar { border-top-color:#c78a52;background:#182e50; }
+:is(.app,.start)[data-management-theme=almanac] .panel { border:1px solid #334761;border-top:4px double #334761;box-shadow:3px 3px 0 #cbbd9d; }
+:is(.app,.start)[data-management-theme=almanac] .page-heading { border-bottom:5px double #182e50; }
+:is(.app,.start)[data-management-theme=almanac] .page-heading h1 { text-shadow:none;letter-spacing:-.03em; }
+:is(.app,.start)[data-management-theme=almanac] .fixture-poster { background:#fff9ec;color:#19263c;--text:#19263c;--text-dim:#38516e;border:4px double #182e50;box-shadow:5px 5px 0 #cbbd9d; }
+:is(.app,.start)[data-management-theme=almanac] .fixture-poster :is(.eyebrow,.versus) { color:#182e50; }
+:is(.app,.start)[data-management-theme=almanac] .fixture-poster .btn-primary { background:#182e50;color:#fff9ec;border-color:#182e50; }
+:is(.app,.start)[data-management-theme=almanac] .player-card { border:2px solid #334761;border-top:9px solid var(--club-color,#182e50);background:#fffdf6;box-shadow:4px 4px 0 #d5c7a5; }
+.preview-banner { font:700 12px ui-monospace,monospace;padding:10px 24px;color:#152840;background:#f3d191;text-align:center;border-bottom:2px solid #152840; }
+@media(max-width:700px) { :is(.app,.start)[data-management-theme] { border-inline-width:4px; } :is(.app,.start)[data-management-theme] .panel { padding:14px; } }
+@font-face { font-family:HoopPixel;src:url('../assets/ux-preview/fonts/press-start-2p-latin-400-normal.woff2') format('woff2');font-display:swap;font-weight:400; }
+/* Retro management identity: actual pixel typography and original courtside illustration. */
+:is(.app,.start)[data-management-theme] :is(.page-heading h1,.fixture-teams h2) { font-family:HoopPixel,monospace;font-weight:400;line-height:1.65; }
+:is(.app,.start)[data-management-theme] .page-heading h1 { font-size:24px;letter-spacing:-1px; }
+:is(.app,.start)[data-management-theme] .fixture-teams h2 { font-size:17px; }
+:is(.app,.start)[data-management-theme] .nav button { font-family:HoopPixel,monospace;font-size:11px;letter-spacing:0; }
+:is(.app,.start)[data-management-theme] .fixture-poster { position:relative;overflow:hidden; }
+:is(.app,.start)[data-management-theme] .fixture-poster::after { content:'';position:absolute;right:16px;top:32px;width:34%;aspect-ratio:192/112;background:url('../assets/ux-preview/arcade-courtside.svg') center/contain no-repeat;image-rendering:pixelated;pointer-events:none;border:3px solid #fff9ec;box-shadow:4px 4px 0 #10284b; }
+:is(.app,.start)[data-management-theme=almanac] .fixture-poster::after { background-image:url('../assets/ux-preview/almanac-courtside.svg');border:5px double #182e50;box-shadow:4px 4px 0 #cbbd9d; }
+:is(.app,.start)[data-management-theme] .fixture-teams { margin-right:38%;grid-template-columns:1fr 55px 1fr;gap:10px; }
+:is(.app,.start)[data-management-theme] .fixture-teams img { width:64px;height:64px; }
+:is(.app,.start)[data-management-theme] .fixture-teams .versus { font-family:HoopPixel,monospace;font-size:16px; }
+:is(.app,.start)[data-management-theme] .panel-title { font-family:HoopPixel,monospace;font-weight:400;line-height:1.8; font-size:12px; }
+:is(.app,.start)[data-management-theme] .starting-five .player-card { background-image:linear-gradient(transparent 0 62%,#173b7308 62%); }
+:is(.app,.start)[data-management-theme] .starting-five .eyebrow { background:var(--club-color);color:#fff9ec;display:block;padding:7px 10px;margin:-18px -18px 16px;font-family:HoopPixel,monospace;font-size:9px;line-height:1.7; }
+:is(.app,.start)[data-management-theme] .jersey-number { font-family:HoopPixel,monospace;font-size:14px;line-height:1;clip-path:polygon(12% 0,32% 0,32% 12%,68% 12%,68% 0,88% 0,88% 12%,100% 12%,100% 36%,88% 36%,88% 100%,12% 100%,12% 36%,0 36%,0 12%,12% 12%); }
+:is(.app,.start)[data-management-theme] .contract-editor { border-left:10px solid var(--club-color);border-top:7px solid #173b73; }
+:is(.app,.start)[data-management-theme] .contract-editor::before { content:'HOOPSIM / FRANCHISE CONTRACT';display:block;padding-bottom:14px;margin-bottom:20px;border-bottom:2px dashed #7d8a99;font:10px/1.7 HoopPixel,monospace;letter-spacing:1px; }
+:is(.app,.start)[data-management-theme=almanac] .contract-editor { border-top:7px double #182e50;background:#fffdf6; }
+:is(.app,.start)[data-management-theme] .contract-editor>.row { border:1px dashed #7d8a99;padding:14px; }
+:is(.app,.start)[data-management-theme] .starting-five .player-card { min-height:205px; }
+@media(max-width:700px) {
+ :is(.app,.start)[data-management-theme] .page-heading h1{font-size:18px;}
+ :is(.app,.start)[data-management-theme] .nav button{font-size:9px;padding-inline:7px;}
+ :is(.app,.start)[data-management-theme] .nav button::before{display:none;}
+ :is(.app,.start)[data-management-theme] .fixture-poster{padding-top:140px;}
+ :is(.app,.start)[data-management-theme] .fixture-poster::after{top:10px;left:50%;right:auto;transform:translateX(-50%);width:192px;height:112px;}
+ :is(.app,.start)[data-management-theme] .fixture-teams{margin-right:0;grid-template-columns:1fr 40px 1fr;}
+ :is(.app,.start)[data-management-theme] .fixture-teams h2{font-size:12px;}
+ :is(.app,.start)[data-management-theme] .panel-title{font-size:10px;}
+}
+/* Readability for creation, league tables, detailed attributes and match reports. */
+:is(.app,.start)[data-management-theme] :is(.team-card,.stat-tile,.series,.rotation-slot,.pbp) { color:var(--text);background:var(--bg-panel); }
+:is(.app,.start)[data-management-theme] .rating-value { color:#173b73!important; }
+:is(.app,.start)[data-management-theme] .attr .bar>div { background:#173b73!important; }
+.start[data-management-theme] :is(.start-inner>p,.toolbar>.faint,.conf-header) { color:#fff9ec; }
+.start[data-management-theme=almanac] :is(.start-inner>p,.toolbar>.faint,.conf-header) { color:#19263c; }
+.start[data-management-theme] .conf-header { font:12px/1.8 HoopPixel,monospace; }
+.start[data-management-theme] .team-card { border:2px solid #173b73;box-shadow:3px 3px 0 #102c59; }
+.start[data-management-theme] .team-card.selected { background:#f3d191;outline-color:#fff9ec; }
+.app[data-management-theme] .bracket :is(.panel-title,h3) { color:#fff9ec; }
+.app[data-management-theme=almanac] .bracket :is(.panel-title,h3) { color:#173b73; }
